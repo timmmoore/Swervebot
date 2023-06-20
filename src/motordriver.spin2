@@ -1,0 +1,167 @@
+{I2C motor driver}
+{}
+
+CON
+  MOTOR1            = $40                               ' i2c address first motor board
+  MOTOR2            = $41                               ' i2c address second motor board
+
+  ' motor drive configuration
+  PCA9685_MODE1     =           $0                      ' register to configure
+  PCA9685_PRESCALE  =           $FE                     ' prescaler register
+  LED0_ON_L         =           $6                      ' start of led configuration registers
+                                                        ' per led: on low, on high, off low, off high
+  LED_ALWAYS        =           4096                    ' bit 12 set means always on/off
+
+  NO_MOTOR1         =           $02
+  NO_MOTOR2         =           $04
+
+  PCA9685_I2C_SPEED =           800                     ' 1000 works but is not consistent
+                                                        ' try again with shorter shielded wires
+
+  DEBUG_OUTPUT      =           500
+
+VAR
+  word debug2
+  long pinvert
+  long uscount
+
+OBJ
+  serial        : "isp_serial_singleton_tmm"
+  i2c           : "jm_i2c_tmm"
+
+PUB null()
+  ' This is not a top-level object
+
+PUB start(scl, sda, ppinvert) : retv | ch
+  pinvert := ppinvert
+  uscount := clkfreq /1_000_000
+  ifnot i2c.setup(scl, sda, PCA9685_I2C_SPEED, i2c.PU_1K5)    ' i2c @ 800kHz, 1K5 pull-ups
+    return $01|NO_MOTOR1|NO_MOTOR2
+
+  if(i2c.present(MOTOR1<<1) == true)
+    'serial.fstr0(string("Swerve found motor board1\r"))
+  else
+    serial.fstr0(string("Swerve not found motor board1\r"))
+    retv |= NO_MOTOR1
+  i2c.stop()
+  if(i2c.present(MOTOR2<<1) == true)
+    'serial.fstr0(string("Swerve found motor board2\r"))
+  else
+    serial.fstr0(string("Swerve not found motor board2\r"))
+    retv |= NO_MOTOR2
+  i2c.stop()
+  ifnot retv & NO_MOTOR1
+    initpwm(MOTOR1)
+  ifnot retv & NO_MOTOR2
+    initpwm(MOTOR2)
+  repeat ch from 0 to 15                                ' all motors off
+    ifnot retv & NO_MOTOR1
+      setPWM(MOTOR1<<1, ch+LED0_ON_L, 0)
+    ifnot retv & NO_MOTOR2
+      setPWM(MOTOR2<<1, ch+LED0_ON_L, 0)
+
+PRI initpwm(addr) | oldmode
+  '' init pwm on motor driver board
+  'if debugoutput()
+  '  serial.fstr1(string("initpwm %x\r"), addr)
+  write8(addr, PCA9685_MODE1, $0)
+  oldmode := read8(addr, PCA9685_MODE1)
+  write8(addr, PCA9685_MODE1, (oldmode&$7F) | $10)      ' go to sleep
+  write8(addr, PCA9685_PRESCALE, 3)                     ' set the prescaler
+  write8(addr, PCA9685_MODE1, oldmode)
+  waitus(5)
+  write8(addr, PCA9685_MODE1, oldmode | $a1)            ' This sets the MODE1 register to turn on auto increment.
+  if debugoutput()
+    serial.fstr1(string("initpwm done %x\r"), addr)
+
+PRI read8(addr, adr) : ret1
+  '' read byte from motor driver
+  i2c.start()
+  i2c.write(addr<<1)
+  i2c.write(adr)
+
+  i2c.start()
+  i2c.write(addr<<1|1)
+  ret1 := i2c.read(i2c.NAK)
+  i2c.stop()
+
+PRI write8(addr, adr, d)
+  '' write byte to motor driver
+  i2c.start()
+  i2c.write(addr<<1)
+  i2c.write(adr)
+  i2c.write(d)
+  i2c.stop()
+
+PRI setPWM(addr, num, value) | word values[3]
+  '' set PWM on/off for single motor pin on motor driver board
+  values.byte[0] := addr
+  values.byte[1] := num
+  wordmove(@values[1], @value, 2)
+  i2c.start()
+  i2c.wr_block(@values, 6)
+  i2c.stop()
+  'if debugoutput()
+  '  serial.fstr4(string("setpwm done %x %d %d %d\r"), addr, num, on, off)
+
+PRI setPWMAll(addr, num1, num2, num3, value1, value2, value3)
+  '' set direction/PWM values for a motor on motor driver board
+  ' sort led registers and values, led registers need to be contiguous step 4
+  repeat
+    if num3 < num1
+      num1, num3 := num3, num1
+      value1, value3 := value3, value1
+    elseif num3 < num2
+      num2, num3 := num3, num2
+      value2, value3 := value3, value2
+    elseif num2 < num1
+      num1, num2 := num2, num1
+      value1, value2 := value2, value1
+    else
+      quit
+  ' insert PCA9685 addr and first register and write sorted values to PCA9685
+  num3.byte[2] := addr
+  num3.byte[3] := num1
+  i2c.start()
+  i2c.wr_block(@num3.byte[2], 14)
+  i2c.stop()                                            ' pins are updated on I2C stop so write order for one batch doesn't matter
+  'if debugoutput()
+  '  serial.fstr7(string("setpwmall done %x %d %x %d %x %d %x\r"), addr, num1, value1, num2, value2, num3, value3)
+
+PUB run(motor, speed) : addr, pwm, in1, in2, in2v, pwmv, temp
+'' set speed of 1 motor of a swerve module
+
+  ' lookup PCA9865 board address and PCA9865 led registers used for each motor driver pin: pwm, in1, in2
+  ' note addr is already << 1 shifted and pins are register indexes
+  addr, pwm, in1, in2 := addrs[motor>>2], pwmpins[temp:=motor&3], in1pins[temp], in2pins[temp]
+
+  ' set the direction and pwm pin values
+  if (pwmv := abs(speed)) <> 0
+    in2v := LED_ALWAYS
+    pwmv := pwmv >= in2v ? in2v : pwmv<<16
+
+  ' invert the direction registers if needed by switching the 2 direction pins
+  if word[pinvert][motor] ^^ (speed < 0)
+    in1, in2 := in2, in1
+
+  temp := getct()
+  ' 214-221us
+  setPWMAll(addr, in1, in2, pwm, 0, in2v, pwmv)
+  temp := getct() - temp - 40
+  if debugoutput()
+    serial.fstr7(string("run motor %x %d %d %d %d %d %d\r"), addr, motor, in1, in2, pwm, speed, temp/uscount)
+
+PRI debugoutput() : retv
+  retv := debug2 > DEBUG_OUTPUT
+
+PUB updatedebug(tdebug)
+  debug2 := tdebug
+
+DAT
+  ' PCA9865 register mapping to TB6612
+  pwmpins     byte (2<<2)+LED0_ON_L, (7<<2)+LED0_ON_L,  (8<<2)+LED0_ON_L, (13<<2)+LED0_ON_L
+  in1pins     byte (4<<2)+LED0_ON_L, (5<<2)+LED0_ON_L, (10<<2)+LED0_ON_L, (11<<2)+LED0_ON_L
+  in2pins     byte (3<<2)+LED0_ON_L, (6<<2)+LED0_ON_L,  (9<<2)+LED0_ON_L, (12<<2)+LED0_ON_L
+  ' I3C addresses for 2 PCA9865
+  addrs       byte MOTOR1<<1, MOTOR2<<1
+'

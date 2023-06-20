@@ -1,0 +1,62 @@
+{Object_Title_and_Purpose}
+
+
+CON
+  CLK_FREQ = 200_000_000                                        ' system freq as a constant
+  MS_001   = CLK_FREQ / 1_000                                   ' ticks in 1ms
+  US_001   = CLK_FREQ / 1_000_000                               ' ticks in 1us
+
+  BR_SERIAL = 115_200                                           ' terminal baud rate
+
+  _clkfreq = CLK_FREQ                                           ' set system clock
+
+  SDA1                          = 21                            ' i2c pins
+  SCL1                          = 20
+
+  ' Bellevue, WA 98008
+  M_V                           =     49.4643
+  M_H                           =     19.0285
+  MAG_DECLINIATION              =     15.2473
+  QUAT_DIV                      =     $07
+
+  PITCH                         =     0
+  ROLL                          =     1
+  YAW                           =     2
+  PRESSURE                      =     3
+
+OBJ
+  serial        : "isp_serial_singleton"
+  usfsmax       : "usfsmax"
+
+VAR
+  long qt[4], output[4]
+
+PUB main() | Acq_time, compute_time
+  serial.start(BR_SERIAL)
+
+  waitms(500)
+  serial.str(string("USFSMAX", 13))
+
+  if usfsmax.startx(SCL1, SDA1, @Config1) == false
+    serial.str(string("USFSMAX not found", 13))
+
+  repeat
+    waitms(100)
+    Acq_time := getct()
+    qt[0], qt[1], qt[2], qt[3] := usfsmax.getMin()
+    Acq_time := getct() - Acq_time - 40
+    serial.fstr4(string("USFSMAX QUAT %.2g %.2g %.2g %.2g\r"), qt[0], qt[1], qt[2], qt[3])
+    compute_time := getct()
+    output[YAW], output[PITCH], output[ROLL], output[PRESSURE] := usfsmax.computeIMU(qt[0], qt[1], qt[2], qt[3])
+    compute_time := getct() - compute_time - 40
+    serial.fstr3(string("USFSMAX Yaw, Pitch, Roll: %.2g %.2g %.2g\r"), output[YAW], output[PITCH], output[ROLL])
+    ' USFSMAX acq: 246 (3MHz) compute: 68 (200MHz)
+    serial.fstr2(string("USFSMAX acq: %d compute: %d \r"), Acq_time/US_001, compute_time/US_001)
+    serial.fstr1(string("USFSMAX Baro pressure = %.2ghPa\r"), output[PRESSURE])
+
+DAT
+Config1
+  LONG M_V
+  LONG M_H
+  LONG MAG_DECLINIATION
+  byte QUAT_DIV

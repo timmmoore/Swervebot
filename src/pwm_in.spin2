@@ -1,0 +1,59 @@
+{Object_Title_and_Purpose}
+
+{
+SRX encoder:
+        pin 2         5V
+        pin 10        Gnd
+        pin 9         pwm, 3.3V
+PROP2
+        pin: 8, 9, 10, 11
+}
+CON
+  NOPWMIN       = 1
+
+  DEBUG_OUTPUT  = 500
+
+  MININCLK      = 90
+  MAXINCLK      = 45060
+
+VAR
+  long setup
+  long pp, minv, maxv
+  long debug1
+  long lastvalues[NOPWMIN]
+
+OBJ
+  serial        : "isp_serial_singleton_tmm"
+  utilities     : "utilities"
+
+PUB null()
+  ' This is not a top-level object
+
+PUB start(pin, minvalue, maxvalue)
+  stop()
+  longmove(@pp, @pin, 3)
+  pinstart(pp ADDPINS NOPWMIN-1, P_HIGH_TICKS, 0, 0)    ' start for NOPWMIN pins
+  setup := true                                         ' mark setup
+
+PUB stop()
+  if (setup\false)
+    pinclear(pp ADDPINS NOPWMIN-1)                      ' disable smart pin
+  longfill(@lastvalues, -1, NOPWMIN)
+
+PUB readall(pvals) | ch
+  repeat ch from 0 to NOPWMIN-1
+    long[pvals][ch] := read(ch)
+
+PUB read(ch) : value | value1
+  ' min pulse width 0.9us, max pulse width 4506us
+  value1 := (rdpin(pp+ch) / (clkfreq / 20_000_000)) >> 1 ' convert pulse to 100 picoseconds
+  value := utilities.map(value1, MININCLK, MAXINCLK, minv, maxv) ' map to required range
+  if (value <> lastvalues[ch]\value) && debugoutput()
+    serial.fstr3(string("encoder%d %d %d\r"), pp+ch, value1, value)
+
+PUB updatedebug(tdebug)
+  debug1 := tdebug
+
+PRI debugoutput() : retv
+  retv := debug1 > DEBUG_OUTPUT
+'

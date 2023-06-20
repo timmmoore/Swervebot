@@ -1,0 +1,87 @@
+{PMW3901}
+
+CON
+  CLK_FREQ = 200_000_000                                ' system freq as a constant
+  MS_001   = CLK_FREQ / 1_000                           ' ticks in 1ms
+  US_001   = CLK_FREQ / 1_000_000                       ' ticks in 1us
+
+  BR_SERIAL = 115_200                                   ' terminal baud rate
+
+  _clkfreq = CLK_FREQ                                   ' set system clock
+
+  'PMW_VCC   = 3.3V
+  'PMW_GND
+  PMW_CS    = 19  { O, 3.3V level }
+  PMW_SCK   = 18  { O, 3.3V level }
+  PMW_SDO   = 17  { O, 3.3V level }
+  PMW_SDI   = 16  { I, 3.3V level }
+
+  ' USFSMAX_VCC = 3.3V
+  ' USFSMAX_GND
+  USFSMAX_SDA                   =     21                ' 3V3 i2c pins
+  USFSMAX_SCL                   =     20
+
+  ' Bellevue, WA 98008
+  M_V                           =     49.4643
+  M_H                           =     19.0285
+  MAG_DECLINIATION              =     15.2473
+  QUAT_DIV                      =     $07
+
+  PITCH                         =     0
+  ROLL                          =     1
+  YAW                           =     2
+  PRESSURE                      =     3
+
+OBJ
+  serial        : "isp_serial_singleton"
+  pmw           : "pmw3901"
+  usfsmax       : "usfsmax"
+
+VAR
+  long qt[4], output[4]
+
+PUB main() | x, y, Acq_time, compute_time, havepmw, haveusfsmax
+  waitms(500)
+  serial.start(BR_SERIAL)
+
+  waitms(500)
+  serial.str(string("PMW3901/USFSMAX test starting", 13))
+
+  if(pmw.begin(PMW_CS, PMW_SCK, PMW_SDO, PMW_SDI) == false)
+    serial.str(string("PMW3901 not found", 13))
+  else
+    havepmw := true
+
+  waitms(100)
+
+  ifnot (x := usfsmax.startx(USFSMAX_SCL, USFSMAX_SDA, @Config)) == 0
+    serial.fstr1(string("USFSMAX not found %x\r"), x)
+  else
+    haveusfsmax := true
+
+  repeat
+    waitms(100)
+    if havepmw
+      Acq_time := getct()
+      x, y := pmw.readMotionCount()
+      Acq_time := getct() - Acq_time - 40
+      serial.fstr3(string("PMW3901 x: %d, y: %d t: %d\r"), x, y, Acq_time/US_001)
+    if haveusfsmax
+      Acq_time := getct()
+      qt[0], qt[1], qt[2], qt[3] := usfsmax.getMin()
+      Acq_time := getct() - Acq_time - 40
+      serial.fstr4(string("USFSMAX QUAT %.2g %.2g %.2g %.2g\r"), qt[0], qt[1], qt[2], qt[3])
+      compute_time := getct()
+      output[YAW], output[PITCH], output[ROLL], output[PRESSURE] := usfsmax.computeIMU(qt[0], qt[1], qt[2], qt[3])
+      compute_time := getct() - compute_time - 40
+      serial.fstr3(string("USFSMAX Yaw, Pitch, Roll: %.2g %.2g %.2g\r"), output[YAW], output[PITCH], output[ROLL])
+      ' USFSMAX acq: 246us (3MHz) compute: 68us (200MHz)
+      serial.fstr2(string("USFSMAX acq: %d compute: %d \r"), Acq_time/US_001, compute_time/US_001)
+      serial.fstr1(string("USFSMAX Baro pressure = %.2ghPa\r"), output[PRESSURE])
+
+DAT
+Config
+  LONG M_V
+  LONG M_H
+  LONG MAG_DECLINIATION
+  byte QUAT_DIV

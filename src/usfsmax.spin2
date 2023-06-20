@@ -1,0 +1,409 @@
+{USFSMax}
+{ https://hackaday.io/project/160283-max32660-motion-co-processor }
+{ https://github.com/gregtomasch/USFSMAX_MMC_Module }
+{ https://d3s5r33r268y59.cloudfront.net/datasheets/22105/2020-12-08-22-58-37/USFSMAX.ProductBrief.pdf }
+
+CON
+  MAX32660ADDR                  = $57
+
+  SENS_ERR_STAT                 = $00
+  CALIBRATION_STATUS            = $01
+  ACCEL_CAL_POS                 = $02
+  FUSION_STATUS                 = $03
+  COMBO_DRDY_STAT               = $04
+
+  G_X_L                         = $05
+  G_X_H                         = $06
+  G_Y_L                         = $07
+  G_Y_H                         = $08
+  G_Z_L                         = $09
+  G_Z_H                         = $0A
+  A_X_L                         = $0B
+  A_X_H                         = $0C
+  A_Y_L                         = $0D
+  A_Y_H                         = $0E
+  A_Z_L                         = $0F
+  A_Z_H                         = $10
+  M_X_L                         = $11
+  M_X_H                         = $12
+  M_Y_L                         = $13
+  M_Y_H                         = $14
+  M_Z_L                         = $15
+  M_Z_H                         = $16
+  BARO_XL                       = $17
+  BARO_L                        = $18
+  BARO_H                        = $19
+  Q0_BYTE0                      = $1A
+  Q0_BYTE1                      = $1B
+  Q0_BYTE2                      = $1C
+  Q0_BYTE3                      = $1D
+  Q1_BYTE0                      = $1E
+  Q1_BYTE1                      = $1F
+  Q1_BYTE2                      = $20
+  Q1_BYTE3                      = $21
+  Q2_BYTE0                      = $22
+  Q2_BYTE1                      = $23
+  Q2_BYTE2                      = $24
+  Q2_BYTE3                      = $25
+  Q3_BYTE0                      = $26
+  Q3_BYTE1                      = $27
+  Q3_BYTE2                      = $28
+  Q3_BYTE3                      = $29
+  LIN_X_L                       = $2A
+  LIN_X_H                       = $2B
+  LIN_Y_L                       = $2C
+  LIN_Y_H                       = $2D
+  LIN_Z_L                       = $2E
+  LIN_Z_H                       = $2F
+  GRAV_X_L                      = $30
+  GRAV_X_H                      = $31
+  GRAV_Y_L                      = $32
+  GRAV_Y_H                      = $33
+  GRAV_Z_L                      = $34
+  GRAV_Z_H                      = $35
+  YAW_BYTE0                     = $36
+  YAW_BYTE1                     = $37
+  YAW_BYTE2                     = $38
+  YAW_BYTE3                     = $39
+  PITCH_BYTE0                   = $3A
+  PITCH_BYTE1                   = $3B
+  PITCH_BYTE2                   = $3C
+  PITCH_BYTE3                   = $3D
+  ROLL_BYTE0                    = $3E
+  ROLL_BYTE1                    = $3F
+  ROLL_BYTE2                    = $40
+  ROLL_BYTE3                    = $41
+  AG_TEMP_L                     = $42
+  AG_TEMP_H                     = $43
+  M_TEMP_L                      = $44
+  M_TEMP_H                      = $45
+  B_TEMP_L                      = $46
+  B_TEMP_H                      = $47
+  AUX_1_X_L                     = $48
+  AUX_1_X_H                     = $49
+  AUX_1_Y_L                     = $4A
+  AUX_1_Y_H                     = $4B
+  AUX_1_Z_L                     = $4C
+  AUX_1_Z_H                     = $4D
+  AUX_2_X_L                     = $4E
+  AUX_2_X_H                     = $4F
+  AUX_2_Y_L                     = $50
+  AUX_2_Y_H                     = $51
+  AUX_2_Z_L                     = $52
+  AUX_2_Z_H                     = $53
+  AUX_3_X_L                     = $54
+  AUX_3_X_H                     = $55
+  AUX_3_Y_L                     = $56
+  AUX_3_Y_H                     = $57
+  AUX_3_Z_L                     = $58
+  AUX_3_Z_H                     = $59
+  MX_L                          = $5A
+  MX_H                          = $5B
+  MY_L                          = $5C
+  MY_H                          = $5D
+  DHI_RSQ_L                     = $5E
+  DHI_RSQ_H                     = $5F
+
+  FUSION_START_STOP             = $60
+  CALIBRATION_REQUEST           = $61
+
+  COPRO_CFG_DATA0               = $62
+  COPRO_CFG_DATA1               = $63
+  GYRO_CAL_DATA0                = $64
+  GYRO_CAL_DATA1                = $65
+  ACCEL_CAL_DATA0               = $66
+  ACCEL_CAL_DATA1               = $67
+  ELLIP_MAG_CAL_DATA0           = $68
+  ELLIP_MAG_CAL_DATA1           = $69
+  FINE_MAG_CAL_DATA0            = $6A
+  FINE_MAG_CAL_DATA1            = $6B
+  NEW_I2C_SLAVE_ADDR            = $6C
+  GO_TO_SLEEP                   = $6D
+  FIRMWARE_ID                   = $7F
+
+  FUSION_RUNNING_MASK           = $01
+  HI_CORRECTOR_MASK             = $10
+
+  CAL_POINTS                    =     2048
+  ACC_SCALE                     =     $01
+  ACC_ODR                       =     $07
+  LSM6DSM_ACC_DLPF_CFG          =     $02
+  LSM6DSM_ACC_DHPF_CFG          =     $00
+  GYRO_SCALE                    =     $0C
+  GYRO_ODR                      =     $07
+  LSM6DSM_GYRO_DLPF_CFG         =     $00
+  LSM6DSM_GYRO_DHPF_CFG         =     $00
+  MAG_SCALE                     =     $00
+  MAG_ODR                       =     $04
+  MMC5983MA_MAG_LPF             =     $00
+  MMC5983MA_MAG_HPF             =     $00
+  BARO_SCALE                    =     $00
+  BARO_ODR                      =     $04
+  LPS22HB_BARO_LPF              =     $0C
+  LPS22HB_BARO_HPF              =     $00
+  AUX1_SCALE                    =     $00
+  AUX1_ODR                      =     $00
+  AUX1_LPF                      =     $00
+  AUX1_HPF                      =     $00
+  AUX2_SCALE                    =     $00
+  AUX2_ODR                      =     $00
+  AUX2_LPF                      =     $00
+  AUX2_HPF                      =     $00
+  AUX3_SCALE                    =     $00
+  AUX3_ODR                      =     $00
+  AUX3_LPF                      =     $00
+  AUX3_HPF                      =     $00
+
+  M_V                           =     42.9631
+  M_H                           =     22.7568
+  MAG_DECLINIATION              =     13.7433
+  QUAT_DIV                      =     $07
+
+  I2C_CONFIG_SPEED              =     100
+  I2C_FAST_SPEED                =     3000 '3400
+
+VAR
+  long accLIN[3], grav[3]
+  long baroADC
+  long mh, mv, magdec
+  byte quatdiv
+
+OBJ
+  'serial        : "isp_serial_singleton_tmm"
+  i2c           : "jm_i2c_tmm"
+  utilities     : "utilities"
+
+PUB null()
+
+PUB start(scl, sda) : retv
+  retv := startx(scl, sda, -1, @Config1)
+
+PUB startx(scl, sda, reset, pconfig) : retv | id, stat, Begin
+  'serial.fstr0(string("USFSMAX1 \r"))
+  bytemove(@mh, pconfig, @Config1End - @Config1)
+  'serial.fstr0(string("USFSMAX2 \r"))
+
+  if reset <> -1
+    pinclear(reset)
+    pinl(reset)
+    waitms(1)
+    pinf(reset)
+  'serial.fstr0(string("USFSMAX3 \r"))
+
+  waitms(10)
+  ifnot i2c.setup(scl, sda, I2C_CONFIG_SPEED, i2c.PU_1K5) ' i2c @ 100kHz, 1K5 pull-ups
+    return $01
+  waitms(10)
+  'serial.fstr0(string("USFSMAX4 \r"))
+
+  if(i2c.present(MAX32660ADDR<<1) == false)
+    i2c.stop()
+    'serial.fstr0(string("USFSMAX6 \r"))
+    return $02
+  i2c.stop()
+
+  'serial.fstr0(string("USFSMAX5 \r"))
+  waitms(10)
+  id := read8(MAX32660ADDR, FIRMWARE_ID)                ' Read the coprocessor's firmware ID
+
+  waitms(10)
+  stat := read8(MAX32660ADDR, FUSION_STATUS)            ' Read the coprocessor's current
+
+  'serial.fstr2(string("USFSMAX %x %d\r"), id, stat)
+
+  write8(MAX32660ADDR, FUSION_START_STOP, $00)          ' stop fusion
+  waitms(50)
+  stat := read8(MAX32660ADDR, FUSION_STATUS)            ' Read the coprocessor's current
+
+  'serial.fstr2(string("USFSMAX1 %x %d\r"), id, stat)
+  UploadCfg()
+
+  i2c.setup(scl, sda, I2C_FAST_SPEED, i2c.PU_1K5)       ' i2c @ 3Mhz, 1K5 pull-ups
+  waitms(10)
+  'serial.str(string("USFSMAX fast I2C", 13))
+                                       ' start   Quaternions   SCALED_SENSOR
+  write8(MAX32660ADDR, FUSION_START_STOP, $01 |    ($00)      | ($01))
+  waitms(10)
+  repeat 50
+    if stat := (read8(MAX32660ADDR, FUSION_STATUS) & FUSION_RUNNING_MASK)
+      quit
+    'serial.fstr1(string("USFSMAX status %d\r"), stat)
+    waitms(10)
+  ifnot stat
+    'serial.str(string("USFSMAX sensor fusion not running!", 13))
+    return $04
+
+  if (stat := read8(MAX32660ADDR, SENS_ERR_STAT)) <> 0
+    'serial.fstr1(string("USFSMAX error status %d\r"), stat)
+    return $08
+  retv := 0
+
+PRI read8(addr, adr) : ret1 | byte values[2]
+  '' read byte
+  i2c.start()
+  values[0] := addr<<1
+  values[1] := adr
+  i2c.wr_block(@values, 2)                    ' 20us
+  i2c.start()
+  i2c.write(addr<<1|1)
+  ret1 := i2c.read(i2c.NAK)
+  i2c.stop()
+
+PRI write8(addr, adr, d) | byte values[3]
+  '' write byte
+  i2c.start()
+  values[0] := addr<<1
+  values[1] := adr
+  values[2] := d
+  i2c.wr_block(@values, 3)
+  i2c.stop()
+
+PRI readBytes(addr, adr, count, pbuf) | byte values[2]
+' at clock speed of 3Mhz, significant clock stretching occurs
+  i2c.start()                                 ' 5us
+  values[0] := addr<<1
+  values[1] := adr
+  i2c.wr_block(@values, 2)                    ' 20us
+
+  i2c.start()                                 ' 5us
+  i2c.write(addr<<1|1)                        ' 10us
+  i2c.rd_block(pbuf, count, i2c.NAK)          ' 191s
+  i2c.stop()                                  ' 5us
+
+PRI writeBytes(addr, adr, count, pbuf) | byte values[2]
+  i2c.start()
+  values[0] := addr<<1
+  values[1] := adr
+  i2c.wr_block(@values, 2)                    ' 20us
+  i2c.wr_block(pbuf, count)
+  i2c.stop()
+
+PUB getQUAT_Lin() : qt0, qt1, qt2, qt3 | BYTE bytes[28]
+
+  readBytes(MAX32660ADDR, Q0_BYTE0, 28, @bytes)
+  longmove(@qt0, @bytes[0], 4)
+  longmove(@accLin, @bytes[16], 3)
+
+PRI BARO_getADC() | BYTE bytes[4]
+
+  readBytes(MAX32660ADDR, BARO_XL, 3, @bytes)
+  baroADC := LONG[@bytes]
+
+PUB getMin() : qt0, qt1, qt2, qt3 | BYTE bytes[19]
+' getQUAT and BARO_getADC
+' 242us (3MHz)
+  readBytes(MAX32660ADDR, BARO_XL, 19, @bytes)          '235us
+  bytemove(@qt0, @bytes[3], 16)
+  bytes[3] := 0
+  baroADC := LONG[@bytes]
+
+PRI UploadCfg()
+
+  write8(MAX32660ADDR, FUSION_START_STOP, $08)          ' Clears bit0 to stop fusion and sets bit3 to specify configuration upload
+  waitms(100)
+  writeBytes(MAX32660ADDR, COPRO_CFG_DATA0, @Config1-@Config, @Config)
+  waitms(50)
+  writeBytes(MAX32660ADDR, COPRO_CFG_DATA1, @Config1End-@Config1, @mh)
+  waitms(50)
+
+CON
+  SCALE                         =     1000.0
+  SCALE2                        =     2.0*SCALE
+{
+  buff_heading = atan2f(2.0f*(qt[1]*qt[2] - qt[0]*qt[3]), qt[0]*qt[0] - qt[1]*qt[1] + qt[2]*qt[2] - qt[3]*qt[3]);
+  buff_pitch = asinf(2.0f*(qt[2]*qt[3] + qt[0]*qt[1]));
+  buff_roll = atan2f(2.0f*(qt[0]*qt[2] - qt[1]*qt[3]),qt[0]*qt[0] - qt[1]*qt[1] - qt[2]*qt[2] + qt[3]*qt[3]);
+
+  var yaw = atan2(2.0*(q.y*q.z + q.w*q.x), q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z);
+  var pitch = asin(-2.0*(q.x*q.z - q.w*q.y));
+  var roll = atan2(2.0*(q.x*q.y + q.w*q.z), q.w*q.w + q.x*q.x - q.y*q.y - q.z*q.z);
+}
+PUB computeIMUFloat(qtw, qtx, qty, qtz) : outputyaw, outputpitch, outputroll, outputpressure | qw, qx, qy, qz, y
+' MAXUSFS Quaternion is ENU
+' 89us (200MHz)
+  qw := qtw*.qtw
+  qx := qtx*.qtx
+  qy := qty*.qty
+  qz := qtz*.qtz
+  y := -2.0 *. (qtx*.qtz -. qty*.qtw)
+  _, outputyaw   := xypol(round((qw +. qx -. qy -. qz)*.SCALE), round((qtx*.qty +. qtw*.qtz)*.SCALE2))
+  _, outputroll  := xypol(round((qw -. qx -. qy +. qz)*.SCALE), round((qty*.qtz +. qtw*.qtx)*.SCALE2))
+  _, outputpitch := xypol(round(fsqrt(1.0 -. (y *. y))*.SCALE), round(y*.SCALE))
+  outputyaw :=  scaleangle(outputyaw)
+  outputroll :=  scaleangle(outputroll)
+  outputpitch :=  scaleangle(outputpitch)                                       ' Mag declination added in USFSMAX
+  'serial.fstr3(string("USFSMAX Y compute %.2g %.2g %.2g\r"), (qw -. qx -. qy +. qz)*.10.0, 2.0*.(qty*.qtz +. qtw*.qtx)*.10.0, outputroll)
+  'serial.fstr3(string("USFSMAX R compute %.2g %.2g %.2g\r"), (qw +. qx -. qy -. qz)*.10.0, 2.0*.(qtx*.qty +. qtw*.qtz)*.10.0, outputyaw)
+  'serial.fstr3(string("USFSMAX P compute %.2g %.2g %.2g\r"), (fsqrt(1.0 -. (y *. y)))*.10.0, y*.10.0, outputpitch)
+  outputpressure := float(baroADC>>4)/.256.0
+
+CON
+  shift         = 14                                    ' 16384
+  floatscale    = float(1<<shift)
+  intscale      = 1<<(shift*2)
+
+PUB computeIMUFixed(qtw, qtx, qty, qtz) : outputyaw, outputpitch, outputroll, outputpressure | qw, qx, qy, qz, y
+' MAXUSFS Quaternion is ENU
+' 56us (200MHz)
+' differs in 2nd decimal place from computeIMUFloat
+  ' convert to scaled fixed decimal point
+  qtw, qtx, qty, qtz := round(qtw*.floatscale), round(qtx*.floatscale), round(qty*.floatscale), round(qtz*.floatscale)
+  ' intermediate calculations
+  qw, qx, qy, qz := qtw * qtw, qtx * qtx, qty * qty, qtz * qtz
+  y := -((qtx * qtz - qty * qtw)<<1)
+  ' both parameters are scaled the same, so angles are still correct
+  _, outputyaw   := xypol((qw + qx - qy - qz), (qtx*qty + qtw*qtz)<<1)
+  _, outputroll  := xypol((qw - qx - qy + qz), (qty*qtz + qtw*qtx)<<1)
+  _, outputpitch := xypol(sqrt(intscale - ((y SAR shift) * (y SAR shift)))<<shift, y)
+  outputyaw :=  scaleangle(outputyaw)
+  outputroll :=  scaleangle(outputroll)
+  outputpitch :=  scaleangle(outputpitch)                                       ' Mag declination added in USFSMAX
+  'serial.fstr3(string("USFSMAX Y compute %.2g %.2g %.2g\r"), (qw -. qx -. qy +. qz)*.10.0, 2.0*.(qty*.qtz +. qtw*.qtx)*.10.0, outputroll)
+  'serial.fstr3(string("USFSMAX R compute %.2g %.2g %.2g\r"), (qw +. qx -. qy -. qz)*.10.0, 2.0*.(qtx*.qty +. qtw*.qtz)*.10.0, outputyaw)
+  'serial.fstr3(string("USFSMAX P compute %.2g %.2g %.2g\r"), (fsqrt(1.0 -. (y *. y)))*.10.0, y*.10.0, outputpitch)
+  outputpressure := float(baroADC>>4)/.256.0
+
+CON
+  DEGREESCALE     = 1000
+  DEGREEDIV       = float(DEGREESCALE)
+
+PRI scaleangle(in) : scaledangle
+  scaledangle := float(utilities.scaleangle(in, 360*DEGREESCALE))/.DEGREEDIV
+
+DAT
+Config
+  word CAL_POINTS
+  byte ACC_SCALE
+  byte ACC_ODR
+  byte LSM6DSM_ACC_DLPF_CFG
+  byte LSM6DSM_ACC_DHPF_CFG
+  byte GYRO_SCALE
+  byte GYRO_ODR
+  byte LSM6DSM_GYRO_DLPF_CFG
+  byte LSM6DSM_GYRO_DHPF_CFG
+  byte MAG_SCALE
+  byte MAG_ODR
+  byte MMC5983MA_MAG_LPF
+  byte MMC5983MA_MAG_HPF
+  byte BARO_SCALE
+  byte BARO_ODR
+  byte LPS22HB_BARO_LPF
+  byte LPS22HB_BARO_HPF
+  byte AUX1_SCALE
+  byte AUX1_ODR
+  byte AUX1_LPF
+  byte AUX1_HPF
+  byte AUX2_SCALE
+  byte AUX2_ODR
+  byte AUX2_LPF
+  byte AUX2_HPF
+  byte AUX3_SCALE
+  byte AUX3_ODR
+  byte AUX3_LPF
+  byte AUX3_HPF
+Config1
+  LONG M_V
+  LONG M_H
+  LONG MAG_DECLINIATION
+  byte QUAT_DIV
+Config1End

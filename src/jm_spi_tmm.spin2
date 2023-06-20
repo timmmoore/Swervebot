@@ -1,0 +1,277 @@
+'' =================================================================================================
+''
+''   File....... jm_spi.spin2
+''   Purpose.... General-purpose bit-banged SPI IO
+''               -- supports all SPI modes
+''   Author..... Jon "JonnyMac" McPhalen
+''               Copyright (c) 2019-2020 Jon McPhalen
+''               -- see below for terms of use
+''   E-mail..... jon.mcphalen@gmail.com
+''   Started....
+''   Updated.... 02 OCT 2020
+''               -- LS/MS byte reordering if > 8 bits read/written (timmoore)
+''               -- transferbytes api transfer array of bytes (timmoore)
+''
+'' =================================================================================================
+
+
+con { fixed io pins }
+
+  RX1      = 63  { I }                                          ' programming / debug
+  TX1      = 62  { O }
+
+  SF_CS    = 61  { O }                                          ' serial flash
+  SF_SCK   = 60  { O }
+  SF_SDO   = 59  { O }
+  SF_SDI   = 58  { I }
+
+
+con
+
+  #true,  ON, OFF
+  #false, NO, YES
+
+
+con { spi }
+
+  #0, MODE_0, MODE_1, MODE_2, MODE_3                            ' spi modes
+  #0, LSBMSBYTE, MSBMSBYTE, LSBLSBYTE, MSBLSBYTE                ' bit/byte order
+
+
+var { globals }
+
+  ' do not modify order of these variables
+
+  long  sdipin                                                  ' spi pins
+  long  sdopin
+  long  sckpin
+  long  spimode                                                 ' mode bits
+  long  clktix                                                  ' ticks in 1/4 clock period
+  long  setup
+
+
+pub start(sdi, sdo, sck, mode, khz)
+
+'' -- sdipin is the data input pin   (SDI) { optional, -1 if not used }
+'' -- sdopin is the data output pin  (SDO) { optional, -1 if not used }
+'' -- sckpin is the clock output pin (SCK)
+'' -- mode is spi mode, 0..3 (mode.[0] is phase, mode.[1] is polarity
+''    * 0 CPOL0 CPHS0
+''    * 1 CPOL0 CPHS1
+''    * 2 CPOL1 CPHS0
+''    * 3 CPOL1 CPHS1
+'' -- khz is spi clock frequency in kilohertz
+
+  stop()
+
+  longmove(@sdipin, @sdi, 4)                                    ' copy pins
+
+  pinclear(sck)                                                 ' clear smart pin configuration
+  pinw(sck, spimode.[1])                                        ' set to idle state
+
+  if (sdo >= 0)                                                 ' if sdo used
+    pinclear(sdo)
+    pinl(sdo)                                                   ' make output low
+
+  if ((sdi >= 0) && (sdi <> sdo))                               ' if sdi used
+    pinclear(sdi)                                               '  clear and make input
+
+  clktix := (clkfreq / (khz * 1_000)) >> 2 - 4                  ' 1/4 period
+
+  setup := true
+
+
+pub stop()
+
+  if (setup)                                                    ' if in use
+    if (sdipin >= 0)                                            ' clear pins & settings
+      pinf(sdipin)
+    if (sdopin >= 0)
+      pinf(sdopin)
+    pinf(sckpin)
+    longfill(@sdipin, 0, 6)
+
+
+pub write(order, outval, bits) | x, di, do, clk, mode, tix
+
+'' Write bits from outval using defined SPI pins
+'' -- order is LSBFIRST or MSBFIRST
+
+  longmove(@di, @sdipin, 5)                                     ' copy configuration
+
+  org
+                rczr      order                         wcz     ' c set for LSBYTE, z set for MSBIT
+    if_c        movbyts   outval, #%%0123                       ' reverse byte order
+    if_c        mov       x, bits
+    if_c        subr      x, #32                                ' shr 32->0, 24->8, 16->16, 8->24
+    if_c        shr       outval, x
+                drvl      do                                    ' force to output (if shared with di)
+
+    if_nz       rev       outval                                ' lsbfirst -- reverse the bits
+    if_z        ror       outval, bits                          ' msbfirst -- align msb to bit31
+
+                testb     mode, #0                      wz      ' check clock phase (z = phase)
+
+                rep       #9, bits                              ' shift out the bits
+                 rol      outval, #1                    wc      ' c <- outval.[31]
+    if_x0        drvc     do                                    ' c -> sdo (CPHS0)
+                 waitx    tix                                   ' let sdo settle
+                 drvnot   clk                                   ' toggle sclk
+                 waitx    tix
+    if_x1        drvc     do                                    ' c -> sdo (CPHS1)
+                 waitx    tix
+                 drvnot   clk
+                 waitx    tix
+
+                drvl      do                                    ' leave sdo low
+  end
+
+
+pub read(order, bits) : inval | x, di, do, clk, mode, tix
+
+'' Read bits to inval using defined SPI pins
+'' -- order is LSBFIRST or MSBFIRST
+
+  longmove(@di, @sdipin, 5)                                     ' copy configuration
+
+  org
+                fltl      di                                    ' force to input (if shared with do)
+
+                testb     mode, #0                      wz      ' check clock phase (z = phase)
+
+                rep       #9, bits                              ' shift in the bits
+                 waitx    tix                                   ' let sdi settle
+    if_x0        testp    di                            wc      ' c <- sdi (CPHS0)
+                 drvnot   clk                                   ' toggle sclk
+                 waitx    tix
+                 waitx    tix
+                 drvnot   clk
+    if_x1        testp    di                            wc      ' c <- sdi (CPHS1)
+                 rcl      inval, #1                             ' inval.[0] <- c
+                 waitx    tix
+
+                rczr      order                         wcz     ' c set for LSBYTE, z set for MSBIT
+    if_nz       rev       inval                                 ' flip to lsbfirst
+    if_nz       rol       inval, bits
+    if_c        movbyts   inval, #%%0123                        ' reverse byte order
+    if_c        subr      bits, #32                             ' shr 32->0, 24->8, 16->16, 8->24
+    if_c        shr       inval, bits
+  end
+
+
+pub transfer(order, outval, bits) : inval | x, di, do, clk, mode, tix
+
+'' Write bits from outval while reading bits to inval using defined SPI pins
+'' -- full-duplex write and read
+'' -- order is LSBFIRST or MSBFIRST
+
+  longmove(@di, @sdipin, 5)                                     ' copy configuration
+
+  org
+                rczr      order                         wcz     ' c set for LSBYTE, z set for MSBIT
+                rczl      order                                 ' put order back for later
+    if_c        movbyts   outval, #%%0123                       ' reverse byte order
+    if_c        mov       x, bits
+    if_c        subr      x, #32                                ' shr 32->0, 24->8, 16->16, 8->24
+    if_c        shr       outval, x
+                sub       tix, #3                               ' adjust for overhead
+
+    if_nz       rev       outval                                ' lsbfirst -- reverse the bits
+    if_z        ror       outval, bits                          ' msbfirst -- align msb to bit31
+
+                testb     mode, #0                      wz      ' check clock phase (z = phase)
+
+                rep       #14, bits                             ' shift out the bits
+    if_x0        rol      outval, #1                    wc      ' c <- outval.[31]
+    if_x0        drvc     do                                    ' c -> sdo (CPHS0)
+                 waitx    tix                                   ' let do settle
+    if_x0        testp    di                            wc      ' c <- sdi (CPHS0)
+    if_x0        rcl      inval, #1                             ' c -> inval.[0]
+                 drvnot   clk                                   ' start sclk
+                 waitx    tix
+    if_x1        rol      outval, #1                    wc      ' c <- outval.[31]
+    if_x1        drvc     do                                    ' c -> sdo (CPHS1)
+                 waitx    tix                                   ' let do settle
+                 drvnot   clk                                   ' finish sclk
+    if_x1        testp    di                            wc      ' c <- sdi (CPHS1)
+    if_x1        rcl      inval, #1                             ' c -> inval.[0]
+                 waitx    tix
+
+                rczr      order                         wcz     ' c set for LSBYTE, z set for MSBIT
+    if_nz       rev       inval                                 ' flip to lsbfirst
+    if_nz       rol       inval, bits
+
+                drvl      do                                    ' leave sdo low
+    if_c        movbyts   inval, #%%0123                        ' reverse byte order
+    if_c        shr       inval, x
+  end
+
+pub transferbytes(order, poutval, count, bits) | xout, xin, di, do, clk, mode, tix
+
+'' Write count bytes from poutval while reading count bytes to poutval using defined SPI pins
+'' -- full-duplex write and read
+'' -- order is LSBFIRST or MSBFIRST
+
+  longmove(@di, @sdipin, 5)                                     ' copy configuration
+
+  org
+                mov       ptra, poutval
+                sub       tix, #3                               ' adjust for overhead
+
+                testb     order, #0                     wz      ' z set for MSBIT
+.nextbyte
+                rdbyte    xout, ptra                            ' get next byte to send
+    if_nz       rev       xout                                  ' lsbfirst -- reverse the bits
+    if_z        ror       xout, bits                            ' msbfirst -- align msb to bit31
+
+                testb     mode, #0                      wz      ' check clock phase (z = phase)
+
+                rep       #14, bits                             ' shift out the bits
+    if_x0        rol      xout, #1                      wc      ' c <- outval.[31]
+    if_x0        drvc     do                                    ' c -> sdo (CPHS0)
+                 waitx    tix                                   ' let do settle
+    if_x0        testp    di                            wc      ' c <- sdi (CPHS0)
+    if_x0        rcl      xin, #1                               ' c -> inval.[0]
+                 drvnot   clk                                   ' start sclk
+                 waitx    tix
+    if_x1        rol      xout, #1                      wc      ' c <- outval.[31]
+    if_x1        drvc     do                                    ' c -> sdo (CPHS1)
+                 waitx    tix                                   ' let do settle
+                 drvnot   clk                                   ' finish sclk
+    if_x1        testp    di                            wc      ' c <- sdi (CPHS1)
+    if_x1        rcl      xin, #1                               ' c -> inval.[0]
+                 waitx    tix
+
+                testb     order, #0                     wz      ' z set for MSBIT
+    if_nz       rev       xin                                   ' flip to lsbfirst
+    if_nz       rol       xin, bits
+                wrbyte    xin, ptra++                           ' write byte and inc to next byte
+                djnz      count, #.nextbyte                     ' next byte if we have more
+
+                drvl      do                                    ' leave sdo low
+  end
+
+con { license }
+
+{{
+
+  Terms of Use: MIT License
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this
+  software and associated documentation files (the "Software"), to deal in the Software
+  without restriction, including without limitation the rights to use, copy, modify,
+  merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to the following
+  conditions:
+
+  The above copyright notice and this permission notice shall be included in all copies
+  or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+  PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+  CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+  OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+}}

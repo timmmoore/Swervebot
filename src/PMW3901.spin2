@@ -1,0 +1,295 @@
+{ PMW3901 }
+{ ported from Ardinuo driver https://github.com/bitcraze/Bitcraze_PMW3901}
+{ plus some stuff from https://github.com/pimoroni/pmw3901-python}
+{ datasheet https://wiki.bitcraze.io/_media/projects:crazyflie2:expansionboards:pot0189-pmw3901mb-txqt-ds-r1.00-200317_20170331160807_public.pdf}
+{ tested with https://www.tindie.com/products/onehorse/pmw3901-optical-flow-sensor/}
+{ distance 80mm to infinity, angle 42degree }
+{ if plate between sensor and ground, hole size: sensor is Ymm above bottom of plate, bottom of plate is Xmm from ground }
+{ X+Y >= 80mm, R = Y*tan(21); for Y=25mm, hole radius is 10mm }
+
+CON
+  CHIP_ID                       = $49                   ' 01001001
+  CHIP_ID_INVERSE               = $B6                   ' 10110110
+
+  PRODUCT_ID                    = $00                   ' CHIP_ID
+  REVISION_ID                   = $01
+  MOTION                        = $02
+  DELTA_X_L                     = $03
+  DELTA_X_H                     = $04
+  DELTA_Y_L                     = $05
+  DELTA_Y_H                     = $06
+  SQUAL                         = $07                   ' quality of the reported data
+  RAWDATA_SUM                   = $08
+  MAX_RAWDATA                   = $09
+  MIN_RAWDATA                   = $0A
+  SHUTTER_LOWER                 = $0B
+  SHUTTER_HIGHER                = $0C
+  OBSERVATION                   = $15                   ' should be $BF
+  MOTION_BURST                  = $16                   ' up to 12 byte burst containing
+                                                        ' dr, obs, x(l,h), y(l,h)
+                                                        ' quality, raw_sum, raw_max, raw_min, shutter_upper, shutter_lower
+  POWER_UP_RESET                = $3A
+  SHUTDOWN                      = $3B
+  RAWDATA_GRAB                  = $58
+  RAWDATA_GRAB_STATUS           = $59
+  REG_ORIENTATION               = $5B
+  INVERSE_PRODUCT_ID            = $5F                   ' CHIP_ID_INVERSE
+
+  SPI_CLK_SPEED                 = 4000                  ' datasheet says 2MHz but 4Mhz works and bitcraze also use 4MHz
+
+OBJ
+  spi      : "jm_spi_tmm"
+  'serial   : "isp_serial_singleton_tmm"
+
+VAR
+  LONG CS
+
+PUB null()
+
+PUB begin(tcs, tsck, tso, tsi) : retv
+  cs := tcs
+
+  spi.start(tsi, tso, tsck, SPI.MODE_3, SPI_CLK_SPEED) ' Setup SPI bus
+
+  ' Make sure the PMW3901 is reset on the SPI bus
+  disableCS()
+  waitms(1)
+  enableCS()
+  waitms(1)
+  disableCS()
+  waitms(1)
+
+  registerWrite(POWER_UP_RESET, $5A)                    ' Power on reset
+  waitms(5)
+  ' Test the SPI communication, checking chipId and inverse chipId
+  ifnot (registerRead(PRODUCT_ID) <> CHIP_ID || registerRead(INVERSE_PRODUCT_ID) <> CHIP_ID_INVERSE)
+    retv := true
+    readMotionCount()                                   ' Reading the motion registers one time
+    waitms(1)
+    initRegisters()
+
+PUB stop()
+  registerWrite(SHUTDOWN, $ff)  ' shutdown pmw3901
+  disableCS()                   ' make sure pmw3901 is disabled
+  spi.stop()                    ' stop and free spi bus
+
+PUB readMotionCount() : deltaX, deltaY, retv
+' 97us (4Mhz)
+  retv := registerRead(MOTION)
+  deltaX := ((registerRead(DELTA_X_H) << 8) | registerRead(DELTA_X_L)) SIGNX 15
+  deltaY := ((registerRead(DELTA_Y_H) << 8) | registerRead(DELTA_Y_L)) SIGNX 15
+  retv &= %1000_0000
+
+PUB readMotionCountBurstQuick() : deltaX, deltaY, retv | byte values[7]
+' 24us (@4Mhz)
+''Get motion data from PMW3901 using burst read.
+' Reads 7 bytes sequentially from the PMW3901 and validates motion data.
+' Returns Delta X and Delta Y indicating 2d flow direction and magnitude.
+  ' byte _, dr, obs, word x(l,h), y(l,h)
+  values[0] := MOTION_BURST
+  pinlow(cs)
+  ' LSB/MSB defines bit endian
+  spi.transferbytes(spi.MSBMSBYTE, @values, 7, 8)
+  pinhigh(cs)
+  deltaX := word[@values[3]] SIGNX 15
+  deltaY := word[@values[5]] SIGNX 15
+  retv := values[1]&%1000_0000
+
+PUB readMotionCountBurst() : deltaX, deltaY, retv | byte values[13]
+' 38us (@4Mhz)
+''Get motion data from PMW3901 using burst read.
+' Reads 13 bytes sequentially from the PMW3901 and validates motion data.
+' Returns Delta X and Delta Y indicating 2d flow direction and magnitude.
+  ' byte _, dr, obs, word x(l,h), y(l,h), byte quality, raw_sum, raw_max, raw_min, shutter_upper, shutter_lower
+  ' note: first byte read is not useful because the register value is not loaded yet
+  values[0] := MOTION_BURST
+  pinlow(cs)
+  spi.transferbytes(spi.MSBMSBYTE, @values, 13, 8)
+  pinhigh(cs)
+  '              dr                        quality              shutter_upper
+  if retv := ((values[1]&%1000_0000) && (values[7] >= $19 or values[11] <> $1f))
+    deltaX := word[@values[3]] SIGNX 15
+    deltaY := word[@values[5]] SIGNX 15
+
+PUB enableFrameBuffer() | i
+  repeat i from 0 to (@enableFrameBufferValue-@enableFrameBufferReg)-1
+    registerWrite(enableFrameBufferReg[i], enableFrameBufferValue[i])
+  nextFrame()
+
+DAT
+' magic register and values, no information on these, copied from bitcraze driver
+enableFrameBufferReg
+  BYTE $7F, $41, $4C, $7F, $6A, $7F, $55, $40, $4D
+enableFrameBufferValue
+  BYTE $07, $1D, $00, $08, $38, $00, $04, $80, $11
+
+PUB readFrameBuffer(PBuffer) | count, high, low, status
+' not tested
+  repeat until count == 1225    'for 1 frame of 1225 pixels (35*35)
+    repeat
+                                'if data is either invalid status
+                                'check status bits 6 and 7
+                                'if 01 move upper 6 bits into temp value
+                                'if 00 or 11, reread
+                                'else lower 2 bits into temp value
+      high := registerRead(RAWDATA_GRAB) 'read register
+      status := high >> 6       'right shift to leave top two bits for ease of check.
+    while((status == $03) || (status == $00))
+
+    if (status == $01)          'if data is upper 6 bits
+      low := registerRead(RAWDATA_GRAB) 'read next set to get lower 2 bits
+      BYTE[PBuffer][count++] := (high<<2 | ((low>>2) & $03)) 'set pixel to high in 7:2, and low in 1:0
+
+  nextFrame()
+
+PUB setLed(ledOn)
+'' some breakout boards have an led connected to pin 20. The tindie board doesn't have the LED
+  registerWrite($7f, $14)
+  registerWrite($6f, ledOn ? $1c : $00)
+  registerWrite($7f, $00)
+
+PUB set_orientation(invert_x, invert_y, swap_xy)
+''Set orientation of PMW3901 manually.
+' default from initRegisters is swap_xy + invert_x
+' Swapping is performed before flipping.
+  registerWrite(REG_ORIENTATION, (swap_xy&%1000_0000) | (invert_x&%0010_0000) | (invert_y&%0100_0000))
+
+PRI nextFrame()
+  registerWrite($70, $00)       'More magic values
+  registerWrite(RAWDATA_GRAB, $FF)
+
+  'read status register, until top two denote ready state
+  repeat until ((registerRead(RAWDATA_GRAB)>>6) <> $03)
+
+' Low level routines
+PRI enableCS()
+  pinlow(cs)
+
+PRI disableCS()
+  pinhigh(cs)
+
+PRI registerWrite(regv, value)
+  enableCS()
+  waitus(1)
+  spi.write(spi.MSBLSBYTE, regv|$80, 8)
+  waitus(45)                    ' delays from datasheet
+  spi.write(spi.MSBLSBYTE, value, 8)
+  waitus(35)
+  disableCS()
+
+PRI registerRead(regv) : value
+  enableCS()
+  spi.write(spi.MSBLSBYTE, regv&$7f, 8)
+  value := spi.read(spi.MSBLSBYTE, 8)
+  disableCS()
+
+{
+  python lib does the following: is it better than the one from bitcraze?
+}
+PRI initRegisters() | i, c1, c2
+  ' Performance optimisation registers
+  repeat i from 0 to (@initRegistersValue1 - @initRegistersReg1)-1
+    registerWrite(initRegistersReg1[i], initRegistersValue1[i])
+
+  registerWrite($48, registerRead($67) & %1000_0000 ? $04 : $02)
+
+  repeat i from 0 to (@initRegistersValue2 - @initRegistersReg2)-1
+    registerWrite(initRegistersReg2[i], initRegistersValue2[i])
+
+  if registerRead($73) == $00
+    c1 := registerRead($70)
+    c2 := registerRead($71)
+    if c1 <= 28
+      c1 += 14
+    if c1 > 28                  ' note maybe impacted by previous if statement
+      c1 += 11
+    c1 := 0 #> c1 <# $3F
+    c2 := (c2 * 45) // 100
+
+    repeat i from 0 to (@initRegistersValue3 - @initRegistersReg3)-1
+      registerWrite(initRegistersReg3[i], initRegistersValue3[i])
+
+    registerWrite($70, c1)
+    registerWrite($71, c2)
+
+  repeat i from 0 to (@initRegistersValue4 - @initRegistersReg4)-1
+    registerWrite(initRegistersReg4[i], initRegistersValue4[i])
+  waitms(10)
+  repeat i from 0 to (@initRegistersValue5 - @initRegistersReg5)-1
+    registerWrite(initRegistersReg5[i], initRegistersValue5[i])
+  waitms(240)
+  repeat i from 0 to (@initRegistersValue6 - @initRegistersReg6)-1
+    registerWrite(initRegistersReg6[i], initRegistersValue6[i])
+
+DAT
+initRegistersReg1
+  byte $7f, $55, $50, $7f, $43
+initRegistersValue1
+  byte $00, $01, $07, $0e, $10
+initRegistersReg2
+  byte $7f, $51, $50, $55, $7f
+initRegistersValue2
+  byte $00, $7b, $00, $00, $0e
+initRegistersReg3
+  byte $7f, $61, $51, $7f
+initRegistersValue3
+  byte $00, $ad, $70, $0e
+initRegistersReg4
+  byte $7f, $61, $7f, $40, $7f
+  byte $41, $43, $45, $5b, $5f, $7b, $7f, $44, $40, $4e, $7f, $65, $6a
+  byte $7f, $4f, $5f, $48, $49
+  byte $57, $60, $61, $62, $63, $7f, $45, $7f, $4d
+  byte $55, $74, $75, $4a, $4b
+  byte $44, $45, $64, $65, $7f, $65, $66, $63, $7f, $48, $7f, $41, $43
+  byte $4b, $45, $44, $4c, $7f
+  byte $5b, $7f, $40, $70
+initRegistersValue4
+  byte $00, $ad, $03, $00, $05
+  byte $b3, $f1, $14, $32, $34, $08, $06, $1b, $bf, $3f, $08, $20, $18
+  byte $09, $af, $40, $80, $80
+  byte $77, $78, $78, $08, $50, $0a, $60, $00, $11
+  byte $80, $21, $1f, $78, $78
+  byte $08, $50, $ff, $1f, $14, $67, $08, $70, $15, $48, $07, $0d, $14
+  byte $0e, $0f, $42, $80, $10
+  byte $02, $07, $41, $00
+initRegistersReg5
+  byte $32, $7f, $40, $7f, $62, $63, $7f, $48, $6f, $7f
+  byte $5b, $4e, $5a, $40
+initRegistersValue5
+  byte $44, $07, $40, $06, $f0, $00, $0d, $c0, $d5, $00
+  byte $a0, $a8, $50, $80
+initRegistersReg6
+  byte $7f, $6f, $7f
+initRegistersValue6
+  byte $14, $1c, $00
+
+DAT
+' magic register and values, no information on these, copied from bitcraze driver
+{
+PRI initRegisters() | i
+  ' Performance optimisation registers, from bitcraze driver
+  repeat i from 0 to (@initRegistersValue - @initRegistersReg)-1
+    registerWrite(initRegistersReg[i], initRegistersValue[i])
+  waitms(10) '100)
+  repeat i from 0 to (@initRegistersValue2 - @initRegistersReg2)-1
+    registerWrite(initRegistersReg2[i], initRegistersValue2[i])
+}
+{
+DAT
+initRegistersReg
+  BYTE $7F, $61, $7F, $40, $7F, $41, $43, $45, $5B, $5F, $7B, $7F, $44, $40, $4E, $7F
+  BYTE $65, $6A, $7F, $4F, $5F, $48, $49, $57, $60, $61, $62, $63, $7F, $45, $7F, $4D
+  BYTE $55, $74, $75, $4A, $4B, $44, $45, $64, $65, $7F, $65, $66, $63, $7F, $48, $7F
+  BYTE $41, $43, $4B, $45, $44, $4C, $7F, $5B, $7F, $40, $70
+initRegistersValue
+  BYTE $00, $AD, $03, $00, $05, $B3, $F1, $14, $32, $34, $08, $06, $1B, $BF, $3F, $08
+  BYTE $20, $18, $09, $AF, $40, $80, $80, $77, $78, $78, $08, $50, $0A, $60, $00, $11
+  BYTE $80, $1F, $1F, $78, $78, $08, $50, $FF, $1F, $14, $60, $08, $78, $15, $58, $07
+  BYTE $0D, $14, $0E, $0F, $42, $80, $10, $02, $07, $41, $00
+
+initRegistersReg2
+  BYTE $32, $7F, $40, $7F, $62, $63, $7F, $48, $6F, $7F, $5B, $4E, $5A, $40
+initRegistersValue2
+  BYTE $44, $07, $40, $06, $f0, $00, $0D, $C0, $d5, $00, $a0, $A8, $50, $80
+}
+  '
