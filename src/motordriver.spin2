@@ -35,7 +35,7 @@ PUB null()
 PUB start(scl, sda, ppinvert) : retv | ch
   pinvert := ppinvert
   uscount := clkfreq /1_000_000
-  ifnot i2c.setup(scl, sda, PCA9685_I2C_SPEED, i2c.PU_1K5)    ' i2c @ 800kHz, 1K5 pull-ups
+  ifnot i2c.setup(scl, sda, PCA9685_I2C_SPEED, i2c.PU_3K3, -1) ' i2c @ 800kHz, 1K5 pull-ups
     return $01|NO_MOTOR1|NO_MOTOR2
 
   if(i2c.present(MOTOR1<<1) == true)
@@ -54,7 +54,7 @@ PUB start(scl, sda, ppinvert) : retv | ch
     initpwm(MOTOR1)
   ifnot retv & NO_MOTOR2
     initpwm(MOTOR2)
-  repeat ch from 0 to 15                                ' all motors off
+  repeat ch from 0 to 15                                ' all pins off
     ifnot retv & NO_MOTOR1
       setPWM(MOTOR1<<1, ch+LED0_ON_L, 0)
     ifnot retv & NO_MOTOR2
@@ -104,31 +104,25 @@ PRI setPWM(addr, num, value) | word values[3]
   'if debugoutput()
   '  serial.fstr4(string("setpwm done %x %d %d %d\r"), addr, num, on, off)
 
-PRI setPWMAll(addr, num1, num2, num3, value1, value2, value3)
+PRI setPWMAll(addr, num3, num2, num1, value1, value2, value3)
   '' set direction/PWM values for a motor on motor driver board
-  ' sort led registers and values, led registers need to be contiguous step 4
-  repeat
-    if num3 < num1
-      num1, num3 := num3, num1
-      value1, value3 := value3, value1
-    elseif num3 < num2
-      num2, num3 := num3, num2
-      value2, value3 := value3, value2
-    elseif num2 < num1
-      num1, num2 := num2, num1
-      value1, value2 := value2, value1
-    else
-      quit
+  ' sort led registers and values, led registers need to be contiguous
+  ' registers in reverse order to values and register value is in MSB of numX.
+  if num3 +< num1
+    num1, num3, value1, value3 := num3, num1, value3, value1
+  elseif num2 +< num1
+    num1, num2, value1, value2 := num2, num1, value2, value1
+  if num3 +< num2
+    value2, value3 := value3, value2                    ' dont bother swapping num values as not needed
   ' insert PCA9685 addr and first register and write sorted values to PCA9685
-  num3.byte[2] := addr
-  num3.byte[3] := num1
+  num1 |= addr                                          ' addr value is in byte 2 of addr
   i2c.start()
-  i2c.wr_block(@num3.byte[2], 14)
+  i2c.wr_block(@num1.word[1], 14)
   i2c.stop()                                            ' pins are updated on I2C stop so write order for one batch doesn't matter
   'if debugoutput()
   '  serial.fstr7(string("setpwmall done %x %d %x %d %x %d %x\r"), addr, num1, value1, num2, value2, num3, value3)
 
-PUB run(motor, speed) : addr, pwm, in1, in2, in2v, pwmv, temp
+PUB run(motor, speed) | addr, pwm, in1, in2, in2v, pwmv, temp
 '' set speed of 1 motor of a swerve module
 
   ' lookup PCA9865 board address and PCA9865 led registers used for each motor driver pin: pwm, in1, in2
@@ -145,11 +139,11 @@ PUB run(motor, speed) : addr, pwm, in1, in2, in2v, pwmv, temp
     in1, in2 := in2, in1
 
   temp := getct()
-  ' 214-221us
-  setPWMAll(addr, in1, in2, pwm, 0, in2v, pwmv)
+  ' 210-215us
+  setPWMAll(addr, pwm, in2, in1, 0, in2v, pwmv)
   temp := getct() - temp - 40
   if debugoutput()
-    serial.fstr7(string("run motor %x %d %d %d %d %d %d\r"), addr, motor, in1, in2, pwm, speed, temp/uscount)
+    serial.fstr7(string("run motor %.8x %d %.8x %.8x %.8x %d %d\r"), addr, motor, pwm, in2, in1, speed, temp/uscount)
 
 PRI debugoutput() : retv
   retv := debug2 > DEBUG_OUTPUT
@@ -159,9 +153,9 @@ PUB updatedebug(tdebug)
 
 DAT
   ' PCA9865 register mapping to TB6612
-  pwmpins     byte (2<<2)+LED0_ON_L, (7<<2)+LED0_ON_L,  (8<<2)+LED0_ON_L, (13<<2)+LED0_ON_L
-  in1pins     byte (4<<2)+LED0_ON_L, (5<<2)+LED0_ON_L, (10<<2)+LED0_ON_L, (11<<2)+LED0_ON_L
-  in2pins     byte (3<<2)+LED0_ON_L, (6<<2)+LED0_ON_L,  (9<<2)+LED0_ON_L, (12<<2)+LED0_ON_L
+  pwmpins     long ((2<<2)+LED0_ON_L)<<24, ((7<<2)+LED0_ON_L)<<24,  ((8<<2)+LED0_ON_L)<<24, ((13<<2)+LED0_ON_L)<<24
+  in1pins     long ((4<<2)+LED0_ON_L)<<24, ((5<<2)+LED0_ON_L)<<24, ((10<<2)+LED0_ON_L)<<24, ((11<<2)+LED0_ON_L)<<24
+  in2pins     long ((3<<2)+LED0_ON_L)<<24, ((6<<2)+LED0_ON_L)<<24,  ((9<<2)+LED0_ON_L)<<24, ((12<<2)+LED0_ON_L)<<24
   ' I3C addresses for 2 PCA9865
-  addrs       byte MOTOR1<<1, MOTOR2<<1
+  addrs       long (MOTOR1<<1)<<16, (MOTOR2<<1)<<16
 '

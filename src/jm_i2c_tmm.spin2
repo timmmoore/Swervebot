@@ -34,21 +34,21 @@ con
   #0, PU_NONE, PU_1K5, PU_3K3, PU_15K                           ' pull-up options
   #0, ACK, NAK
 
-  STRETCHDELAY    = $fffff                                      ' clock stretch timeout
+  STRETCHDELAY    = $7ffff                                      ' clock stretch timeout
 
 var
 
   long  sclpin                                                  ' i2c bus pins
   long  sdapin
   long  clktix                                                  ' system ticks in 1/4 period
-
+  long  stdelay
 
 pub null()
 
 '' This is not a top-level object
 
 
-pub setup(scl, sda, khz, pullup) : ok | tix
+pub setup(scl, sda, khz, pullup, stretch) : ok | tix
 ' return 1 if ok
 '' Define I2C SCL (clock) and SDA (data) pins
 '' -- khz is bus frequency: 100 (standard), 400 (full), 1000 (fast), 3400 (high-speed), 5000 (ultra-fast)
@@ -56,6 +56,7 @@ pub setup(scl, sda, khz, pullup) : ok | tix
 '' -- pullup controls high level drive configuration of SCL and SDA
 
   longmove(@sclpin, @scl, 2)                                    ' copy pins
+  stdelay := stretch==-1?STRETCHDELAY:stretch
   clktix := tix := (clkfreq / (khz * 1_000)) >> 2               ' calculate ticks in 1/4 period
   if khz > 2500
     clktix := ++tix                                             ' if clock freq above 2.5Mhz, tix needs incrementing due to divid inaccuracy
@@ -127,12 +128,12 @@ pub start() | scl, sda, tix
   end
 
 
-pub write(i2cbyte) : ackbit | scl, sda, tix, bits, delay
+pub write(i2cbyte) : ackbit | scl, sda, tix, sdelay, bits, delay
 
 '' Write byte to I2C bus
 '' -- leaves SCL low
 
-  longmove(@scl, @sclpin, 3)                                    ' copy pins & timing
+  longmove(@scl, @sclpin, 4)                                    ' copy pins & timing
 
   org
                 shl       i2cbyte, #24                          ' align i2cbyte.[7] to i2cbyte.[31]
@@ -142,9 +143,10 @@ pub write(i2cbyte) : ackbit | scl, sda, tix, bits, delay
                 drvc      sda                                   ' c -- sda
                 waitx     tix                                   ' let sda settle
                 drvh      scl                                   ' scl high
-                mov       delay, ##STRETCHDELAY                 ' timeout for clock stretch
+                mov       delay, sdelay                         ' timeout for clock stretch
+.wrdelay1
                 testp     scl                           wc      ' check for clock stretch
-    if_nc       djnz      delay, #$-2
+    if_nc       djnz      delay, #.wrdelay1
                 waitx     tix
                 waitx     tix
                 drvl      scl                                   ' scl low
@@ -154,9 +156,10 @@ pub write(i2cbyte) : ackbit | scl, sda, tix, bits, delay
 .get_ack        drvh      sda                                   ' pull-up sda
                 waitx     tix
                 drvh      scl                                   ' scl high
-                mov       delay, ##STRETCHDELAY                 ' timeout for clock stretch
+                mov       delay, sdelay                         ' timeout for clock stretch
+.wrdelay2
                 testp     scl                           wc      ' check for clock stretch
-    if_nc       djnz      delay, #$-2
+    if_nc       djnz      delay, #.wrdelay2
                 waitx     tix
                 testp     sda                           wc      ' sample sda (ack bit)
                 muxc      ackbit, #1                            ' update return value
@@ -167,13 +170,13 @@ pub write(i2cbyte) : ackbit | scl, sda, tix, bits, delay
   end
 
 
-pub wr_block(p_block, count) : ackbit | scl, sda, tix, i2cbyte, bits, delay
+pub wr_block(p_block, count) : ackbit | scl, sda, tix, sdelay, i2cbyte, bits, delay
 
 '' Write count bytes from p_block to I2C bus
 '' -- p_block is pointer to bytes
 '' -- leaves SCL low
 
-  longmove(@scl, @sclpin, 3)                                    ' copy pins & timing
+  longmove(@scl, @sclpin, 4)                                    ' copy pins & timing
 
   org
 .get_byte       rdbyte    i2cbyte, p_block                      ' read byte from block
@@ -185,9 +188,10 @@ pub wr_block(p_block, count) : ackbit | scl, sda, tix, i2cbyte, bits, delay
                 drvc      sda                                   ' c -- sda
                 waitx     tix                                   ' let sda settle
                 drvh      scl                                   ' scl high
-                mov       delay, ##STRETCHDELAY                 ' timeout for clock stretch
+                mov       delay, sdelay                         ' timeout for clock stretch
+.wdelay3
                 testp     scl                           wc      ' check for clock stretch
-    if_nc       djnz      delay, #$-2
+    if_nc       djnz      delay, #.wdelay3
                 waitx     tix
                 waitx     tix
                 drvl      scl                                   ' scl low
@@ -197,9 +201,10 @@ pub wr_block(p_block, count) : ackbit | scl, sda, tix, i2cbyte, bits, delay
 .get_ack        drvh      sda                                   ' pull-up sda
                 waitx     tix
                 drvh      scl                                   ' scl high
-                mov       delay, ##STRETCHDELAY                 ' timeout for clock stretch
+                mov       delay, sdelay                         ' timeout for clock stretch
+.wdelay4
                 testp     scl                           wc      ' check for clock stretch
-    if_nc       djnz      delay, #$-2
+    if_nc       djnz      delay, #.wdelay4
                 waitx     tix
                 testp     sda                           wc      ' sample sda (ack bit)
     if_c        or        ackbit, #1                            ' update return value
@@ -212,13 +217,13 @@ pub wr_block(p_block, count) : ackbit | scl, sda, tix, i2cbyte, bits, delay
   end
 
 
-pub read(ackbit) : i2cbyte | scl, sda, tix, bits, delay
+pub read(ackbit) : i2cbyte | scl, sda, tix, sdelay, bits, delay
 
 '' Read byte from I2C bus
 '' -- ackbit is state of ack bit
 ''    * usually NAK for last byte read
 
-  longmove(@scl, @sclpin, 3)                                    ' copy pins & timing
+  longmove(@scl, @sclpin, 4)                                    ' copy pins & timing
 
   org
                 drvh      sda                                   ' pull-up sda
@@ -226,9 +231,10 @@ pub read(ackbit) : i2cbyte | scl, sda, tix, bits, delay
 .rd_byte        mov       bits, #8                              ' read 8 bits, msb first
 .rb0            waitx     tix
                 drvh      scl                                   ' scl high
-                mov       delay, ##STRETCHDELAY                 ' timeout for clock stretch
+                mov       delay, sdelay                         ' timeout for clock stretch
+.rdelay1
                 testp     scl                           wc      ' check for clock stretch
-    if_nc       djnz      delay, #$-2
+    if_nc       djnz      delay, #.rdelay1
                 waitx     tix
                 testp     sda                           wc      ' sample sda
                 shl       i2cbyte, #1                           ' make room for new bit
@@ -243,9 +249,10 @@ pub read(ackbit) : i2cbyte | scl, sda, tix, bits, delay
                 drvc      sda                                   ' c --> sda
                 waitx     tix                                   ' let sda settle
                 drvh      scl                                   ' scl high
-                mov       delay, ##STRETCHDELAY                 ' timeout for clock stretch
+                mov       delay, sdelay                         ' timeout for clock stretch
+.rdelay2
                 testp     scl                           wc      ' check for clock stretch
-    if_nc       djnz      delay, #$-2
+    if_nc       djnz      delay, #.rdelay2
                 waitx     tix
                 waitx     tix
                 drvl      scl                                   ' scl low
@@ -254,13 +261,13 @@ pub read(ackbit) : i2cbyte | scl, sda, tix, bits, delay
   end
 
 
-pub rd_block(p_block, count, ackbit) | i2cbyte, scl, sda, tix, bits, delay
+pub rd_block(p_block, count, ackbit) | i2cbyte, scl, sda, tix, sdelay, bits, delay
 
 '' Read count bytes from I2C bus
 '' -- p_block is pointer to storage location for bytes
 '' -- ackbit is state of ack for final byte read
 
-  longmove(@scl, @sclpin, 3)                                    ' copy pins & timing
+  longmove(@scl, @sclpin, 4)                                    ' copy pins & timing
 
   org
 .rd_block       drvh      sda                                   ' pull-up sda
@@ -269,9 +276,10 @@ pub rd_block(p_block, count, ackbit) | i2cbyte, scl, sda, tix, bits, delay
 .rd_byte        mov       bits, #8                              ' read 8 bits, msb first
 .rb0            waitx     tix
                 drvh      scl                                   ' scl high
-                mov       delay, ##STRETCHDELAY                 ' timeout for clock stretch
+                mov       delay, sdelay                         ' timeout for clock stretch
+.rdelay3
                 testp     scl                           wc      ' check for clock stretch
-    if_nc       djnz      delay, #$-2
+    if_nc       djnz      delay, #.rdelay3
                 waitx     tix
                 testp     sda                           wc      ' sample sda
                 shl       i2cbyte, #1                           ' make room for new bit
@@ -287,9 +295,10 @@ pub rd_block(p_block, count, ackbit) | i2cbyte, scl, sda, tix, bits, delay
     if_z        drvc      sda                                   ' last byte, c --> sda
                 waitx     tix                                   ' let sda settle
                 drvh      scl                                   ' scl high
-                mov       delay, ##STRETCHDELAY                 ' timeout for clock stretch
+                mov       delay, sdelay                         ' timeout for clock stretch
+.rdelay4
                 testp     scl                           wc      ' check for clock stretch
-    if_nc       djnz      delay, #$-2
+    if_nc       djnz      delay, #.rdelay4
                 waitx     tix
                 waitx     tix
                 drvl      scl                                   ' scl low
@@ -303,19 +312,20 @@ pub rd_block(p_block, count, ackbit) | i2cbyte, scl, sda, tix, bits, delay
   end
 
 
-pub stop() | scl, sda, tix, delay
+pub stop() | scl, sda, tix, sdelay, delay
 
 '' Create I2C stop sequence
 
-  longmove(@scl, @sclpin, 3)                                    ' copy pins & timing
+  longmove(@scl, @sclpin, 4)                                    ' copy pins & timing
 
   org
                 drvl      sda                                   ' hold sda low
                 waitx     tix
                 drvh      scl                                   ' release scl
-                mov       delay, ##STRETCHDELAY                 ' timeout for clock stretch
+                mov       delay, sdelay                         ' timeout for clock stretch
+.stop
                 testp     scl                           wc      ' check for clock stretch
-    if_nc       djnz      delay, #$-2
+    if_nc       djnz      delay, #.stop
                 waitx     tix
 
                 waitx     tix

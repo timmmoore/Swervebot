@@ -6,6 +6,29 @@
 { distance 80mm to infinity, angle 42degree }
 { if plate between sensor and ground, hole size: sensor is Ymm above bottom of plate, bottom of plate is Xmm from ground }
 { X+Y >= 80mm, R = Y*tan(21); for Y=25mm, hole radius is 10mm }
+{
+  Frame rate: 121 FPS (frames per second)
+  Speed: 7.4 rad/s (radians per second)
+  Field of view: 42°
+  Range: ~80mm to infinity
+
+  How does deltax/y translate to physical distance? The height over ground is ~80mm
+
+  from crazeflie firmware
+
+#define FLOW_RESOLUTION 0.1f              // We do get the measurements in 10x the motion pixels (experimentally measured)
+
+  // ~~~ Camera constants ~~~
+  // The angle of aperture is guessed from the raw data register and thankfully look to be symmetric
+  float Npix = 35.0;                      // [pixels] (same in x and y)
+  float thetapix = 0.71674f;              // 2*sin(42/2); 42degree is the agnle of aperture, here we computed the corresponding ground length
+
+  predictedNX = (flow->dt * Npix / thetapix ); // flow->dt is accumulated time
+  measuredNX = flow->dpixelx*FLOW_RESOLUTION;  // flow->dpixelx/y is accumulated pixel counts
+
+  predictedNY = (flow->dt * Npix / thetapix )
+  measuredNY = flow->dpixely*FLOW_RESOLUTION;
+}
 
 CON
   CHIP_ID                       = $49                   ' 01001001
@@ -42,7 +65,9 @@ OBJ
   'serial   : "isp_serial_singleton_tmm"
 
 VAR
-  LONG CS
+  long CS
+  long currentX_L, currentX_H, currentY_L, currentY_H
+  long accumtime
 
 PUB null()
 
@@ -73,14 +98,31 @@ PUB stop()
   disableCS()                   ' make sure pmw3901 is disabled
   spi.stop()                    ' stop and free spi bus
 
-PUB readMotionCount() : deltaX, deltaY, retv
+PUB readMotionAccum(reset) : accumX_L, accumX_H, accumY_L, accumY_H, dt
+  longmove(@accumX_L, @currentX_L, 4)
+  dt := getms() - accumtime
+  if reset
+    longfill(@currentX_L, 0, 4)
+    accumtime := getms()
+
+PRI AccumXY(X, Y)
+' unsigned 64bit delta x, y accumulators
+  currentX_L += X
+  if currentX_L +< X            ' overflow occured
+    currentX_H++
+  currentY_L += Y
+  if currentY_L +< Y            ' overflow occured
+    currentY_H++
+
+PUB readMotionCount() : retv, deltaX, deltaY
 ' 97us (4Mhz)
   retv := registerRead(MOTION)
   deltaX := ((registerRead(DELTA_X_H) << 8) | registerRead(DELTA_X_L)) SIGNX 15
   deltaY := ((registerRead(DELTA_Y_H) << 8) | registerRead(DELTA_Y_L)) SIGNX 15
   retv &= %1000_0000
+  AccumXY(deltaX, deltaY)
 
-PUB readMotionCountBurstQuick() : deltaX, deltaY, retv | byte values[7]
+PUB readMotionCountBurstQuick() : retv, deltaX, deltaY | byte values[7]
 ' 24us (@4Mhz)
 ''Get motion data from PMW3901 using burst read.
 ' Reads 7 bytes sequentially from the PMW3901 and validates motion data.
@@ -93,9 +135,10 @@ PUB readMotionCountBurstQuick() : deltaX, deltaY, retv | byte values[7]
   pinhigh(cs)
   deltaX := word[@values[3]] SIGNX 15
   deltaY := word[@values[5]] SIGNX 15
+  AccumXY(deltaX, deltaY)
   retv := values[1]&%1000_0000
 
-PUB readMotionCountBurst() : deltaX, deltaY, retv | byte values[13]
+PUB readMotionCountBurst() : retv, deltaX, deltaY | byte values[13]
 ' 38us (@4Mhz)
 ''Get motion data from PMW3901 using burst read.
 ' Reads 13 bytes sequentially from the PMW3901 and validates motion data.
@@ -110,6 +153,7 @@ PUB readMotionCountBurst() : deltaX, deltaY, retv | byte values[13]
   if retv := ((values[1]&%1000_0000) && (values[7] >= $19 or values[11] <> $1f))
     deltaX := word[@values[3]] SIGNX 15
     deltaY := word[@values[5]] SIGNX 15
+    AccumXY(deltaX, deltaY)
 
 PUB enableFrameBuffer() | i
   repeat i from 0 to (@enableFrameBufferValue-@enableFrameBufferReg)-1

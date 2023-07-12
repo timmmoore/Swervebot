@@ -18,9 +18,11 @@ CON
 
 VAR
   long setup
-  long pp, minv, maxv
+  long pp, minv, maxv                                   ' start pin, min/max values
   long debug1
   long lastvalues[NOPWMIN]
+  long angleoffsets[NOPWMIN]                            ' encoder angle offset, 0-MAXANGLE
+  long pinoffsets[NOPWMIN]                              ' encoder actual pin
 
 OBJ
   serial        : "isp_serial_singleton_tmm"
@@ -29,14 +31,16 @@ OBJ
 PUB null()
   ' This is not a top-level object
 
-PUB start(pin, minvalue, maxvalue)
+PUB start(pin, minvalue, maxvalue, ppinoffsets, poffsets)
   stop()
   longmove(@pp, @pin, 3)
-  pinstart(pp ADDPINS NOPWMIN-1, P_HIGH_TICKS, 0, 0)    ' start for NOPWMIN pins
-  setup := true                                         ' mark setup
+  longmove(@angleoffsets, poffsets, NOPWMIN)            ' angle offset of each encoder
+  longmove(@pinoffsets, ppinoffsets, NOPWMIN)           ' actual pin of each encoder
+  pinstart(pp ADDPINS NOPWMIN-1, P_HIGH_TICKS, 0, 0)    ' start for NOPWMIN pins, clock ticks for pin high
+  setup~~                                               ' mark setup
 
 PUB stop()
-  if (setup\false)
+  if (setup~)
     pinclear(pp ADDPINS NOPWMIN-1)                      ' disable smart pin
   longfill(@lastvalues, -1, NOPWMIN)
 
@@ -44,12 +48,13 @@ PUB readall(pvals) | ch
   repeat ch from 0 to NOPWMIN-1
     long[pvals][ch] := read(ch)
 
-PUB read(ch) : value | value1
+PUB read(ch) : out | raw, map
   ' min pulse width 0.9us, max pulse width 4506us
-  value1 := (rdpin(pp+ch) / (clkfreq / 20_000_000)) >> 1 ' convert pulse to 100 picoseconds
-  value := utilities.map(value1, MININCLK, MAXINCLK, minv, maxv) ' map to required range
-  if (value <> lastvalues[ch]\value) && debugoutput()
-    serial.fstr3(string("encoder%d %d %d\r"), pp+ch, value1, value)
+  raw := (rdpin(pp+pinoffsets[ch]) / (clkfreq / 20_000_000)) >> 1 ' convert pulse to 100 picoseconds
+  map := utilities.map(raw, MININCLK, MAXINCLK, minv, maxv) ' map to required range
+  out := (map + angleoffsets[ch]) // maxv               ' add the angular offset for the encoder and wrap to maxv
+  if (out <> lastvalues[ch]\out) && debugoutput()
+    serial.fstr4(string("encoder%d raw:%d map:%d out:%d\r"), pp+ch, raw, map, out)
 
 PUB updatedebug(tdebug)
   debug1 := tdebug

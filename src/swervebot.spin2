@@ -9,6 +9,16 @@
                 -> 2x motor driver (SCL(56), SDA(57), Vio, Gnd)
                 -> 4x encoder (Vio, Gnd, analog(50, 51, 52, 53))
                                 mod encoder for 3.3V
+
+TODO
+  Map USFSMax yaw angle to bot rotation
+        User specifies deg/sec and translated to yaw angle deg/sec
+  Map pwm3901 x, y to bot x, y
+        user specifies x,y/sec and translated to optical x,y/sec
+        How does rotation translate to x,y change
+                80mm from ground, angle of 42deg
+                distance = (sensor value * 80mm)/(sensor resolution * scalar) * 2.0 * tan(42/2)
+
 }
 
 con { timing }
@@ -40,8 +50,8 @@ con { fixed io pins }
 
   CHANNEL_X                     = 0                                             ' 1 - x speed
   CHANNEL_Y                     = 1                                             ' 2 - y speed
-  CHANNEL_R                     = 2                                             ' 3 - rotate speed
-  CHANNEL_OFF                   = 3                                             ' 4 - disable motors
+  CHANNEL_R                     = 3                                             ' 3 - rotate speed
+  CHANNEL_OFF                   = 2                                             ' 4 - disable motors
   CHANNEL_KP                    = 4                                             ' 5 - pid Kp
   CHANNEL_KI                    = 5                                             ' 6 - pid Ki
   CHANNEL_KD                    = 6                                             ' 7 - pid Kd
@@ -57,7 +67,7 @@ con { fixed io pins }
   MOTOR_SDA                     = 23                                            ' i2c pins for motor controllers
   MOTOR_SCL                     = 22                                            ' SCK speed of 800KHz
 
-  ENCODERPIN1                   = 8                                             ' encoder pins, must be contiguous pins
+  ENCODERPIN1                   = 8                                             ' pwm encoder pins, must be contiguous pins
   ENCODERPIN2                   = 9
   ENCODERPIN3                   = 10
   ENCODERPIN4                   = 11
@@ -71,7 +81,7 @@ con { fixed io pins }
 
   PMW_X_INVERT                  = true                                          ' default init orientation
   PMW_Y_INVERT                  = false
-  PMW_XY_SWAP                   = true
+  PMW_XY_SWAP                   = false                                          ' swap x and y axis
   PMW_LED                       = false
 
   ' USFSMAX_VCC = 3.3V
@@ -79,7 +89,7 @@ con { fixed io pins }
   USFSMAX_SDA                   = 21                                            ' i2c pins for IMU
   USFSMAX_SCL                   = 20                                            ' different I2C bus from motor driver as supports much faster clock speed
                                                                                 ' SLK speed of 3Mhz
-  USFSMAX_RESET                 = 24                                            ' reset pin is optional
+  USFSMAX_RESET                 = -1                                            ' reset pin is optional
 
   ' Bellevue, WA 98008
   M_V                           = 49.4643
@@ -92,20 +102,24 @@ con { fixed io pins }
   YAW                           = 2
   PRESSURE                      = 3
 
+  GPS_SDA                       = 24                                            ' PA1010D I2C GPS - 400KHz/3.4MHz clock speed
+  GPS_SCL                       = 25
+
   #1, OK, FAILSAFE, LOST                                ' SBUS states
 
-  SENSORPERIOD                  = 50                    ' ms between sensor query
+  SENSORPERIOD                  = 100                   ' ms between sensor query
   SWERVEPERIOD                  = 50                    ' ms between RC receiver/swerve motor updates
 
   DEBUG_OUTPUT                  = 500
   INIT_DEBUG                    = 1024
 
-  CHANNELCHANGE                 = $01
-  CHANNELSTATE                  = $02
-  PMWCHANGE                     = $04
-  IMUCHANGE                     = $08
+  CHANNELCHANGE                 = $01                   ' radio state change
+  CHANNELSTATE                  = $02                   ' radio channel change
+  PMWCHANGE                     = 0 '$04                ' disable pmw
+  IMUCHANGE                     = 0 '$08                ' disable imu
+  GPSCHANGE                     = 0 '$10                ' disable gps
 
-  PIDCONSTANTSDIVIDER           = 10.0
+  PIDCONSTANTSDIVIDER           = 100.0
   MINPIDCONSTANT                = -100
   MAXPIDCONSTANT                = 100
 
@@ -119,18 +133,29 @@ con { fixed io pins }
   MINDEFAULT                    = 0
   MAXDEFAULT                    = 1000
 
+  SHAREDPMW                     = 5                     ' xsensor_l, xsensor_h, ysensor_l, ysensor_h, tsensor                     '
+  SHAREDIMU                     = 4                     ' osensor
+  SHAREDGPS                     = 10                    ' ogpst, ohour, omin, osec, onorthdeg, owestdeg, ospeed, oalt, ofix, osatno
+  SHAREDVARIABLES               = 1+NOCHANNELS+SHAREDIMU+SHAREDPMW+SHAREDGPS
+
 VAR
   ' shared variables
   long synclock, printlock
-  long sharedupdate, channels[NOCHANNELS], output[4], deltax, deltay
+
+  long sharedupdate, channels[NOCHANNELS], output[4], deltax_l, deltax_h, deltay_l, deltay_h, deltat
+  long gpst, hour, min, sec, northdeg, westdeg, speed, alt, fix, satno
 
   ' swerve cog
-  long swerveupdate, swervechannels[NOCHANNELS], oswerve[4], xswerve, yswerve   ' swerve cog locals
+  long swerveupdate, swervechannels[NOCHANNELS], oswerve[4], xswerve_l, xswerve_h, yswerve_l, yswerve_h, tswerve   ' swerve cog locals
+  long sgpst, shour, smin, ssec, snorthdeg, swestdeg, sspeed, salt, sfix, ssatno
+
   long lastchannels[NOCHANNELS]
   long debug1
 
   ' sensor cog
-  long sensorupdate, sbuschannels[NOCHANNELS], osensor[4], xsensor, ysensor     ' sensor cog locals
+  long sensorupdate, sbuschannels[NOCHANNELS], osensor[4], xsensor_l, xsensor_h, ysensor_l, ysensor_h, tsensor     ' sensor cog locals
+  long ogpst, ohour, omin, osec, onorthdeg, owestdeg, ospeed, oalt, ofix, osatno
+
   long osensor1[4]
   long qt[4]
   long StkAddr[10000]
@@ -144,6 +169,7 @@ OBJ
   utilities     : "utilities"
   pmw           : "pmw3901"
   usfsmax       : "usfsmax"
+  gps           : "gps_pa1010d"
 
 PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_time, again
   debug1 := INIT_DEBUG
@@ -167,7 +193,7 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
   swerve.setpidconstants(defaultKp, defaultKi, defaultKd, Defaults[CHANNEL_TESTMAX])
 
   ' initialize server modules and motors
-  if (havemotors := swerve.start(MOTOR_SCL, MOTOR_SDA, ENCODERPIN1, @bot, @offsets, @invert)) ' start swerve modules
+  if (havemotors := swerve.start(MOTOR_SCL, MOTOR_SDA, ENCODERPIN1, @bot, @pinoffsets, @angleoffsets, @invert, @motoroffsets))
     if debugoutput()
       if havemotors & $01
         serial.fstr1(string("Swerve motors I2C bus error %x\r"), havemotors)
@@ -181,14 +207,13 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
   delaystart := getms()
 
   repeat
-    waitms((SWERVEPERIOD - (getms() - delaystart)) #> 1)                        ' max delay SWERVEPERIOD
+    waitms((SWERVEPERIOD - (getms() - delaystart)) #> 1) ' max delay SWERVEPERIOD
     ' make sure shared variables are not being updated
     ' copy to local variables
     acq_time := getms()
-    repeat until locktry(synclock) == true
-      waitus(1)
-    longmove(@swerveupdate, @sharedupdate, NOCHANNELS+4+2+1) ' copy shared variables to local copy
-    lockrel(synclock)                                   ' release lock soon as we have copied shared variables
+    takesynclock()
+    longmove(@swerveupdate, @sharedupdate, SHAREDVARIABLES) ' copy shared variables to local copy
+    releasesynclock()
     ' use local variables and see if any channel changes or swerve modules need updating again
     if swerveupdate & CHANNELCHANGE || again
       ' update local debug variable before using it
@@ -196,39 +221,44 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
       ' update remaining debug values through system
       swerve.debugconfig(debug2, debug3)
       if debugo := (debugoutput() || debug2 > DEBUG_OUTPUT || debug3 > DEBUG_OUTPUT)
-        repeat until locktry(printlock) == true         ' take printing lock if we are generating debug output.
-          waitus(1)
+        takeprintlock()
       ' update pid constants, constants are channel values dividied by PIDCONSTANTSDIVIDER as floats
       ' set override max output speed
-      swerve.setpidconstants(float(swervechannels[CHANNEL_KP])/.PIDCONSTANTSDIVIDER, float(swervechannels[CHANNEL_KI])/.PIDCONSTANTSDIVIDER, float(swervechannels[CHANNEL_KD])/.PIDCONSTANTSDIVIDER, swervechannels[CHANNEL_TESTMAX])
+      ' disable pid constant updates
+      'swerve.setpidconstants(float(swervechannels[CHANNEL_KP])/.PIDCONSTANTSDIVIDER, 0.0 {float(swervechannels[CHANNEL_KI])/.PIDCONSTANTSDIVIDER}, 0.0 {float(swervechannels[CHANNEL_KD])/.PIDCONSTANTSDIVIDER}, swervechannels[CHANNEL_TESTMAX])
 
       ' update swerve modules with updated movements
       if havemotors <> (swerve.NO_MOTOR1|swerve.NO_MOTOR2)
-        again := swerve.update(swervechannels[CHANNEL_X], swervechannels[CHANNEL_Y], swervechannels[CHANNEL_R], swervechannels[CHANNEL_OFF])
+        'again := swerve.update(0, 0, 0, 0)              ' varioustest configurations
+        'again := swerve.update(100, 0, 0, 0)
+        'again := swerve.update(-100, 0, 0, 0)
+        'again := swerve.update(0, 100, 0, 0)
+        'again := swerve.update(0, -100, 0, 0)
+        'again := swerve.update(100, -100, 0, 0)
+                                                        ' rotation disabled
+        again := swerve.update(swervechannels[CHANNEL_X], swervechannels[CHANNEL_Y], 0{swervechannels[CHANNEL_R]}, swervechannels[CHANNEL_OFF])
       if debugo
         serial.fstr1(string("Swerve period %d\r"), getms()-acq_time)
-        lockrel(printlock)                              ' release lock soon as we have finished printing
+        releaseprintlock()                              ' release lock soon as we have finished printing
     delaystart := getms()                               ' delay from after motors updated, debug print delays still part of processing time
 
-PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_time, compute_time1, havepmw, haveusfsmax, sbusstatus, lsbusstatus, ch, lastx, lasty, lasto[4], debugo, delaystart
+PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_time, compute_time1, havepmw, haveusfsmax, havegps, sbusstatus, lsbusstatus, ch, lastx_l, lastx_h, lasty_l, lasty_h, lasto[4], debugo, delaystart, gpsret
 
   ' init optical flow sensor
-  if(pmw.begin(PMW_CS, PMW_SCK, PMW_SDO, PMW_SDI) == false)
-    if debugoutput()
-      serial.fstr0(string("PMW3901 not found\r"))
-  else
-    if debugoutput()
-      serial.fstr0(string("PMW3901 found\r"))
+  ifnot pmw.begin(PMW_CS, PMW_SCK, PMW_SDO, PMW_SDI) == false
     havepmw := true
+  if debugoutput()
+    serial.fstr1(string("PMW3901%sfound\r"), havepmw?string(" "):string(" not "))
 
   waitms(5)
   if havepmw
     pmw.set_orientation(PMW_X_INVERT, PMW_Y_INVERT, PMW_XY_SWAP)
     if PMW_LED
       pmw.setLed(PMW_LED)
+    pmw.readMotionAccum(true)                               ' reset accumulator
 
   ' init IMU
-  ifnot (Acq_time := usfsmax.startx(USFSMAX_SCL, USFSMAX_SDA, USFSMAX_RESET, @Config)) == 0
+  ifnot (Acq_time := usfsmax.startx(USFSMAX_SCL, USFSMAX_SDA, USFSMAX_RESET, @Config, yawoffset)) == 0
     if debugoutput()
       case_fast Acq_time
         $01: serial.fstr1(string("USFSMAX I2C bus error %x\r"), Acq_time)
@@ -244,6 +274,12 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
   waitms(100)
   sbus.reset_count()                                    ' reset frames received count
 
+  if (Acq_time := gps.start(GPS_SCL, GPS_SDA)) == 0
+    havegps := true
+  if debugoutput()
+    serial.fstr2(string("GPS%sfound %x\r"), havegps?string(" "):string(" not "), Acq_time)
+  repeat 10
+    gps.input()                                         ' empty out the gps buffer
   delaystart := getms()
 
   repeat
@@ -274,19 +310,21 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
 
     ' optical flow sensor
     if havepmw
+      'takeprintlock()
       Acq_time := getct()
-      _, xsensor, ysensor := pmw.readMotionCountBurstQuick() ' acquire 24us (4Mhz)
+      ch, xsensor_l, ysensor_l := pmw.readMotionCountBurstQuick() ' acquire 24us (4Mhz)
+      'xsensor_l, xsensor_h, ysensor_l, ysensor_h, tsensor := pmw.readMotionAccum(true)
       Acq_time := getct() - Acq_time - 40
-      if utilities.longcomp(@lastx, @xsensor, 2, true)
+      'releaseprintlock()                                ' release lock soon as we have finished printing
+      if ch && utilities.longcomp(@lastx_l, @xsensor_l, 4, ch)
         sensorupdate |= PMWCHANGE                       ' pmw changed
 
     ' IMU
     if haveusfsmax
+      'takeprintlock()
       Acq_time1 := getct()
-      qt[0], qt[1], qt[2], qt[3] := usfsmax.getMin()    ' 242us (3.0MHz)
+      _, qt[0], qt[1], qt[2], qt[3] := usfsmax.getMin() ' 242us (3.0MHz)
       Acq_time1 := getct() - Acq_time1 - 40
-      'repeat until locktry(printlock) == true           ' computeIMU is printing debug
-      '  waitus(1)
       'compute_time1 := getct()
       ' 89us (200MHz)
       'osensor1[YAW], osensor1[PITCH], osensor1[ROLL], osensor1[PRESSURE] := usfsmax.computeIMUFloat(qt[0], qt[1], qt[2], qt[3])
@@ -295,22 +333,28 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
       ' 56us (200MHz)
       osensor[YAW], osensor[PITCH], osensor[ROLL], osensor[PRESSURE] := usfsmax.computeIMUFixed(qt[0], qt[1], qt[2], qt[3])
       compute_time := getct() - compute_time - 40
-      'lockrel(printlock)                                ' release lock soon as we have finished printing
-      if utilities.longcomp(@lasto, @osensor, 4, true)
+      'releaseprintlock()                                ' release lock soon as we have finished printing
+      if utilities.longcompf(@lasto, @osensor, 4, true)
         sensorupdate |= IMUCHANGE                       ' imu changed
 
-    repeat until locktry(synclock) == true              ' make sure shared variables are not being used
-      waitus(1)
-    longmove(@sharedupdate, @sensorupdate, NOCHANNELS+4+2+1) ' copy local to shared variables
-    lockrel(synclock)
+    if havegps
+      'takeprintlock()
+      if (gpsret := gps.input()) <> 0
+        ohour, omin, osec, onorthdeg, owestdeg, ospeed, oalt, _, ofix, osatno := gps.gps()
+        ogpst |= gpsret
+        sensorupdate |= GPSCHANGE                       ' GPS changed
+      'releaseprintlock()                                ' release lock soon as we have finished printing
+
+    takesynclock()
+    longmove(@sharedupdate, @sensorupdate, SHAREDVARIABLES) ' copy local to shared variables
+    releasesynclock()
 
     delaystart := getms()                               ' print delays are part of sensor delay
     ' print any changes if debutoutput enabled
     if debugoutput()
-      repeat until locktry(printlock) == true
-        waitus(1)
+      takeprintlock()
       if sensorupdate & PMWCHANGE
-        serial.fstr3(string("PMW3901 x: %d y: %d t: %d\r"), xsensor, ysensor, Acq_time/US_001)
+        serial.fstr6(string("PMW3901 x:%d:%d y:%d:%d t:%d a:%d\r"), xsensor_h, xsensor_l, ysensor_h, ysensor_l, tsensor, Acq_time/US_001)
       if sensorupdate & IMUCHANGE                       ' imu changed
         'serial.fstr4(string("USFSMAX QUAT %.2g %.2g %.2g %.2g\r"), qt[0], qt[1], qt[2], qt[3])
         serial.fstr4(string("USFSMAX Yaw: %.2g, Pitch: %.2g, Roll: %.2g, Pressure: %.2ghPa\r"), osensor[YAW], osensor[PITCH], osensor[ROLL], osensor[PRESSURE])
@@ -330,8 +374,13 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
         repeat ch from 0 to NOCHANNELS-1
           serial.fstr2(string("%d(%d) "), sbuschannels[ch], sbuschannels[ch]-lastchannels[ch]) ' channel value and delta from previous value
         serial.fstr0(string("\r"))
-      serial.fstr1(string("Sensor period %d\r"), getms()-period_time)
-      lockrel(printlock)                                ' release lock soon as we have finished printing
+      if sensorupdate & GPSCHANGE
+        serial.fstr4(string("GPS %x %2.2d:%2.2d:%+4.8g "), ogpst, ohour, omin, osec)
+        serial.fstr2(string("%8.5g %10.5g "), onorthdeg, owestdeg)
+        serial.fstr4(string("%.4g %.4g %d %d\r"), ospeed, oalt, fix, satno)
+
+      'serial.fstr1(string("Sensor period %d\r"), getms()-period_time)
+      releaseprintlock()                                ' release lock soon as we have finished printing
     ' need to update lastchannels since we didn't when we did the compare
     if sensorupdate & CHANNELCHANGE
       longmove(@lastchannels, @sbuschannels, NOCHANNELS)
@@ -339,21 +388,30 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
 PRI debugoutput() : retv
   retv := debug1 > DEBUG_OUTPUT
 
+PRI takeprintlock()
+  repeat until locktry(printlock) == true               ' take printing lock if we are generating debug output.
+    waitus(1)
+
+PRI releaseprintlock()
+  lockrel(printlock)
+
+PRI takesynclock()
+  repeat until locktry(synclock) == true                ' make sure shared variables are not being used
+    waitus(1)
+
+PRI releasesynclock()
+  lockrel(synclock)
+
 DAT
   ' default channel values, after mapping
-  '                        X     Y    R  OFF
-  '                        1     2    3    4
-  Defaults      word    1000, 1000,   0,   0
-  '                     Kp  Ki  Kd
-  '                      5   6   7
-                word     2,  0,  0
-  '                           D1        D2        D3
-  '                            8         9        10
-                word    MAXDEBUG, MAXDEBUG, MAXDEBUG
-  '                        11    12    13    14    15    16    17    18
-                word      100,    0,    0,    0,    0,    0,    0,    0
+  '                     X  Y   OFF   R      Kp  Ki  Kd        D1        D2        D3
+  '                     1  2    3    4       5   6   7         8         9        10
+  Defaults      word    0, 0,   0,   0,     20,  0,  0,    MAXDEBUG, MAXDEBUG, MAXDEBUG
+  '
+  '                     11    12    13    14    15    16    17    18
+                word   2000,    0,    0,    0,    0,    0,    0,    0
   ' minimum sbus mapping
-  minmap        long    -swerve.MAXSPEED, -swerve.MAXSPEED, -swerve.MAXSPEED, -swerve.MAXSPEED
+  minmap        long    -swerve.MAXSPEED, -swerve.MAXSPEED, 0, -swerve.MAXSPEED
                 long    MINPIDCONSTANT, MINPIDCONSTANT, MINPIDCONSTANT
                 long    MINDEBUG, MINDEBUG, MINDEBUG
                 long    MINDEFAULT, MINDEFAULT, MINDEFAULT, MINDEFAULT, MINDEFAULT, MINDEFAULT, MINDEFAULT, MINDEFAULT
@@ -363,24 +421,40 @@ DAT
                 long    MAXDEBUG, MAXDEBUG, MAXDEBUG
                 long    MAXDEFAULT, MAXDEFAULT, MAXDEFAULT, MAXDEFAULT, MAXDEFAULT, MAXDEFAULT, MAXDEFAULT, MAXDEFAULT
 
-  ' angle offsets of each swerve module encoder
-  offsets       word    0,  0, 0, 0
+  ' size of bot:        width  length
+  bot           long    12.0,  15.0
 
-  ' size of bot:      width  length
-  bot           long   12.0,  15.0
+  ' yaw offset for usfsmax to front bot in 0-360.0 degrees
+  yawoffset     long    1.0
+
+  ' angle offsets of each swerve module encoder, 0-MAXANGLE
+  ' to find value, point each swerve wheel forward, look at encoder debugoutput for raw, map and out
+  ' raw is encoder pwm, map is pwm mapped to angle 0-MAXANGLE, out is + encoder offset mod MAXANGLE
+  ' pin and angle offsets in order FL, FR, BL, BR
+  ' setup so gear on drive wheel are inside on both left and right, so right steering is 180 degree more than encoder
+  angleoffsets  long    round((38.3*.float(swerve.MAXANGLE))/.360.0), round((331.2*.float(swerve.MAXANGLE))/.360.0)
+                long    round((238.0*.float(swerve.MAXANGLE))/.360.0), round((278.4*.float(swerve.MAXANGLE))/.360.0)
+  ' encoder pin offsets in order of FL, FR, BL, BR
+  pinoffsets    long    3, 1, 2, 0
 
   ' whether each motor is inverted
-  '                     M1/FL  M2/FR  M3/BL  M4/BR
-  '                     D  S   D  S   D  S   D  S
-  invert        word    0, 0,  1, 0,  0, 0,  1, 0
+  ' setup so gear on drive wheel are inside on both left and right
+  '                     FL    FR    BL    BR
+  '                     D  S  D  S  D  S  D  S
+  invert        word    0, 0, 1, 1, 0, 0, 1, 0
+  ' match how motors are connected to the motor driver boards
+  ' motor channels 0-3 on board 1, 4-7 on board 2
+  '                     FL    FR    BL    BR
+  '                     D  S  D  S  D  S  D  S
+  motoroffsets  long    7, 6, 3, 2, 4, 5, 0, 1
 
-  defaultKp     long    0.2
+  defaultKp     long    -15.0
   defaultKi     long    0.0
   defaultKd     long    0.0
 
 Config
-  LONG M_V
-  LONG M_H
-  LONG MAG_DECLINIATION
-  byte QUAT_DIV
+                LONG M_V
+                LONG M_H
+                LONG MAG_DECLINIATION
+                byte QUAT_DIV
 '

@@ -230,12 +230,13 @@ con { formatted strings }
                   -- w is field width
                      * positive w causes right alignment in field
                      * negative w causes left alignment in field
+                     + sign pads with 0, no + pads with " "
                   -- %ws aligns s in field (may truncate)
                   -- %wc prints w copies of c
                   -- p is precision characters
                      * number of characters to use, aligned in field
                        -- prepends 0 if needed to match p
-                       -- for %w.pf, p is number of digits after decimal point
+                       -- for %w.pf and g, p is number of digits after decimal point
 }}
 
 
@@ -300,7 +301,7 @@ pub fstr8(p_str, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8)
   format(p_str, @arg1)
 
 
-pub format(p_str, p_args) | idx, c, asc, field1, digits, kindaLock
+pub format(p_str, p_args) | idx, c, asc, field1, digits, kindaLock, pad
 
 '' Emit formatted string with escape sequences and embedded values
 '' -- p_str is a pointer to the format control string
@@ -340,17 +341,17 @@ pub format(p_str, p_args) | idx, c, asc, field1, digits, kindaLock
         tx(CR)
       elseif ((c >= "0") and (c <= "9"))
         --p_str
-        p_str, asc, _ := get_nargs(p_str)
+        p_str, asc, _, _ := get_nargs(p_str)
         if ((asc >= 0) and (asc <= 255))
           tx(asc)
 
     elseif (c == "%")
-      p_str, field1, digits := get_nargs(p_str)
+      p_str, field1, digits, pad := get_nargs(p_str)
       c := byte[p_str++]
       if (c == "f")
         str(nstr.fmt_number(long[p_args][idx++], 99, digits, field1, " "))
       elseif (c == "g")
-        str(nstr.fmt_number(long[p_args][idx++], 100, digits, field1, " "))
+        str(nstr.fmt_number(long[p_args][idx++], 100, digits, field1, pad))
       elseif (c == "d")
         str(nstr.fmt_number(long[p_args][idx++], 10, digits, field1, " "))
       elseif (c == "x")
@@ -373,17 +374,22 @@ pub format(p_str, p_args) | idx, c, asc, field1, digits, kindaLock
 
 
 
-pri get_nargs(p_str) : p_str1, val1, val2 | c, sign
+pri get_nargs(p_str) : p_str1, val1, val2, pad | c, sign
 
 '' Parse one or two numbers from string in n, -n, n.n, or -n.n format
 '' -- dpoint separates values
 '' -- only first # may be negative
 '' -- returns pointer to 1st char after value(s)
 
+  pad := " "
   c := byte[p_str]                                              ' check for negative on first value
   if (c == "-")
     sign := -1
     ++p_str
+  elseif c == "+"
+    ++p_str
+    pad := "0"
+    sign := 0
   else
     sign := 0
 

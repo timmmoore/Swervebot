@@ -1,0 +1,276 @@
+{I2C PA1010D GPS}
+
+CON
+  GPS_I2C_SPEED =               1000 '400 '3400                     '
+  GPS_I2C_ADDR  =               $10
+
+  GPS_MAX_I2C_TRANSFER =        32                      ' The max number of bytes we'll try to read at once
+  MAXLINELENGTH =               120                     ' how long are max NMEA lines to parse?
+  BUILDLENGTH =                 32
+  RELEASEMAX =                  16
+  GPSREADDELAY =                5                       ' min 5ms delay between reads
+
+  OffSet =                      -7.0                    ' time zone (hours.min), e.g., +5.45 for Nepal
+
+VAR
+  byte i2cbuffer[GPS_MAX_I2C_TRANSFER]
+  long buff_max, buff_idx       ' max is write to buffer, idx is read from buffer
+  byte line1[MAXLINELENGTH]     ' Double buffer: read one line in
+  byte line2[MAXLINELENGTH]     ' and leave one for the main program
+  long lineidx                  ' our index into filling the current line
+  long currentline              ' Pointer to current line buffer
+  long lastline                 ' Pointer to previous line buffer
+  long index
+  byte buffer[BUILDLENGTH]
+  long Hours, Minutes, Seconds_F
+  long NorthDeg_F, WestDeg_F
+  long Speed_F, Altitude_F
+  long Fix, SatNo
+  byte Release[RELEASEMAX]
+  long lastreadtime
+
+OBJ
+  serial        : "isp_serial_singleton_tmm"
+  i2c           : "jm_i2c_tmm"
+  utilities     : "utilities"
+
+PUB null()
+  ' This is not a top-level object
+
+PUB start(scl, sda) : retv
+  buff_idx := buff_max := GPS_MAX_I2C_TRANSFER
+  lastreadtime := getms()
+  currentline := @line1
+  lastline := @line2
+  ifnot i2c.setup(scl, sda, GPS_I2C_SPEED, i2c.PU_15K, -1) ' i2c @ 3400kHz, 15K pull-ups
+    'serial.fstr0(string("GPS1 not found\r"))
+    retv |= $01
+
+  ifnot i2c.present(GPS_I2C_ADDR<<1) == true
+    'serial.fstr0(string("GPS2 not found\r"))
+    retv |= $02
+  i2c.stop()
+
+  ' turn on RMC (recommended minimum) and GGA (fix data) including altitude
+  waitms(30)
+  if sendCommand(@PMTK_SET_NMEA_OUTPUT_RMCGGA)
+    retv |= $04
+    'serial.fstr0(string("sendCommand1 error\r"))
+  ' Set the update rate
+  waitms(30)
+  if sendCommand(@PMTK_SET_NMEA_UPDATE_1HZ)             ' 1 Hz update rate
+    retv |= $08
+    'serial.fstr0(string("sendCommand2 error\r"))
+
+  waitms(30)
+  repeat 10
+    waitms(10)
+    input()                                             ' empty out the gps buffer so we can get the response
+  if sendCommand(@PMTK_Q_RELEASE)
+    retv |= $10
+    'serial.fstr0(string("sendCommand3 error\r"))
+  ' $PMTK705,AXN_1.3,2102,ABCD,*14<CR><LF>
+  ' AXN_1.3 release string 3329, Mcore_x_x 3318
+  'serial.fstr0(string("GPS init done\r"))
+
+PUB input() : retv | ptr, valid
+' returns true if parsed a valid NMEA line
+  if readchar()
+    retv := Parse(lastline)
+
+PUB gps() : hour, min, sec, northdeg, westdeg, speed, alt, prelease, Fixret, SatNoret
+
+  hour, min, sec := Hours, Minutes, Seconds_F
+  northdeg, westdeg := NorthDeg_F, WestDeg_F
+  speed, alt := Speed_F, Altitude_F
+  Fixret, SatNoret := Fix, SatNo
+  prelease := @Release
+
+PUB Print() | hour, min, sec, pmr, northdeg, westdeg, speed, alt, prelease, Fixval, SatNoval
+  hour, min, sec, northdeg, westdeg, speed, alt, prelease, Fixval, SatNoval := gps()
+  serial.fstr4(string("GPS (%s) %2.2d:%2.2d:%+4.8g "), prelease, hour, min, sec)
+  serial.fstr2(string("%8.5g %10.5g "), northdeg, westdeg)
+  serial.fstr4(string("%.4g %.4g %d %d\r"), speed, alt, Fixval, SatNoval)
+
+PRI sendCommand(str) : retv | startt
+' max string length is 255 chars
+  'serial.fstr3(string("sendCommand %x (%c) %d "), str, byte[str], strsize(str))
+  startt := getms()
+  i2c.start()
+  if i2c.write(GPS_I2C_ADDR<<1)
+    retv := true
+    'serial.fstr0(string("error1 "))
+  if i2c.wr_block(str, strsize(str))
+    retv := true
+    'serial.fstr0(string("error2 "))
+  i2c.stop()
+  startt := getms() - startt
+  'serial.fstr1(string("done %d\r"), startt)
+
+PRI readchar() : recvd | c
+  ' return true if line available
+  'serial.fstr0(string("readchar init\r"))
+  ' buffer is empty so refill from GPS
+  ifnot buff_idx < buff_max
+    'fill the buffer if more than 5ms since last i2c read
+    if getms() > lastreadtime + GPSREADDELAY
+      'serial.fstr0(string("readchar readgps\r"))
+      i2c.start()
+      if i2c.write(GPS_I2C_ADDR<<1|1) == i2c.ACK        ' read 32 bytes from GPS
+        i2c.rd_block(@i2cbuffer, GPS_MAX_I2C_TRANSFER, i2c.NAK)
+        buff_idx~                                       ' reset read index
+      i2c.stop()
+      lastreadtime := getms()                           ' update time we last read gps
+
+  'serial.fstr0(string("readchar getline\r"))
+  repeat while buff_idx < buff_max                      ' have chars buffered
+    if (c := byte[currentline][lineidx] := i2cbuffer[buff_idx++]) <> $0a ' add to end of currentline but ignore linefeeds
+      lineidx := ++lineidx <# MAXLINELENGTH-1           ' make sure we still have space in buffer after inc
+      'serial.fstr1(string("readchar %d\r"), c)
+      if c == $0d                                       ' end of line, since we discarded $0a
+        byte[currentline][lineidx~]~                    ' line terminator and reset line index
+        'serial.fstr1(string("readline (%s)\r"), currentline)
+        currentline, lastline := lastline, currentline  ' switch line buffers
+        return true                                     ' have a valid line buffer
+
+PRI parse(ptr) : retv | char, temp
+' Should do some checks
+'   checksum correct, got position
+'
+  'serial.fstr0(string("parse init\r"))
+  char := byte[ptr++]                                   'Get a character
+  if char == "$"                                        'Is it a dollar sign
+    repeat 3                                            'Discard following G and P and fetch 4th character
+      char := byte[ptr++]
+    if char == "R"                                      'Check for "R" of RMC
+      ' $GNRMC,064951.000,A,     2307.1256,N, 12016.4438,E, 0.03,  165.48, 260406, 3.05,W, A*2C
+      '         time      valid  lat          long         speed  course  date    mag     mode
+      ' $GNRMC,155503.000,A,     5606.1725,N, 01404.0622,E, 0.04,  0.00,  110918,,,D*75
+      '         time      valid  lat          long         speed  course  date
+      'serial.fstr0(string("parse RMC\r"))
+      ptr := skipcomma(ptr, 1)                          ' Skip 1 comma
+      'serial.fstr1(string("parse %s"), ptr)
+      '********* Time ****************************************************************
+      Hours, ptr := buildcommaconvert(ptr, 2)           ' Get Hours
+      Minutes, ptr := buildcommaconvert(ptr, 2)         ' Get Minutes
+      Hours := Hours +. float(trunc(Offset))            ' Convert to Local Time
+      Minutes := Minutes +. ((Offset-.float(trunc(Offset))) *. 100.0) ' Convert to Local Time
+      if utilities.frel(Minutes, 60.0, $a4) 'Minutes >. 60.0
+        Hours := Hours + 1.0
+        Minutes := Minutes - 60.0
+      if utilities.frel(0.0, Hours, $a4) '0.0 >. Hours  ' Check for negative time..., note <. doesn't work correctly
+        Hours := Hours +. 24.0                          ' if so, add 24 hours
+      if utilities.frel(Hours, 24.0, $a4) 'Hours >. 24.0
+        Hours := Hours -. 24.0
+      Seconds_F, ptr := buildcommaconvert(ptr, 0)       ' Get Seconds, as ss.sss
+      Hours := trunc(Hours)
+      Minutes := trunc(Minutes)
+      '********* North Latitude ******************************************************
+      ptr := skipcomma(ptr, 1)                          ' Skip 1 commas, data available
+      NorthDeg_F, ptr := buildcommaconvert(ptr, 2)      ' Get North Latitude degrees
+      if byte[ptr] == ","                               ' empty value
+        ptr--
+      temp, ptr := buildcommaconvert(ptr, 0)            ' Get North Latitude Minutes, mm.mmmm
+      NorthDeg_F :=NorthDeg_F +. temp/.60.0             ' convert minutes to fraction of degree
+      char := byte[ptr]
+      if char == "S"
+        NorthDeg_F := -.NorthDeg_F
+      if char <> ","
+        ptr++
+      '********* Westh Longitude ****************************************************
+      ptr := skipcomma(ptr, 1)                          ' Skip 1 comma
+      WestDeg_F, ptr := buildcommaconvert(ptr, 3)       ' Get West Longitude degrees
+      if byte[ptr] == ","                               ' empty value
+        ptr--
+      temp, ptr := buildcommaconvert(ptr, 0)            ' Get West Longitude Minutes, mm.mmmm
+      WestDeg_F :=WestDeg_F +. temp/.60.0               ' convert minutes to fraction of degree
+      char := byte[ptr]
+      if char == "W"
+        WestDeg_F := -.WestDeg_F
+      if char <> ","
+        ptr++
+    '********* Speed ***************************************************************
+      ptr := skipcomma(ptr, 1)                          ' Skip 1 comma
+      Speed_F, ptr := buildcommaconvert(ptr, 0)         ' Get Speed
+      Speed_F := Speed_F *. 1.15077945                  ' Speed in MPH, Rounded
+      retv := $01
+    '********* Orthometric Height **************************************************
+    ' $GNGGA,165006.000,2241.9107,N,12017.2383,E,1,  14,  0.79, 22.6,M, 18.5,M,,*42
+    '          time       lat          long      fix sat  hdop  alt     geo
+    elseif char == "G"
+      if byte[ptr] == "G" and byte[ptr+1] == "A"        ' GGA
+      ' serial.fstr0(string("parse GGA\r"))
+        ptr := skipcomma(ptr, 6)                        ' Skip 6 commas, fix in 7th
+        Fix, ptr := buildcommaconvert(ptr, 0)
+        Fix := trunc(Fix)
+        SatNo, ptr := buildcommaconvert(ptr, 0)
+        SatNo := trunc(SatNo)
+        ptr := skipcomma(ptr, 1)                        ' skip 1 comma, HDOP
+        Altitude_F, ptr := buildcommaconvert(ptr, 0)
+        Altitude_F := Altitude_F *. 3.2808399           ' Altitude in Feet, Rounded
+        retv := $02
+    elseif char == "T"
+      ' $PMTK705,AXN_1.3,2102,ABCD,*14<CR><LF>
+      'serial.fstr0(string("parse PMTK\r"))
+      retv := $04
+      char := byte[ptr++]
+      ptr := buildcomma(ptr, 4)
+      if atoi(buildString(true)) == 705
+        buildcomma(ptr, RELEASEMAX)
+        strcopy(@Release, buildString(true), RELEASEMAX)
+        retv := $04
+
+PRI buildcomma(ptr, count) : newptr | char
+  newptr := ptr
+  repeat
+    buildString(char := byte[newptr++])
+    if count && (--count == 0)
+      quit
+  until (char == ",") or (char == 0)
+
+PRI buildcommaconvert(ptr, count) : value_f, newptr
+  newptr := buildcomma(ptr, count)
+  value_f := atof(buildString(true))
+
+PRI skipcomma(ptr, count) : newptr | char
+  newptr := ptr
+  repeat count                                          ' Skip count commas
+    repeat until (char := byte[newptr++]) == ","
+      if char == 0                                      ' stop if reach end of string
+        return
+
+PRI buildString(char) : retv
+  retv := @buffer
+  if char == true
+    buffer[index~]~
+  elseif index < BUILDLENGTH-1
+    buffer[index++] := char
+
+PRI atof( strptr ) : f | dmag, mag, ch, b
+  repeat while (ch := byte[strptr++]) <> 0
+    if (b := IsDigit(ch)) <> -1
+      f := f*10 + b                                     ' atoi ignoring decimal point
+      mag += dmag                                       ' count number of digits after decimal point
+    elseif ch == "."
+      dmag := 1
+  f := float(f)                                         ' convert int to a float
+  repeat mag                                            ' for each digit after decimal point * by 0.1
+    f := f *. 0.1
+
+PRI atoi(string_ptr) : sum | ch
+  repeat while (ch := IsDigit(byte[string_ptr++])) <> -1
+    sum := sum * 10 + ch
+
+PRI IsDigit(ch) : retv
+' return the digit or -1 if not a digit
+  retv~~
+  if ch >= "0" and ch <= "9"
+    retv := ch - "0"
+
+DAT
+PMTK_SET_NMEA_OUTPUT_RMCGGA     byte "$PMTK314,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*28\r\n",0 ' turn on GPRMC and GPGGA
+PMTK_SET_NMEA_UPDATE_1HZ        byte "$PMTK220,1000*1F\r\n",0 '  1 Hz
+PGCMD_ANTENNA                   byte "$PGCMD,33,1*6C\r\n",0   ' request for updates on antenna status
+PGCMD_NOANTENNA                 byte "$PGCMD,33,0*6D\r\n",0   ' don't show antenna status messages
+PMTK_Q_RELEASE                  byte "$PMTK605*31\r\n",0      ' ask for the release and version
+'

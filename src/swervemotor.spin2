@@ -1,7 +1,8 @@
 {Object_Title_and_Purpose}
 
 CON
-  MAXSPEED      = 4096                                       ' -4096 < 0 < 4096
+  MAXSPEEDSHIFT = 12
+  MAXSPEED      = 1<<MAXSPEEDSHIFT                           ' -4096 < 0 < 4096
   MAXANGLE      = 1024                                       ' 0-1024 is 0-360deg, +ve is clockwise, -ve anticlockwise
 
   MINDRIVESPEED = 10
@@ -34,12 +35,11 @@ CON
 VAR
   long speeders[MAX_SWERVE_MODULES*2]   ' 0: drive motor speeds, 1: steering speed for 4 swerve modules
   long angles[MAX_SWERVE_MODULES]       ' angle for 4 swerve modules
-  word angleoffsets[MAX_SWERVE_MODULES] ' steering angle offset
+  long motors[MAX_SWERVE_MODULES*2]     ' motor channels
   word debug2
   long lastcx, lastcy, lastcr, motorsareoff
   long acctime
-  long rad            ' float, diag size of bot
-  long bot[2]         ' float bot size, turn around center of bot
+  long cosbot[2]                        ' float, bot size/rad
   long overridemax
 
 OBJ
@@ -52,18 +52,18 @@ OBJ
 PUB null()
   ' This is not a top-level object
 
-PUB start(scl, sda, epin, pbot, poffsets, pinvert) : retv | ch, t1, t2
+PUB start(scl, sda, epin, pbot, ppinoffsets, pangleoffsets, pinvert, pmotor) : retv | ch, t1, t2, rad
   '' start 4 swerve modules
-  longmove(@bot, pbot, 2)                                       ' size of bot
-  wordmove(@angleoffsets, poffsets, MAX_SWERVE_MODULES)         ' angle offset of each encoder
-  rad := fsqrt(bot[BOT_WIDTH]*.bot[BOT_WIDTH] +. bot[BOT_LENGTH]*.bot[BOT_LENGTH])/.2.0
+  longmove(@motors, pmotor, MAX_SWERVE_MODULES*2)
+  rad := fsqrt(long[pbot][BOT_WIDTH]*.long[pbot][BOT_WIDTH] +. long[pbot][BOT_LENGTH]*.long[pbot][BOT_LENGTH])/.2.0 ' diag of bot
+  cosbot[BOT_WIDTH], cosbot[BOT_LENGTH] := long[pbot][BOT_WIDTH]/.rad, long[pbot][BOT_LENGTH]/.rad
   acctime := getms()
   if debugoutput()
-    serial.fstr3(string("Swerve starting %.2g %.2g %.2g\r"), bot[BOT_WIDTH], bot[BOT_LENGTH], rad)
+    serial.fstr3(string("Swerve starting %.2g %.2g %.2g\r"), long[pbot][BOT_WIDTH], long[pbot][BOT_LENGTH], rad)
 
   retv := motor.start(scl, sda, pinvert)
 
-  encoder.start(epin, 0, MAXANGLE)                         ' 0-MAXANGLE output
+  encoder.start(epin, 0, MAXANGLE, ppinoffsets, pangleoffsets) ' 0-MAXANGLE output
 
   repeat ch from 0 to MAX_SWERVE_MODULES-1
     pid[ch].init(ch, MAXANGLE, MAXSPEED)                   ' 0-MAXANGLE input, +- MAXSPEED output
@@ -80,38 +80,41 @@ PUB setpidconstants(Kp, Ki, Kd, overmax) | ch
 PRI setmotorspeeds(pspeeds) | ch, speed
   ' set all motor speeds, drive and angle
   ' swerve modules on 1st and 2nd motor driver
-  repeat ch from 0 to 7
+'  repeat ch from 0 to 7
+  repeat ch from 0 to 7 step 1
     speed := long[pspeeds][ch]
     ' final clamping to max motor speed
-    motor.run(ch, abs(speed) > minmotorspeed[ch&1] ? utilities.clamp(speed, overridemax) : 0)
+    motor.run(motors[ch], abs(speed) > minmotorspeed[ch&1] ? utilities.clamp(speed, overridemax) : 0)
 
-PRI angletospeed(pspeeds, pangles) : retv | rawangle, currentangle, requestangle, ch, wrappedangle, ponespeed
+PRI angletospeed(pspeeds, pangles) : retv | rawangle, requestangle, ch, wrappedangle, ponespeed, delta
   ' convert required angle to motor speed to get there
   ' return false if all swerves are at correct angle
   repeat ch from 0 to MAX_SWERVE_MODULES-1
     ponespeed := @long[pspeeds][ch<<1]
-    currentangle := ((rawangle := encoder.read(ch)) + angleoffsets[ch]) // MAXANGLE ' current angular position, allow for encoder offset and wrap to 0..MAXANGLE
-    pid[ch].currentposition(currentangle)               ' current angle of swerve
+    rawangle := encoder.read(ch)                        ' current angular position, encoder handles encoder offset
+    pid[ch].currentposition(rawangle)                   ' current angle of swerve
     ' if request/current angle > MAXANGLE/2 apart then pid will wrap and invert
-    ' if request/current angles > MAXANGLE/4 apart then invert the drive speed and subtract MAXANGLE/4 from requestangle
-    wrappedangle := utilities.wrapangles(requestangle := long[pangles][ch], currentangle, MAXANGLE)
-    if debugoutput()
-      serial.fstr8(string("Swerve1 %s %d %d %d %d %x %d %x\r"), @@sptr[ch], rawangle, currentangle, long[ponespeed], requestangle, requestangle, wrappedangle, wrappedangle)
+    wrappedangle := utilities.wrapangles(rawangle, requestangle := long[pangles][ch], MAXANGLE)
+    SwerveDebug(1, @@sptr[ch], rawangle, long[ponespeed], long[ponespeed][1], long[pangles][ch], requestangle, wrappedangle)
+    ' if request/current angles > MAXANGLE/4 apart then invert the drive speed and subtract MAXANGLE/2 from requestangle
     if(abs(wrappedangle) > MAXANGLE/4)
       ' change request angle by MAXANGLE/2
-      requestangle -= (requestangle > 0) ? (MAXANGLE/2) : -MAXANGLE/2
+      requestangle := (requestangle - MAXANGLE/2) // MAXANGLE
       ' and invert the drive speed
       -= long[ponespeed]
-      if debugoutput()
-        serial.fstr4(string("Swerve1a %s %d %d %d\r"), @@sptr[ch], wrappedangle, requestangle, long[ponespeed])
-    if debugoutput()
-      serial.fstr8(string("Swerve2 %s %d %d %d %d %x %d %x\r"), @@sptr[ch], rawangle, currentangle, long[ponespeed], requestangle, requestangle, wrappedangle, wrappedangle)
+    'else
+    '  requestangle := wrappedangle
+    SwerveDebug(2, @@sptr[ch], rawangle, long[ponespeed], long[ponespeed][1], long[pangles][ch], requestangle, wrappedangle)
     pid[ch].setposition(requestangle)                   ' wanted angle of swerve
+    long[ponespeed][1], delta := pid[ch].output()       ' speed to move steering motor
+    retv |= long[ponespeed][1] <> 0                     ' have we reached correct steering angle?
     ' slowdown drive speed depending on how far out of alignment the swerve module is
-    long[ponespeed] := qcos(long[ponespeed], abs(requestangle - currentangle), MAXANGLE)
-    retv |= (long[ponespeed][1] := pid[ch].output()) <> 0 ' speed to move steering motor
-    if debugoutput()
-      serial.fstr6(string("Swerve3 %s %d %d %d %d %d\r"), @@sptr[ch], long[ponespeed], long[ponespeed][1], long[pangles][ch], requestangle, wrappedangle)
+    'long[ponespeed] := qcos(long[ponespeed], delta, MAXANGLE)
+    SwerveDebug(3, @@sptr[ch], rawangle, long[ponespeed], long[ponespeed][1], long[pangles][ch], requestangle, wrappedangle)
+
+PRI SwerveDebug(no, p1, p2, p3, p4, p5, p6, p7)
+  if debugoutput()
+    serial.fstr8(string("Swerve%d %s %d %d %d %d %d %d\r"), no, p1, p2, p3, p4, p5, p6, p7)
 
 PRI scalemaxspeed(pspeeds) | highest, index
   ' scale max speeds if over or under MAXSPEED
@@ -126,48 +129,59 @@ PRI scalemaxspeed(pspeeds) | highest, index
     serial.fstr4(string("Swerve maxspeeds %d %d %d %d\r"), long[pspeeds][D_FRONT_LEFT], long[pspeeds][D_FRONT_RIGHT], long[pspeeds][D_BACK_LEFT], long[pspeeds][D_BACK_RIGHT])
 
 PRI scalespeed(in, max) : scaled
-  scaled := muldiv64(abs(in), MAXSPEED, max)
-  if in < 0
-    -= scaled
+  ' assumes in parameter value isn't too large, so multiplying by MAXSPEED doesn't overflow
+  scaled := in << MAXSPEEDSHIFT
+  scaled /= max
 
-PRI calculate(x, y, r, pspeeds, pangles) | a, b, c, d, afl, afr, abl, abr
+PRI calculate(x, y, r, pspeeds, pangles) | a, b, c, d, xrl, yrl, rl
 ' translate x, y and rotation into swerve speed and angle per swerve module
-  abl := float(r)
-  afr, afl := round(abl *. bot[BOT_WIDTH]/.rad), round(abl *. bot[BOT_LENGTH]/.rad)
-  a, b, c, d :=  x - afr, x + afr, -y - afl, -y + afl
+  rl := float(r)
+  xrl, yrl := round(rl *. cosbot[BOT_WIDTH]), round(rl *. cosbot[BOT_LENGTH])
+  a, b, c, d :=  x - xrl, x + xrl, -y - yrl, -y + yrl
   if debugoutput()
     serial.fstr4(string("Swerve calculate %d %d %d %d\r"), a, b, c, d)
 
   ' xypol returns length and unsigned 32-bit angle, where $00000000..$FFFFFFFF = 0..359.9999999 degrees
-  ' scale angle tp MAXANGLE
-  long[pspeeds][D_BACK_RIGHT],  long[pangles][A_BACK_RIGHT]  := scaleangle(xypol(a, d))     ' back, right
-  long[pspeeds][D_FRONT_RIGHT], long[pangles][A_FRONT_RIGHT] := scaleangle(xypol(a, c))     ' front, right
-  long[pspeeds][D_BACK_LEFT],   long[pangles][A_BACK_LEFT]   := scaleangle(xypol(b, d))     ' back, left
-  long[pspeeds][D_FRONT_LEFT],  long[pangles][A_FRONT_LEFT]  := scaleangle(xypol(b, c))     ' front, left
+  ' scale angle to MAXANGLE
+  long[pspeeds][D_FRONT_LEFT],  long[pangles][A_FRONT_LEFT]  := scaleangle(xypol(c, b))     ' front, left
+  long[pspeeds][S_FRONT_LEFT] := 0
+  Swerve1Debug(0, pspeeds, pangles, D_FRONT_LEFT, A_FRONT_LEFT)
+  long[pspeeds][D_FRONT_RIGHT], long[pangles][A_FRONT_RIGHT] := scaleangle(xypol(c, a))     ' front, right
+  long[pspeeds][S_FRONT_RIGHT] := 0
+  Swerve1Debug(1, pspeeds, pangles, D_FRONT_RIGHT, A_FRONT_RIGHT)
+  long[pspeeds][D_BACK_LEFT],   long[pangles][A_BACK_LEFT]   := scaleangle(xypol(d, b))     ' back, left
+  long[pspeeds][S_BACK_LEFT] := 0
+  Swerve1Debug(2, pspeeds, pangles, D_BACK_LEFT, A_BACK_LEFT)
+  long[pspeeds][D_BACK_RIGHT],  long[pangles][A_BACK_RIGHT]  := scaleangle(xypol(d, a))     ' back, right
+  long[pspeeds][S_BACK_RIGHT] := 0
+  Swerve1Debug(3, pspeeds, pangles, D_BACK_RIGHT, A_BACK_RIGHT)
 
+PRI Swerve1Debug(no, pspeeds, pangles, p1, p2)
   if debugoutput()
-    serial.fstr4(string("Swerve %s speed/angle %d %d(%.2f)\r"), @@sptr[0], long[pspeeds][D_FRONT_LEFT], long[pangles][A_FRONT_LEFT], muldiv64(long[pangles][A_FRONT_LEFT], 36000, MAXANGLE))
-    serial.fstr4(string("Swerve %s speed/angle %d %d(%.2f)\r"), @@sptr[1], long[pspeeds][D_FRONT_RIGHT], long[pangles][A_FRONT_RIGHT], muldiv64(long[pangles][A_FRONT_RIGHT], 36000, MAXANGLE))
-    serial.fstr4(string("Swerve %s speed/angle %d %d(%.2f)\r"), @@sptr[2], long[pspeeds][D_BACK_LEFT], long[pangles][A_BACK_LEFT], muldiv64(long[pangles][A_BACK_LEFT], 36000, MAXANGLE))
-    serial.fstr4(string("Swerve %s speed/angle %d %d(%.2f)\r"), @@sptr[3], long[pspeeds][D_BACK_RIGHT], long[pangles][A_BACK_RIGHT], muldiv64(long[pangles][A_BACK_RIGHT], 36000, MAXANGLE))
+    serial.fstr4(string("Swerve %s speed/angle %d %d(%.2f)\r"), @@sptr[no], long[pspeeds][p1],  long[pangles][p2],  scaleangle360(long[pangles][p2]))
+
+PRI scaleangle360(inangle) : scaledangle
+' scale 0-MAXANGLE to 0-36000
+  scaledangle := muldiv64(inangle, 36000, MAXANGLE)
 
 PRI scaleangle(ind, inangle) : rd, scaledangle
-  rd, scaledangle := ind, utilities.scaleangle(inangle, MAXANGLE)
+' scale xypol output angle to 0-MAXANGLE
+  rd, scaledangle := ind, inangle SCA MAXANGLE
 
 CON
   ACCINTERVAL   = 100                                       ' acceleration limiting interval, ms
-  ACCSHIFT      = 3
-  ACCLIMIT      = 1<<ACCSHIFT                               ' acceleration increments
+  ACCSHIFT      = 3                                         ' /8
+  ACCLIMIT      = (1<<ACCSHIFT)-1                           ' acceleration increments
 
-PRI adjustandclampspeed(lastspeed, newspeed) : adjustedspeed | deltaspeed, upperclampspeed, lowerclampspeed
+PRI adjustandclampspeed(lastspeed, newspeed) : adjustedspeed | deltaspeed, upperclampspeed, lowerclampspeed, t
 
-  deltaspeed := newspeed - lastspeed                        ' delta is /8 or 12.5% of the difference between current and requested speeds
+  deltaspeed := newspeed - lastspeed                        ' delta is 1/8 of the difference between current and requested speeds
   lowerclampspeed, upperclampspeed := newspeed, lastspeed
   if newspeed > lastspeed
     lowerclampspeed, upperclampspeed := lastspeed, newspeed ' default doesn't apply in this case
   deltaspeed += (deltaspeed > 0) ? ACCLIMIT : -ACCLIMIT     ' make sure delta doesn't reduce to 0
                                                             ' clamp makes sure delta doesn't overrun
-  adjustedspeed := utilities.fullclamp(lastspeed + (deltaspeed>>ACCSHIFT), lowerclampspeed, upperclampspeed)
+  adjustedspeed := utilities.fullclamp(lastspeed + (deltaspeed SAR ACCSHIFT), lowerclampspeed, upperclampspeed)
 
 PRI limitacceleration(x, y, r) : lx, ly, lr, changed, notcomplete | lcx, lcy, lcr
 
@@ -175,19 +189,20 @@ PRI limitacceleration(x, y, r) : lx, ly, lr, changed, notcomplete | lcx, lcy, lc
   if(getms() > acctime)
     longmove(@lcx, @lastcx, 3)                              ' save for debug output
     lastcx := adjustandclampspeed(lastcx, x)
-    if debugoutput()
-      serial.fstr3(string("Swerve x limit %d %d %d\r"), lcx, x, lastcx)
+    Swerve2Debug("x", lcx, x, lastcx)
     lastcy := adjustandclampspeed(lastcy, y)
-    if debugoutput()
-      serial.fstr3(string("Swerve y limit %d %d %d\r"), lcy, y, lastcy)
+    Swerve2Debug("y", lcy, y, lastcy)
     lastcr := adjustandclampspeed(lastcr, r)
-    if debugoutput()
-      serial.fstr3(string("Swerve r limit %d %d %d\r"), lcr, r, lastcr)
+    Swerve2Debug("r", lcr, r, lastcr)
     acctime := getms() + ACCINTERVAL
     changed := true
-  ' output not matching input speed
+  ' output not matching input speed, still have more ramping up/down to do
   notcomplete := utilities.longcomp(@lastcx, @x, 3, false)
   longmove(@lx, @lastcx, 3)
+
+PRI Swerve2Debug(type, last, in, out)
+  if debugoutput()
+    serial.fstr4(string("Swerve %c limit %d %d %d\r"), type, last, in, out)
 
 PUB update(x, y, r, off) : notcomplete | changed, newoffstate, previousoffstate
 '' return true if needs calling again, either not fully update to speed or swerve angle not in position
@@ -202,21 +217,21 @@ PUB update(x, y, r, off) : notcomplete | changed, newoffstate, previousoffstate
       if debugoutput()
         serial.fstr3(string("Swerve updating after limiting x:%d, y:%d, r:%d\r"), x, y, r)
 
-      calculate(x, y, r, @speeders, @angles)            ' calculate speed/angle for each swerve module
+      calculate(x, y, r, @speeders, @angles)            ' calculate speed/angle for each swerve wheel
 
-      scalemaxspeed(@speeders)                          ' scale max drive speeds
+      scalemaxspeed(@speeders)                          ' scale max drive speeds, so speed not larger than +-MAXSPEED
 
       notcomplete |= angletospeed(@speeders, @angles)   ' convert steering angle to steering motor speed
 
       setmotorspeeds(@speeders)                         ' set speeds of drive and steering motors
-  elseifnot previousoffstate
+  elseifnot previousoffstate                            ' if not already off, make sure motors are off
     setmotorspeeds(@zerospeeds)
   if debugoutput()
     serial.fstr3(string("Swerve updated %d %d %d\r"), changed, notcomplete, motorsareoff)
 
 PRI motorsoff(off) : retv, previous
-' return true if motors should be off, were off
-  previous := motorsareoff\retv := off > 500
+' return true if motors should be off, was off
+  previous := motorsareoff\retv := off < 500
 
 PUB debugconfig(tdebug2, tdebug3) | ch
   debug2 := tdebug2

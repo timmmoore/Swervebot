@@ -166,22 +166,24 @@ VAR
   long accLIN[3], grav[3]
   long baroADC
   long mh, mv, magdec
+  long yawoffset
   byte quatdiv
 
 OBJ
-  'serial        : "isp_serial_singleton_tmm"
+  serial        : "isp_serial_singleton_tmm"
   i2c           : "jm_i2c_tmm"
   utilities     : "utilities"
 
 PUB null()
 
 PUB start(scl, sda) : retv
-  retv := startx(scl, sda, -1, @Config1)
+  retv := startx(scl, sda, -1, @Config1, 0.0)
 
-PUB startx(scl, sda, reset, pconfig) : retv | id, stat, Begin
+PUB startx(scl, sda, reset, pconfig, offset) : retv | id, stat, Begin
   'serial.fstr0(string("USFSMAX1 \r"))
   bytemove(@mh, pconfig, @Config1End - @Config1)
   'serial.fstr0(string("USFSMAX2 \r"))
+  yawoffset := offset
 
   if reset <> -1
     pinclear(reset)
@@ -191,7 +193,7 @@ PUB startx(scl, sda, reset, pconfig) : retv | id, stat, Begin
   'serial.fstr0(string("USFSMAX3 \r"))
 
   waitms(10)
-  ifnot i2c.setup(scl, sda, I2C_CONFIG_SPEED, i2c.PU_1K5) ' i2c @ 100kHz, 1K5 pull-ups
+  ifnot i2c.setup(scl, sda, I2C_CONFIG_SPEED, i2c.PU_3K3, -1) '1K5) ' i2c @ 100kHz, 1K5 pull-ups
     return $01
   waitms(10)
   'serial.fstr0(string("USFSMAX4 \r"))
@@ -218,23 +220,25 @@ PUB startx(scl, sda, reset, pconfig) : retv | id, stat, Begin
   'serial.fstr2(string("USFSMAX1 %x %d\r"), id, stat)
   UploadCfg()
 
-  i2c.setup(scl, sda, I2C_FAST_SPEED, i2c.PU_1K5)       ' i2c @ 3Mhz, 1K5 pull-ups
+  i2c.setup(scl, sda, I2C_FAST_SPEED, i2c.PU_3K3, -1)       ' i2c @ 3Mhz, 1K5 pull-ups
   waitms(10)
   'serial.str(string("USFSMAX fast I2C", 13))
                                        ' start   Quaternions   SCALED_SENSOR
   write8(MAX32660ADDR, FUSION_START_STOP, $01 |    ($00)      | ($01))
-  waitms(10)
+  waitms(50)
   repeat 50
+    waitms(10)
     if stat := (read8(MAX32660ADDR, FUSION_STATUS) & FUSION_RUNNING_MASK)
       quit
     'serial.fstr1(string("USFSMAX status %d\r"), stat)
-    waitms(10)
   ifnot stat
     'serial.str(string("USFSMAX sensor fusion not running!", 13))
     return $04
+  'serial.fstr1(string("USFSMAX sensor fusion running %d", 13), stat)
 
+  waitms(10)
   if (stat := read8(MAX32660ADDR, SENS_ERR_STAT)) <> 0
-    'serial.fstr1(string("USFSMAX error status %d\r"), stat)
+    serial.fstr1(string("USFSMAX error status %d\r"), stat)
     return $08
   retv := 0
 
@@ -258,17 +262,19 @@ PRI write8(addr, adr, d) | byte values[3]
   i2c.wr_block(@values, 3)
   i2c.stop()
 
-PRI readBytes(addr, adr, count, pbuf) | byte values[2]
+PRI readBytes(addr, adr, count, pbuf) : retv | byte values[2]
 ' at clock speed of 3Mhz, significant clock stretching occurs
   i2c.start()                                 ' 5us
   values[0] := addr<<1
   values[1] := adr
-  i2c.wr_block(@values, 2)                    ' 20us
+  if i2c.wr_block(@values, 2) == i2c.NAK      ' 20us
+    return
 
   i2c.start()                                 ' 5us
   i2c.write(addr<<1|1)                        ' 10us
   i2c.rd_block(pbuf, count, i2c.NAK)          ' 191s
   i2c.stop()                                  ' 5us
+  retv--
 
 PRI writeBytes(addr, adr, count, pbuf) | byte values[2]
   i2c.start()
@@ -289,13 +295,15 @@ PRI BARO_getADC() | BYTE bytes[4]
   readBytes(MAX32660ADDR, BARO_XL, 3, @bytes)
   baroADC := LONG[@bytes]
 
-PUB getMin() : qt0, qt1, qt2, qt3 | BYTE bytes[19]
+PUB getMin() : retv, qt0, qt1, qt2, qt3 | BYTE bytes[19]
 ' getQUAT and BARO_getADC
 ' 242us (3MHz)
-  readBytes(MAX32660ADDR, BARO_XL, 19, @bytes)          '235us
+  if readBytes(MAX32660ADDR, BARO_XL, 19, @bytes) == false '235us
+    return
   bytemove(@qt0, @bytes[3], 16)
-  bytes[3] := 0
+  bytes[3]~
   baroADC := LONG[@bytes]
+  retv~~
 
 PRI UploadCfg()
 
@@ -326,12 +334,9 @@ PUB computeIMUFloat(qtw, qtx, qty, qtz) : outputyaw, outputpitch, outputroll, ou
   qy := qty*.qty
   qz := qtz*.qtz
   y := -2.0 *. (qtx*.qtz -. qty*.qtw)
-  _, outputyaw   := xypol(round((qw +. qx -. qy -. qz)*.SCALE), round((qtx*.qty +. qtw*.qtz)*.SCALE2))
-  _, outputroll  := xypol(round((qw -. qx -. qy +. qz)*.SCALE), round((qty*.qtz +. qtw*.qtx)*.SCALE2))
-  _, outputpitch := xypol(round(fsqrt(1.0 -. (y *. y))*.SCALE), round(y*.SCALE))
-  outputyaw :=  scaleangle(outputyaw)
-  outputroll :=  scaleangle(outputroll)
-  outputpitch :=  scaleangle(outputpitch)                                       ' Mag declination added in USFSMAX
+  outputyaw   := yawscaleangle(xypol(round((qw +. qx -. qy -. qz)*.SCALE), round((qtx*.qty +. qtw*.qtz)*.SCALE2)))
+  outputroll  := scaleangle(xypol(round((qw -. qx -. qy +. qz)*.SCALE), round((qty*.qtz +. qtw*.qtx)*.SCALE2)))
+  outputpitch := scaleangle(xypol(round(fsqrt(1.0 -. (y *. y))*.SCALE), round(y*.SCALE)))
   'serial.fstr3(string("USFSMAX Y compute %.2g %.2g %.2g\r"), (qw -. qx -. qy +. qz)*.10.0, 2.0*.(qty*.qtz +. qtw*.qtx)*.10.0, outputroll)
   'serial.fstr3(string("USFSMAX R compute %.2g %.2g %.2g\r"), (qw +. qx -. qy -. qz)*.10.0, 2.0*.(qtx*.qty +. qtw*.qtz)*.10.0, outputyaw)
   'serial.fstr3(string("USFSMAX P compute %.2g %.2g %.2g\r"), (fsqrt(1.0 -. (y *. y)))*.10.0, y*.10.0, outputpitch)
@@ -352,12 +357,9 @@ PUB computeIMUFixed(qtw, qtx, qty, qtz) : outputyaw, outputpitch, outputroll, ou
   qw, qx, qy, qz := qtw * qtw, qtx * qtx, qty * qty, qtz * qtz
   y := -((qtx * qtz - qty * qtw)<<1)
   ' both parameters are scaled the same, so angles are still correct
-  _, outputyaw   := xypol((qw + qx - qy - qz), (qtx*qty + qtw*qtz)<<1)
-  _, outputroll  := xypol((qw - qx - qy + qz), (qty*qtz + qtw*qtx)<<1)
-  _, outputpitch := xypol(sqrt(intscale - ((y SAR shift) * (y SAR shift)))<<shift, y)
-  outputyaw :=  scaleangle(outputyaw)
-  outputroll :=  scaleangle(outputroll)
-  outputpitch :=  scaleangle(outputpitch)                                       ' Mag declination added in USFSMAX
+  outputyaw   := yawscaleangle(xypol((qw + qx - qy - qz), (qtx*qty + qtw*qtz)<<1))
+  outputroll  := scaleangle(xypol((qw - qx - qy + qz), (qty*qtz + qtw*qtx)<<1))
+  outputpitch := scaleangle(xypol(sqrt(intscale - ((y SAR shift) * (y SAR shift)))<<shift, y))
   'serial.fstr3(string("USFSMAX Y compute %.2g %.2g %.2g\r"), (qw -. qx -. qy +. qz)*.10.0, 2.0*.(qty*.qtz +. qtw*.qtx)*.10.0, outputroll)
   'serial.fstr3(string("USFSMAX R compute %.2g %.2g %.2g\r"), (qw +. qx -. qy -. qz)*.10.0, 2.0*.(qtx*.qty +. qtw*.qtz)*.10.0, outputyaw)
   'serial.fstr3(string("USFSMAX P compute %.2g %.2g %.2g\r"), (fsqrt(1.0 -. (y *. y)))*.10.0, y*.10.0, outputpitch)
@@ -367,8 +369,14 @@ CON
   DEGREESCALE     = 1000
   DEGREEDIV       = float(DEGREESCALE)
 
-PRI scaleangle(in) : scaledangle
-  scaledangle := float(utilities.scaleangle(in, 360*DEGREESCALE))/.DEGREEDIV
+PRI yawscaleangle(l, in) : scaledangle
+  ' add bot offset and make sure 0-360.0 degrees
+  scaledangle := float(in SCA (360*DEGREESCALE))/.DEGREEDIV +. yawoffset
+  if scaledangle >. 360.0
+    scaledangle := scaledangle -. 360.0
+
+PRI scaleangle(l, in) : scaledangle
+  scaledangle := float(in SCA (360*DEGREESCALE))/.DEGREEDIV
 
 DAT
 Config

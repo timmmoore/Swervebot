@@ -1,17 +1,18 @@
 {Utilities}
 
 OBJ
-  'serial        : "isp_serial_singleton_tmm"
+  serial        : "isp_serial_singleton_tmm"
 
 PUB null()
   ' This is not a top-level object
 
-PUB wrapangles(angle1, angle2, maxangle) : minangle
+PUB wrapangles(angle1, angle2, maxangle) : deltaangle | d1
   ' find the smallest angle between request and current angles, moving in either direction, allowing for wrapround
   ' maxangle must be +ve
-  minangle := angle1 - angle2
-  if abs(minangle) > maxangle>>1
-    minangle -= (minangle > 0) ? maxangle : -maxangle
+  d1 := deltaangle := angle2 - angle1
+  if abs(deltaangle) > (maxangle>>1)
+    deltaangle := (deltaangle > 0)?-maxangle + deltaangle:+maxangle + deltaangle
+  'serial.fstr4(string("wrapangles c:%d s:%d %d %d\r"), angle1, angle2, d1, deltaangle)
 
 PUB map(value, inmin, inmax, outmin, outmax) : result
 '' Maps value in range inmin..inmax to new value in range outmin..outmax
@@ -31,16 +32,21 @@ PUB longcomp(p1, p2, count, update) : retv
   repeat retv from 0 to count-1
     if long[p1][retv] <> long[p2][retv]
       quit
-  if (retv := retv < count) && update
+  if (retv := retv < count) && (update <> false)
     longmove(p1, p2, count)
 
-PUB scaleangle(inangle, max) : scaledangle
-' unsigned inangle
-  scaledangle := inangle SCA max
+PUB longcompf(p1, p2, count, update) : retv
+' return true if p1 and p2 not the same with float precision <0.1
+  ' .0/.1 - .8/.9 *10 round
+  ' .9/1.0 + 0.1 trunc 1.0/1.1
+  repeat retv from 0 to count-1
+    if fabs(long[p1][retv] -. long[p2][retv]) >. 0.11
+      quit
+  if (retv := retv < count) && (update <> false)
+    longmove(p1, p2, count)
 
 PUB maxlong(pinput, count, inc) : highest | index, temp
 ' find maximum absolute value
-  highest := 0
   repeat index from 0 to count-1 step inc
     if (temp := abs(long[pinput][index])) > highest
       highest := temp
@@ -52,3 +58,30 @@ PUB swapbytes(val) : result
     movbyts result, #%%0123
   end
 '
+PUB frel(t1, t2, p): r | x, w, y, _FFFFFFFF, paa
+
+  w := t1
+  x := t2
+  paa := p
+  _FFFFFFFF := $FFFFFFFF
+  org
+
+                bitl    w,#31           wcz     'make left-side comparable
+                cmp     w,##$7F800001   wc      'NaN?
+        if_z    neg     w                       '+/- %0_xxxxxxxx_mmmmmmmmmmmmmmmmmmmmmmm
+        if_nc   skip    #%111
+
+                bitl    x,#31           wcz     'make right-side comparable
+                cmp     x,##$7F800001   wc      'NaN?
+        if_z    neg     x                       '+/- %0_xxxxxxxx_mmmmmmmmmmmmmmmmmmmmmmm
+
+        if_nc   skip    #%11111                 'if either NaN, return false
+
+                cmps    w,x             wcz     'do comparison
+        if_z    mov     y,#%1000                'equal?
+        if_nz   mov     y,#%0100                'above?
+        if_c    mov     y,#%0010                'below?
+                test    y,paa           wc      'test mask
+
+                muxc    r,_FFFFFFFF             'return boolean
+  end

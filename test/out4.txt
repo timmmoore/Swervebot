@@ -1,0 +1,996 @@
+PID2 output 0 o:3764 -3676 47206 183.0 -15.0 -251.0 15.0 245.0 0.0 217.0
+Swerve3 BL 524 2024 3764 273 273 -251
+Swerve1 BR 1021 2024 0 273 273 276
+Swerve2 BR 1021 -2024 0 273 -239 276
+PID3 setposition -239
+PID3 output 0 o:3539 3794 47224 183.0 -15.0 -236.0 15.0 -253.0 0.0 231.0
+Swerve3 BR 1021 -2024 3539 273 -239 276
+run motor 00800000 2 26000000 2A000000 2E000000 -211 210
+Swerve updated -1 -1 0
+Swerve period 131
+Swerve updating x:4096, y:1696, r:0 off: 4096
+Swerve x limit 2012 4096 2273
+Swerve y limit 216 1696 401
+Swerve r limit 0 0 0
+Swerve updating after limiting x:2273, y:401, r:0
+Swerve calculate 2273 2273 -401 -401
+Swerve FL speed/angle 2308 284(99.84)
+Swerve FR speed/angle 2308 284(99.84)
+Swerve BL speed/angle 2308 284(99.84)
+Swerve BR speed/angle 2308 284(99.84)
+Swerve maxspeeds 2308 2308 2308 2308
+Swerve1 FL 862 2308 0 284 284 446
+Swerve2 FL 862 -2308 0 284 -228 446
+PID0 setposition -228
+PID0 output 0 o:989 1154 47335 174.0 -15.0 -66.0 15.0 -77.0 0.0 -94.0
+Swerve3 FL 862 -2308 989 284 -228 446
+Swerve1 FR 771 2308 0 284 284 -487
+Swerve2 FR 771 -2308 0 284 -228 -487
+PID1 setposition -228
+PID1 output 0 o:-376 -211 47353 169.0 -15.0 25.0 15.0 14.0 0.0 4.0
+Swerve3 FR 771 -2308 -376 284 -228 -487
+encoder10 raw:38338 map:870 out:523
+PID2 currentposition 523
+Swerve1 BL 523 2308 0 284 284 -239
+Swerve2 BL 523 2308 0 284 284 -239
+PID2 setposition 284
+PID2 output 1 o:3584 3764 47375 169.0 -15.0 -239.0 15.0 -251.0 0.0 245.0
+Swerve3 BL 523 2308 3584 284 284 -239
+Swerve1 BR 1021 2308 0 284 284 287
+Swerve2 BR 1021 -2308 0 284 -228 287
+PID3 setposition -228
+PID3 output 0 o:3374 3539 47393 169.0 -15.0 -225.0 15.0 -236.0 0.0 -253.0
+Swerve3 BR 1021 -2308 3374 284 -228 287
+run motor 00800000 2 26000000 2A000000 2E000000 -376 210
+Swerve updated -1 -1 0
+Swerve period 118
+Radio (448): 4096(0) 1701(5) 4093(-3) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Radio (449): 4096(0) 1696(-5) 4096(3) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:4096, y:1696, r:0 off: 4096
+Swerve x limit 2273 4096 2501
+Swerve y limit 401 1696 563
+Swerve r limit 0 0 0
+Swerve updating after limiting x:2501, y:563, r:0
+Swerve calculate 2501 2501 -563 -563
+Swerve FL speed/angle 2564 292(102.65)
+Swerve FR speed/angle 2564 292(102.65)
+Swerve BL speed/angle 2564 292(102.65)
+Swerve BR speed/angle 2564 292(102.65)
+Swerve maxspeeds 2564 2564 2564 2564
+Swerve1 FL 862 2564 0 292 292 454
+Swerve2 FL 862 -2564 0 292 -220 454
+PID0 setposition -220
+PID0 output 0 o:869 989 47505 170.0 -15.0 -58.0 15.0 -66.0 0.0 -77.0
+Swerve3 FL 862 -2564 869 292 -220 454
+encoder9 raw:37682 map:855 out:773
+PID1 currentposition 773
+Swerve1 FR 773 2564 0 292 292 -481
+Swerve2 FR 773 -2564 0 292 -220 -481
+PID1 setposition -220
+PID1 output 0 o:-466 -376 47528 175.0 -15.0 31.0 15.0 25.0 0.0 14.0
+Swerve3 FR 773 -2564 -466 292 -220 -481
+encoder10 raw:38343 map:871 out:524
+PID2 currentposition 524
+Swerve1 BL 524 2564 0 292 292 -232
+Swerve2 BL 524 2564 0 292 292 -232
+PID2 setposition 292
+PID2 output 0 o:3479 3584 47551 176.0 -15.0 -232.0 15.0 -239.0 0.0 -251.0
+Swerve3 BL 524 2564 3479 292 292 -232
+Swerve1 BR 1021 2564 0 292 292 295
+Swerve2 BR 1021 -2564 0 292 -220 295
+PID3 setposition -220
+PID3 output 0 o:3254 3374 47569 176.0 -15.0 -217.0 15.0 -225.0 0.0 -236.0
+Swerve3 BR 1021 -2564 3254 292 -220 295
+run motor 00800000 2 26000000 2A000000 2E000000 -466 210
+Swerve updated -1 -1 0
+Swerve period 124
+Radio (450): 4096(0) 1591(-105) 4096(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Radio (451): 4096(0) 1555(-36) 4096(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:4096, y:1555, r:0 off: 4096
+Swerve x limit 2501 4096 2701
+Swerve y limit 563 1555 687
+Swerve r limit 0 0 0
+Swerve updating after limiting x:2701, y:687, r:0
+Swerve calculate 2701 2701 -687 -687
+Swerve FL speed/angle 2787 296(104.06)
+Swerve FR speed/angle 2787 296(104.06)
+Swerve BL speed/angle 2787 296(104.06)
+Swerve BR speed/angle 2787 296(104.06)
+Swerve maxspeeds 2787 2787 2787 2787
+Swerve1 FL 862 2787 0 296 296 458
+Swerve2 FL 862 -2787 0 296 -216 458
+PID0 setposition -216
+PID0 output 0 o:809 869 47683 178.0 -15.0 -54.0 15.0 -58.0 0.0 -66.0
+Swerve3 FL 862 -2787 809 296 -216 458
+encoder9 raw:38300 map:870 out:788
+PID1 currentposition 788
+Swerve1 FR 788 2787 0 296 296 -492
+Swerve2 FR 788 -2787 0 296 -216 -492
+PID1 setposition -216
+PID1 output 0 o:-301 -466 47706 178.0 -15.0 20.0 15.0 31.0 0.0 25.0
+Swerve3 FR 788 -2787 -301 296 -216 -492
+encoder10 raw:38332 map:870 out:523
+PID2 currentposition 523
+Swerve1 BL 523 2787 0 296 296 -227
+Swerve2 BL 523 2787 0 296 296 -227
+PID2 setposition 296
+PID2 output 1 o:3404 3479 47728 177.0 -15.0 -227.0 15.0 -232.0 0.0 -239.0
+Swerve3 BL 523 2787 3404 296 296 -227
+Swerve1 BR 1021 2787 0 296 296 299
+Swerve2 BR 1021 -2787 0 296 -216 299
+PID3 setposition -216
+PID3 output 0 o:3194 3254 47746 177.0 -15.0 -213.0 15.0 -217.0 0.0 -225.0
+Swerve3 BR 1021 -2787 3194 296 -216 299
+run motor 00800000 2 26000000 2A000000 2E000000 -301 210
+Swerve updated -1 -1 0
+Swerve period 127
+Radio (452): 4096(0) 1534(-21) 4093(-3) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:4096, y:1534, r:0 off: 4093
+Swerve x limit 2701 4096 2876
+Swerve y limit 687 1534 793
+Swerve r limit 0 0 0
+Swerve updating after limiting x:2876, y:793, r:0
+Swerve calculate 2876 2876 -793 -793
+Swerve FL speed/angle 2983 299(105.11)
+Swerve FR speed/angle 2983 299(105.11)
+Swerve BL speed/angle 2983 299(105.11)
+Swerve BR speed/angle 2983 299(105.11)
+Swerve maxspeeds 2983 2983 2983 2983
+Swerve1 FL 862 2983 0 299 299 461
+Swerve2 FL 862 -2983 0 299 -213 461
+PID0 setposition -213
+PID0 output 0 o:764 809 47858 175.0 -15.0 -51.0 15.0 -54.0 0.0 -58.0
+Swerve3 FL 862 -2983 764 299 -213 461
+encoder9 raw:38909 map:883 out:801
+PID1 currentposition 801
+Swerve1 FR 801 2983 0 299 299 -502
+Swerve2 FR 801 -2983 0 299 -213 -502
+PID1 setposition -213
+PID1 output 0 o:-151 -301 47881 175.0 -15.0 10.0 15.0 20.0 0.0 31.0
+Swerve3 FR 801 -2983 -151 299 -213 -502
+encoder10 raw:38341 map:871 out:524
+PID2 currentposition 524
+Swerve1 BL 524 2983 0 299 299 -225
+Swerve2 BL 524 2983 0 299 299 -225
+PID2 setposition 299
+PID2 output 0 o:3374 3404 47904 176.0 -15.0 -225.0 15.0 -227.0 0.0 -232.0
+Swerve3 BL 524 2983 3374 299 299 -225
+Swerve1 BR 1021 2983 0 299 299 302
+Swerve2 BR 1021 -2983 0 299 -213 302
+PID3 setposition -213
+PID3 output 0 o:3149 3194 47922 176.0 -15.0 -210.0 15.0 -213.0 0.0 -217.0
+Swerve3 BR 1021 -2983 3149 299 -213 302
+run motor 00800000 2 26000000 2A000000 2E000000 -151 210
+Swerve updated -1 -1 0
+Swerve period 124
+Radio (453): 2548(-1548) 635(-899) 4096(3) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Radio (454): -2753(-5301) -244(-879) 4096(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:-2753, y:-244, r:0 off: 4096
+Swerve x limit 2876 -2753 2171
+Swerve y limit 793 -244 662
+Swerve r limit 0 0 0
+Swerve updating after limiting x:2171, y:662, r:0
+Swerve calculate 2171 2171 -662 -662
+Swerve FL speed/angle 2270 304(106.87)
+Swerve FR speed/angle 2270 304(106.87)
+Swerve BL speed/angle 2270 304(106.87)
+Swerve BR speed/angle 2270 304(106.87)
+Swerve maxspeeds 2270 2270 2270 2270
+Swerve1 FL 862 2270 0 304 304 466
+Swerve2 FL 862 -2270 0 304 -208 466
+PID0 setposition -208
+PID0 output 0 o:689 764 48034 176.0 -15.0 -46.0 15.0 -51.0 0.0 -54.0
+Swerve3 FL 862 -2270 689 304 -208 466
+encoder9 raw:39312 map:893 out:811
+PID1 currentposition 811
+Swerve1 FR 811 2270 0 304 304 -507
+Swerve2 FR 811 -2270 0 304 -208 -507
+PID1 setposition -208
+PID1 output 0 o:-76 -151 48056 175.0 -15.0 5.0 15.0 10.0 0.0 20.0
+Swerve3 FR 811 -2270 -76 304 -208 -507
+Swerve1 BL 524 2270 0 304 304 -220
+Swerve2 BL 524 2270 0 304 304 -220
+PID2 setposition 304
+PID2 output 0 o:3299 3374 48073 169.0 -15.0 -220.0 15.0 -225.0 0.0 -227.0
+Swerve3 BL 524 2270 3299 304 304 -220
+Swerve1 BR 1021 2270 0 304 304 307
+Swerve2 BR 1021 -2270 0 304 -208 307
+PID3 setposition -208
+PID3 output 0 o:3074 3149 48091 169.0 -15.0 -205.0 15.0 -210.0 0.0 -213.0
+Swerve3 BR 1021 -2270 3074 304 -208 307
+run motor 00800000 2 26000000 2A000000 2E000000 -76 210
+Swerve updated -1 -1 0
+Swerve period 118
+Radio (455): -4096(-1343) -474(-230) 4096(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Radio (456): -4096(0) -1054(-580) 4096(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:-4096, y:-1054, r:0 off: 4096
+Swerve x limit 2171 -4096 1386
+Swerve y limit 662 -1054 446
+Swerve r limit 0 0 0
+Swerve updating after limiting x:1386, y:446, r:0
+Swerve calculate 1386 1386 -446 -446
+Swerve FL speed/angle 1456 306(107.57)
+Swerve FR speed/angle 1456 306(107.57)
+Swerve BL speed/angle 1456 306(107.57)
+Swerve BR speed/angle 1456 306(107.57)
+Swerve maxspeeds 1456 1456 1456 1456
+Swerve1 FL 862 1456 0 306 306 468
+Swerve2 FL 862 -1456 0 306 -206 468
+PID0 setposition -206
+PID0 output 0 o:659 689 48212 178.0 -15.0 -44.0 15.0 -46.0 0.0 -51.0
+Swerve3 FL 862 -1456 659 306 -206 468
+Swerve1 FR 811 1456 0 306 306 -505
+Swerve2 FR 811 -1456 0 306 -206 -505
+PID1 setposition -206
+PID1 output 0 o:-106 -76 48229 173.0 -15.0 7.0 15.0 5.0 0.0 10.0
+Swerve3 FR 811 -1456 -106 306 -206 -505
+Swerve1 BL 524 1456 0 306 306 -218
+Swerve2 BL 524 1456 0 306 306 -218
+PID2 setposition 306
+PID2 output 0 o:3269 3299 48246 173.0 -15.0 -218.0 15.0 -220.0 0.0 -225.0
+Swerve3 BL 524 1456 3269 306 306 -218
+Swerve1 BR 1021 1456 0 306 306 309
+Swerve2 BR 1021 -1456 0 306 -206 309
+PID3 setposition -206
+PID3 output 0 o:3044 3074 48264 173.0 -15.0 -203.0 15.0 -205.0 0.0 -210.0
+Swerve3 BR 1021 -1456 3044 306 -206 309
+run motor 00800000 2 26000000 2A000000 2E000000 -106 210
+Swerve updated -1 -1 0
+Swerve period 121
+Radio (457): -4096(0) -1226(-172) 4096(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:-4096, y:-1226, r:0 off: 4096
+Swerve x limit 1386 -4096 699
+Swerve y limit 446 -1226 236
+Swerve r limit 0 0 0
+Swerve updating after limiting x:699, y:236, r:0
+Swerve calculate 699 699 -236 -236
+Swerve FL speed/angle 738 309(108.63)
+Swerve FR speed/angle 738 309(108.63)
+Swerve BL speed/angle 738 309(108.63)
+Swerve BR speed/angle 738 309(108.63)
+Swerve maxspeeds 738 738 738 738
+Swerve1 FL 862 738 0 309 309 471
+Swerve2 FL 862 -738 0 309 -203 471
+PID0 setposition -203
+PID0 output 0 o:614 659 48375 163.0 -15.0 -41.0 15.0 -44.0 0.0 -46.0
+Swerve3 FL 862 -738 614 309 -203 471
+Swerve1 FR 811 738 0 309 309 -502
+Swerve2 FR 811 -738 0 309 -203 -502
+PID1 setposition -203
+PID1 output 0 o:-151 -106 48392 163.0 -15.0 10.0 15.0 7.0 0.0 5.0
+Swerve3 FR 811 -738 -151 309 -203 -502
+encoder10 raw:38335 map:870 out:523
+PID2 currentposition 523
+Swerve1 BL 523 738 0 309 309 -214
+Swerve2 BL 523 738 0 309 309 -214
+PID2 setposition 309
+PID2 output 0 o:3209 3269 48415 169.0 -15.0 -214.0 15.0 -218.0 0.0 -220.0
+Swerve3 BL 523 738 3209 309 309 -214
+Swerve1 BR 1021 738 0 309 309 312
+Swerve2 BR 1021 -738 0 309 -203 312
+PID3 setposition -203
+PID3 output 0 o:2999 3044 48432 168.0 -15.0 -200.0 15.0 -203.0 0.0 -205.0
+Swerve3 BR 1021 -738 2999 309 -203 312
+run motor 00800000 2 26000000 2A000000 2E000000 -151 210
+Swerve updated -1 -1 0
+Swerve period 116
+Radio (458): -4096(0) -1383(-157) 4096(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Radio (459): -4096(0) -1002(381) 4096(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:-4096, y:-1002, r:0 off: 4096
+Swerve x limit 699 -4096 98
+Swerve y limit 236 -1002 80
+Swerve r limit 0 0 0
+Swerve updating after limiting x:98, y:80, r:0
+Swerve calculate 98 98 -80 -80
+Swerve FL speed/angle 127 367(129.02)
+Swerve FR speed/angle 127 367(129.02)
+Swerve BL speed/angle 127 367(129.02)
+Swerve BR speed/angle 127 367(129.02)
+Swerve maxspeeds 127 127 127 127
+Swerve1 FL 862 127 0 367 367 -495
+Swerve2 FL 862 -127 0 367 -145 -495
+PID0 setposition -145
+PID0 output 0 o:-256 614 48543 168.0 -15.0 17.0 15.0 -41.0 0.0 -44.0
+Swerve3 FL 862 -127 -256 367 -145 -495
+Swerve1 FR 811 127 0 367 367 -444
+Swerve2 FR 811 -127 0 367 -145 -444
+PID1 setposition -145
+PID1 output 0 o:-1021 -151 48560 168.0 -15.0 68.0 15.0 10.0 0.0 7.0
+Swerve3 FR 811 -127 -1021 367 -145 -444
+encoder10 raw:38346 map:871 out:524
+PID2 currentposition 524
+Swerve1 BL 524 127 0 367 367 -157
+Swerve2 BL 524 127 0 367 367 -157
+PID2 setposition 367
+PID2 output 0 o:2354 3209 48582 167.0 -15.0 -157.0 15.0 -214.0 0.0 -218.0
+Swerve3 BL 524 127 2354 367 367 -157
+Swerve1 BR 1021 127 0 367 367 370
+Swerve2 BR 1021 -127 0 367 -145 370
+PID3 setposition -145
+PID3 output 0 o:2129 2999 48600 168.0 -15.0 -142.0 15.0 -200.0 0.0 -203.0
+Swerve3 BR 1021 -127 2129 367 -145 370
+run motor 00800000 2 26000000 2A000000 2E000000 -1021 210
+Swerve updated -1 -1 0
+Swerve period 116
+Radio (460): -4096(0) -913(89) 4096(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Radio (461): -4096(0) -934(-21) 4096(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:-4096, y:-934, r:0 off: 4096
+Swerve x limit 98 -4096 -428
+Swerve y limit 80 -934 -48
+Swerve r limit 0 0 0
+Swerve updating after limiting x:-428, y:-48, r:0
+Swerve calculate -428 -428 48 48
+Swerve FL speed/angle 431 786(276.32)
+Swerve FR speed/angle 431 786(276.32)
+Swerve BL speed/angle 431 786(276.32)
+Swerve BR speed/angle 431 786(276.32)
+Swerve maxspeeds 431 431 431 431
+Swerve1 FL 862 431 0 786 786 -76
+Swerve2 FL 862 431 0 786 786 -76
+PID0 setposition 786
+PID0 output 0 o:1139 -256 48720 177.0 -15.0 -76.0 15.0 17.0 0.0 -41.0
+Swerve3 FL 862 431 1139 786 786 -76
+encoder9 raw:628 map:12 out:954
+PID1 currentposition 954
+Swerve1 FR 954 431 0 786 786 -168
+Swerve2 FR 954 431 0 786 786 -168
+PID1 setposition 786
+PID1 output 0 o:2519 -1021 48742 182.0 -15.0 -168.0 15.0 68.0 0.0 10.0
+Swerve3 FR 954 431 2519 786 786 -168
+Swerve1 BL 524 431 0 786 786 262
+Swerve2 BL 524 -431 0 786 274 262
+PID2 setposition 274
+PID2 output 0 o:3749 2354 48759 177.0 -15.0 -250.0 15.0 -157.0 0.0 -214.0
+Swerve3 BL 524 -431 3749 786 274 262
+Swerve1 BR 1021 431 0 786 786 -235
+Swerve2 BR 1021 431 0 786 786 -235
+PID3 setposition 786
+PID3 output 0 o:3524 2129 48777 177.0 -15.0 -235.0 15.0 -142.0 0.0 -200.0
+Swerve3 BR 1021 431 3524 786 786 -235
+run motor 00800000 2 26000000 2E000000 2A000000 2000 211
+Swerve updated -1 -1 0
+Swerve period 125
+Radio (462): -4096(0) -918(16) 4096(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:-4096, y:-918, r:0 off: 4096
+Swerve x limit -428 -4096 -888
+Swerve y limit -48 -918 -158
+Swerve r limit 0 0 0
+Swerve updating after limiting x:-888, y:-158, r:0
+Swerve calculate -888 -888 158 158
+Swerve FL speed/angle 902 796(279.84)
+Swerve FR speed/angle 902 796(279.84)
+Swerve BL speed/angle 902 796(279.84)
+Swerve BR speed/angle 902 796(279.84)
+Swerve maxspeeds 902 902 902 902
+Swerve1 FL 862 902 0 796 796 -66
+Swerve2 FL 862 902 0 796 796 -66
+PID0 setposition 796
+PID0 output 0 o:989 1139 48888 168.0 -15.0 -66.0 15.0 -76.0 0.0 17.0
+Swerve3 FL 862 902 989 796 796 -66
+encoder9 raw:39046 map:887 out:805
+PID1 currentposition 805
+Swerve1 FR 805 902 0 796 796 -9
+Swerve2 FR 805 902 0 796 796 -9
+PID1 setposition 796
+PID1 output 0 o:134 2519 48909 167.0 -15.0 -9.0 15.0 -168.0 0.0 68.0
+Swerve3 FR 805 902 134 796 796 -9
+encoder10 raw:38336 map:870 out:523
+PID2 currentposition 523
+Swerve1 BL 523 902 0 796 796 273
+Swerve2 BL 523 -902 0 796 284 273
+PID2 setposition 284
+PID2 output 0 o:3584 3749 48931 172.0 -15.0 -239.0 15.0 -250.0 0.0 -157.0
+Swerve3 BL 523 -902 3584 796 284 273
+Swerve1 BR 1021 902 0 796 796 -225
+Swerve2 BR 1021 902 0 796 796 -225
+PID3 setposition 796
+PID3 output 0 o:3374 3524 48949 172.0 -15.0 -225.0 15.0 -235.0 0.0 -142.0
+Swerve3 BR 1021 902 3374 796 796 -225
+run motor 00800000 2 26000000 2E000000 2A000000 134 211
+Swerve updated -1 -1 0
+Swerve period 121
+Radio (463): -4096(0) -834(84) 4096(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Radio (464): -4096(0) -860(-26) 4096(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:-4096, y:-860, r:0 off: 4096
+Swerve x limit -888 -4096 -1290
+Swerve y limit -158 -860 -247
+Swerve r limit 0 0 0
+Swerve updating after limiting x:-1290, y:-247, r:0
+Swerve calculate -1290 -1290 247 247
+Swerve FL speed/angle 1313 798(280.54)
+Swerve FR speed/angle 1313 798(280.54)
+Swerve BL speed/angle 1313 798(280.54)
+Swerve BR speed/angle 1313 798(280.54)
+Swerve maxspeeds 1313 1313 1313 1313
+Swerve1 FL 862 1313 0 798 798 -64
+Swerve2 FL 862 1313 0 798 798 -64
+PID0 setposition 798
+PID0 output 0 o:959 989 49061 173.0 -15.0 -64.0 15.0 -66.0 0.0 -76.0
+Swerve3 FL 862 1313 959 798 798 -64
+encoder9 raw:36070 map:819 out:737
+PID1 currentposition 737
+Swerve1 FR 737 1313 0 798 798 61
+Swerve2 FR 737 1313 0 798 798 61
+PID1 setposition 798
+PID1 output 0 o:-916 134 49083 174.0 -15.0 61.0 15.0 -9.0 0.0 -168.0
+Swerve3 FR 737 1313 -916 798 798 61
+encoder10 raw:38347 map:871 out:524
+PID2 currentposition 524
+Swerve1 BL 524 1313 0 798 798 274
+Swerve2 BL 524 -1313 0 798 286 274
+PID2 setposition 286
+PID2 output 0 o:3569 3584 49105 174.0 -15.0 -238.0 15.0 -239.0 0.0 -250.0
+Swerve3 BL 524 -1313 3569 798 286 274
+Swerve1 BR 1021 1313 0 798 798 -223
+Swerve2 BR 1021 1313 0 798 798 -223
+PID3 setposition 798
+PID3 output 0 o:3344 3374 49123 174.0 -15.0 -223.0 15.0 -225.0 0.0 -235.0
+Swerve3 BR 1021 1313 3344 798 798 -223
+run motor 00800000 2 26000000 2A000000 2E000000 -916 210
+Swerve updated -1 -1 0
+Swerve period 123
+Radio (465): -4096(0) -887(-27) 4093(-3) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Radio (466): -4096(0) -902(-15) 4093(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:-4096, y:-902, r:0 off: 4093
+Swerve x limit -1290 -4096 -1642
+Swerve y limit -247 -902 -330
+Swerve r limit 0 0 0
+Swerve updating after limiting x:-1642, y:-330, r:0
+Swerve calculate -1642 -1642 330 330
+Swerve FL speed/angle 1675 800(281.25)
+Swerve FR speed/angle 1675 800(281.25)
+Swerve BL speed/angle 1675 800(281.25)
+Swerve BR speed/angle 1675 800(281.25)
+Swerve maxspeeds 1675 1675 1675 1675
+Swerve1 FL 862 1675 0 800 800 -62
+Swerve2 FL 862 1675 0 800 800 -62
+PID0 setposition 800
+PID0 output 0 o:929 959 49237 176.0 -15.0 -62.0 15.0 -64.0 0.0 -66.0
+Swerve3 FL 862 1675 929 800 800 -62
+encoder9 raw:37276 map:846 out:764
+PID1 currentposition 764
+Swerve1 FR 764 1675 0 800 800 36
+Swerve2 FR 764 1675 0 800 800 36
+PID1 setposition 800
+PID1 output 0 o:-541 -916 49259 176.0 -15.0 36.0 15.0 61.0 0.0 -9.0
+Swerve3 FR 764 1675 -541 800 800 36
+Swerve1 BL 524 1675 0 800 800 276
+Swerve2 BL 524 -1675 0 800 288 276
+PID2 setposition 288
+PID2 output 0 o:3539 3569 49276 171.0 -15.0 -236.0 15.0 -238.0 0.0 -239.0
+Swerve3 BL 524 -1675 3539 800 288 276
+Swerve1 BR 1021 1675 0 800 800 -221
+Swerve2 BR 1021 1675 0 800 800 -221
+PID3 setposition 800
+PID3 output 0 o:3314 3344 49294 171.0 -15.0 -221.0 15.0 -223.0 0.0 -225.0
+Swerve3 BR 1021 1675 3314 800 800 -221
+run motor 00800000 2 26000000 2A000000 2E000000 -541 210
+Swerve updated -1 -1 0
+Swerve period 120
+Radio (467): -4096(0) -908(-6) 4096(3) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:-4096, y:-908, r:0 off: 4096
+Swerve x limit -1642 -4096 -1950
+Swerve y limit -330 -908 -404
+Swerve r limit 0 0 0
+Swerve updating after limiting x:-1950, y:-404, r:0
+Swerve calculate -1950 -1950 404 404
+Swerve FL speed/angle 1991 801(281.60)
+Swerve FR speed/angle 1991 801(281.60)
+Swerve BL speed/angle 1991 801(281.60)
+Swerve BR speed/angle 1991 801(281.60)
+Swerve maxspeeds 1991 1991 1991 1991
+Swerve1 FL 862 1991 0 801 801 -61
+Swerve2 FL 862 1991 0 801 801 -61
+PID0 setposition 801
+PID0 output 0 o:914 929 49406 169.0 -15.0 -61.0 15.0 -62.0 0.0 -64.0
+Swerve3 FL 862 1991 914 801 801 -61
+encoder9 raw:39015 map:886 out:804
+PID1 currentposition 804
+Swerve1 FR 804 1991 0 801 801 -3
+Swerve2 FR 804 1991 0 801 801 -3
+PID1 setposition 801
+PID1 output 0 o:44 -541 49428 169.0 -15.0 -3.0 15.0 36.0 0.0 61.0
+Swerve3 FR 804 1991 44 801 801 -3
+Swerve1 BL 524 1991 0 801 801 277
+Swerve2 BL 524 -1991 0 801 289 277
+PID2 setposition 289
+PID2 output 0 o:3524 3539 49444 168.0 -15.0 -235.0 15.0 -236.0 0.0 -238.0
+Swerve3 BL 524 -1991 3524 801 289 277
+Swerve1 BR 1021 1991 0 801 801 -220
+Swerve2 BR 1021 1991 0 801 801 -220
+PID3 setposition 801
+PID3 output 0 o:3299 3314 49462 168.0 -15.0 -220.0 15.0 -221.0 0.0 -223.0
+Swerve3 BR 1021 1991 3299 801 801 -220
+run motor 00800000 2 26000000 2E000000 2A000000 44 211
+Swerve updated -1 -1 0
+Swerve period 117
+Radio (468): -4096(0) -918(-10) 4093(-3) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Radio (469): -4096(0) -908(10) 4093(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:-4096, y:-908, r:0 off: 4093
+Swerve x limit -1950 -4096 -2220
+Swerve y limit -404 -908 -468
+Swerve r limit 0 0 0
+Swerve updating after limiting x:-2220, y:-468, r:0
+Swerve calculate -2220 -2220 468 468
+Swerve FL speed/angle 2269 801(281.60)
+Swerve FR speed/angle 2269 801(281.60)
+Swerve BL speed/angle 2269 801(281.60)
+Swerve BR speed/angle 2269 801(281.60)
+Swerve maxspeeds 2269 2269 2269 2269
+Swerve1 FL 862 2269 0 801 801 -61
+Swerve2 FL 862 2269 0 801 801 -61
+PID0 output 1 o:914 914 49572 166.0 -15.0 -61.0 15.0 -61.0 0.0 -62.0
+Swerve3 FL 862 2269 914 801 801 -61
+encoder9 raw:39489 map:897 out:815
+PID1 currentposition 815
+Swerve1 FR 815 2269 0 801 801 -14
+Swerve2 FR 815 2269 0 801 801 -14
+PID1 output 0 o:209 44 49593 165.0 -15.0 -14.0 15.0 -3.0 0.0 36.0
+Swerve3 FR 815 2269 209 801 801 -14
+Swerve1 BL 524 2269 0 801 801 277
+Swerve2 BL 524 -2269 0 801 289 277
+PID2 output 0 o:3524 3524 49608 164.0 -15.0 -235.0 15.0 -235.0 0.0 -236.0
+Swerve3 BL 524 -2269 3524 801 289 277
+Swerve1 BR 1021 2269 0 801 801 -220
+Swerve2 BR 1021 2269 0 801 801 -220
+PID3 output 0 o:3299 3299 49624 162.0 -15.0 -220.0 15.0 -220.0 0.0 -221.0
+Swerve3 BR 1021 2269 3299 801 801 -220
+run motor 00800000 2 26000000 2E000000 2A000000 209 211
+Swerve updated -1 -1 0
+Swerve period 110
+Radio (470): -4096(0) -881(27) 4093(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:-4096, y:-881, r:0 off: 4093
+Swerve x limit -2220 -4096 -2456
+Swerve y limit -468 -881 -521
+Swerve r limit 0 0 0
+Swerve updating after limiting x:-2456, y:-521, r:0
+Swerve calculate -2456 -2456 521 521
+Swerve FL speed/angle 2511 802(281.95)
+Swerve FR speed/angle 2511 802(281.95)
+Swerve BL speed/angle 2511 802(281.95)
+Swerve BR speed/angle 2511 802(281.95)
+Swerve maxspeeds 2511 2511 2511 2511
+Swerve1 FL 862 2511 0 802 802 -60
+Swerve2 FL 862 2511 0 802 802 -60
+PID0 setposition 802
+PID0 output 0 o:899 914 49736 164.0 -15.0 -60.0 15.0 -61.0 0.0 -61.0
+Swerve3 FL 862 2511 899 802 802 -60
+encoder9 raw:39379 map:894 out:812
+PID1 currentposition 812
+Swerve1 FR 812 2511 0 802 802 -10
+Swerve2 FR 812 2511 0 802 802 -10
+PID1 setposition 802
+PID1 output 0 o:149 209 49758 165.0 -15.0 -10.0 15.0 -14.0 0.0 -3.0
+Swerve3 FR 812 2511 149 802 802 -10
+encoder10 raw:38332 map:870 out:523
+PID2 currentposition 523
+Swerve1 BL 523 2511 0 802 802 279
+Swerve2 BL 523 -2511 0 802 290 279
+PID2 setposition 290
+PID2 output 0 o:3494 3524 49780 172.0 -15.0 -233.0 15.0 -235.0 0.0 -235.0
+Swerve3 BL 523 -2511 3494 802 290 279
+Swerve1 BR 1021 2511 0 802 802 -219
+Swerve2 BR 1021 2511 0 802 802 -219
+PID3 setposition 802
+PID3 output 0 o:3284 3299 49798 174.0 -15.0 -219.0 15.0 -220.0 0.0 -220.0
+Swerve3 BR 1021 2511 3284 802 802 -219
+run motor 00800000 2 26000000 2E000000 2A000000 149 211
+Swerve updated -1 -1 0
+Swerve period 123
+Radio (471): -4096(0) -735(146) 4096(3) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Radio (472): -4096(0) -45(690) 4093(-3) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:-4096, y:-45, r:0 off: 4093
+Swerve x limit -2456 -4096 -2662
+Swerve y limit -521 -45 -461
+Swerve r limit 0 0 0
+Swerve updating after limiting x:-2662, y:-461, r:0
+Swerve calculate -2662 -2662 461 461
+Swerve FL speed/angle 2702 795(279.49)
+Swerve FR speed/angle 2702 795(279.49)
+Swerve BL speed/angle 2702 795(279.49)
+Swerve BR speed/angle 2702 795(279.49)
+Swerve maxspeeds 2702 2702 2702 2702
+Swerve1 FL 862 2702 0 795 795 -67
+Swerve2 FL 862 2702 0 795 795 -67
+PID0 setposition 795
+PID0 output 0 o:1004 899 49910 174.0 -15.0 -67.0 15.0 -60.0 0.0 -61.0
+Swerve3 FL 862 2702 1004 795 795 -67
+encoder9 raw:39347 map:893 out:811
+PID1 currentposition 811
+Swerve1 FR 811 2702 0 795 795 -16
+Swerve2 FR 811 2702 0 795 795 -16
+PID1 setposition 795
+PID1 output 0 o:239 149 49932 174.0 -15.0 -16.0 15.0 -10.0 0.0 -14.0
+Swerve3 FR 811 2702 239 795 795 -16
+Swerve1 BL 523 2702 0 795 795 272
+Swerve2 BL 523 -2702 0 795 283 272
+PID2 setposition 283
+PID2 output 0 o:3599 3494 49949 169.0 -15.0 -240.0 15.0 -233.0 0.0 -235.0
+Swerve3 BL 523 -2702 3599 795 283 272
+Swerve1 BR 1021 2702 0 795 795 -226
+Swerve2 BR 1021 2702 0 795 795 -226
+PID3 setposition 795
+PID3 output 0 o:3389 3284 49967 169.0 -15.0 -226.0 15.0 -219.0 0.0 -220.0
+Swerve3 BR 1021 2702 3389 795 795 -226
+run motor 00800000 2 26000000 2E000000 2A000000 239 211
+Swerve updated -1 -1 0
+Swerve period 117
+Radio (473): 598(4694) -14(31) 4096(3) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Radio (474): 7(-591) 2(16) 4093(-3) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:7, y:2, r:0 off: 4093
+Swerve x limit -2662 7 -2328
+Swerve y limit -461 2 -403
+Swerve r limit 0 0 0
+Swerve updating after limiting x:-2328, y:-403, r:0
+Swerve calculate -2328 -2328 403 403
+Swerve FL speed/angle 2363 795(279.49)
+Swerve FR speed/angle 2363 795(279.49)
+Swerve BL speed/angle 2363 795(279.49)
+Swerve BR speed/angle 2363 795(279.49)
+Swerve maxspeeds 2363 2363 2363 2363
+Swerve1 FL 862 2363 0 795 795 -67
+Swerve2 FL 862 2363 0 795 795 -67
+PID0 output 0 o:1004 1004 50085 175.0 -15.0 -67.0 15.0 -67.0 0.0 -60.0
+Swerve3 FL 862 2363 1004 795 795 -67
+Swerve1 FR 811 2363 0 795 795 -16
+Swerve2 FR 811 2363 0 795 795 -16
+PID1 output 0 o:239 239 50101 169.0 -15.0 -16.0 15.0 -16.0 0.0 -10.0
+Swerve3 FR 811 2363 239 795 795 -16
+encoder10 raw:38344 map:871 out:524
+PID2 currentposition 524
+Swerve1 BL 524 2363 0 795 795 271
+Swerve2 BL 524 -2363 0 795 283 271
+PID2 output 0 o:3614 3599 50121 172.0 -15.0 -241.0 15.0 -240.0 0.0 -233.0
+Swerve3 BL 524 -2363 3614 795 283 271
+encoder11 raw:10191 map:230 out:1022
+PID3 currentposition 1022
+Swerve1 BR 1022 2363 0 795 795 -227
+Swerve2 BR 1022 2363 0 795 795 -227
+PID3 output 0 o:3404 3389 50143 176.0 -15.0 -227.0 15.0 -226.0 0.0 -219.0
+Swerve3 BR 1022 2363 3404 795 795 -227
+run motor 00800000 2 26000000 2E000000 2A000000 239 211
+Swerve updated -1 -1 0
+Swerve period 123
+Radio (475): 2(-5) 2(0) 4096(3) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:2, r:0 off: 4096
+Swerve x limit -2328 2 -2036
+Swerve y limit -403 2 -352
+Swerve r limit 0 0 0
+Swerve updating after limiting x:-2036, y:-352, r:0
+Swerve calculate -2036 -2036 352 352
+Swerve FL speed/angle 2066 795(279.49)
+Swerve FR speed/angle 2066 795(279.49)
+Swerve BL speed/angle 2066 795(279.49)
+Swerve BR speed/angle 2066 795(279.49)
+Swerve maxspeeds 2066 2066 2066 2066
+Swerve1 FL 862 2066 0 795 795 -67
+Swerve2 FL 862 2066 0 795 795 -67
+PID0 output 0 o:1004 1004 50252 167.0 -15.0 -67.0 15.0 -67.0 0.0 -67.0
+Swerve3 FL 862 2066 1004 795 795 -67
+Swerve1 FR 811 2066 0 795 795 -16
+Swerve2 FR 811 2066 0 795 795 -16
+PID1 output 0 o:239 239 50267 166.0 -15.0 -16.0 15.0 -16.0 0.0 -16.0
+Swerve3 FR 811 2066 239 795 795 -16
+encoder10 raw:38340 map:870 out:523
+PID2 currentposition 523
+Swerve1 BL 523 2066 0 795 795 272
+Swerve2 BL 523 -2066 0 795 283 272
+PID2 output 0 o:3599 3614 50287 166.0 -15.0 -240.0 15.0 -241.0 0.0 -240.0
+Swerve3 BL 523 -2066 3599 795 283 272
+encoder11 raw:10187 map:229 out:1021
+PID3 currentposition 1021
+Swerve1 BR 1021 2066 0 795 795 -226
+Swerve2 BR 1021 2066 0 795 795 -226
+PID3 output 0 o:3389 3404 50309 166.0 -15.0 -226.0 15.0 -227.0 0.0 -226.0
+Swerve3 BR 1021 2066 3389 795 795 -226
+run motor 00800000 2 26000000 2E000000 2A000000 239 211
+Swerve updated -1 -1 0
+Swerve period 115
+Radio (476): 2(0) 2(0) 4093(-3) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Radio (477): 2(0) 2(0) 4096(3) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:2, r:0 off: 4096
+Swerve x limit -2036 2 -1781
+Swerve y limit -352 2 -307
+Swerve r limit 0 0 0
+Swerve updating after limiting x:-1781, y:-307, r:0
+Swerve calculate -1781 -1781 307 307
+Swerve FL speed/angle 1807 795(279.49)
+Swerve FR speed/angle 1807 795(279.49)
+Swerve BL speed/angle 1807 795(279.49)
+Swerve BR speed/angle 1807 795(279.49)
+Swerve maxspeeds 1807 1807 1807 1807
+Swerve1 FL 862 1807 0 795 795 -67
+Swerve2 FL 862 1807 0 795 795 -67
+PID0 output 0 o:1004 1004 50418 166.0 -15.0 -67.0 15.0 -67.0 0.0 -67.0
+Swerve3 FL 862 1807 1004 795 795 -67
+Swerve1 FR 811 1807 0 795 795 -16
+Swerve2 FR 811 1807 0 795 795 -16
+PID1 output 0 o:239 239 50433 166.0 -15.0 -16.0 15.0 -16.0 0.0 -16.0
+Swerve3 FR 811 1807 239 795 795 -16
+Swerve1 BL 523 1807 0 795 795 272
+Swerve2 BL 523 -1807 0 795 283 272
+PID2 output 0 o:3599 3599 50449 162.0 -15.0 -240.0 15.0 -240.0 0.0 -241.0
+Swerve3 BL 523 -1807 3599 795 283 272
+Swerve1 BR 1021 1807 0 795 795 -226
+Swerve2 BR 1021 1807 0 795 795 -226
+PID3 output 0 o:3389 3389 50465 156.0 -15.0 -226.0 15.0 -226.0 0.0 -227.0
+Swerve3 BR 1021 1807 3389 795 795 -226
+run motor 00800000 2 26000000 2E000000 2A000000 239 211
+Swerve updated -1 -1 0
+Swerve period 105
+Radio (478): 2(0) 2(0) 4093(-3) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:2, r:0 off: 4093
+Swerve x limit -1781 2 -1558
+Swerve y limit -307 2 -268
+Swerve r limit 0 0 0
+Swerve updating after limiting x:-1558, y:-268, r:0
+Swerve calculate -1558 -1558 268 268
+Swerve FL speed/angle 1581 795(279.49)
+Swerve FR speed/angle 1581 795(279.49)
+Swerve BL speed/angle 1581 795(279.49)
+Swerve BR speed/angle 1581 795(279.49)
+Swerve maxspeeds 1581 1581 1581 1581
+Swerve1 FL 862 1581 0 795 795 -67
+Swerve2 FL 862 1581 0 795 795 -67
+PID0 output 0 o:1004 1004 50574 156.0 -15.0 -67.0 15.0 -67.0 0.0 -67.0
+Swerve3 FL 862 1581 1004 795 795 -67
+Swerve1 FR 811 1581 0 795 795 -16
+Swerve2 FR 811 1581 0 795 795 -16
+PID1 output 0 o:239 239 50589 156.0 -15.0 -16.0 15.0 -16.0 0.0 -16.0
+Swerve3 FR 811 1581 239 795 795 -16
+Swerve1 BL 523 1581 0 795 795 272
+Swerve2 BL 523 -1581 0 795 283 272
+PID2 output 0 o:3599 3599 50604 155.0 -15.0 -240.0 15.0 -240.0 0.0 -240.0
+Swerve3 BL 523 -1581 3599 795 283 272
+Swerve1 BR 1021 1581 0 795 795 -226
+Swerve2 BR 1021 1581 0 795 795 -226
+PID3 output 0 o:3389 3389 50620 155.0 -15.0 -226.0 15.0 -226.0 0.0 -226.0
+Swerve3 BR 1021 1581 3389 795 795 -226
+run motor 00800000 2 26000000 2E000000 2A000000 239 211
+Swerve updated -1 -1 0
+Swerve period 104
+Radio (479): 2(0) 2(0) 3625(-468) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Radio (480): 2(0) 2(0) 1325(-2300) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:2, r:0 off: 1325
+Swerve x limit -1558 2 -1363
+Swerve y limit -268 2 -234
+Swerve r limit 0 0 0
+Swerve updating after limiting x:-1363, y:-234, r:0
+Swerve calculate -1363 -1363 234 234
+Swerve FL speed/angle 1383 795(279.49)
+Swerve FR speed/angle 1383 795(279.49)
+Swerve BL speed/angle 1383 795(279.49)
+Swerve BR speed/angle 1383 795(279.49)
+Swerve maxspeeds 1383 1383 1383 1383
+Swerve1 FL 862 1383 0 795 795 -67
+Swerve2 FL 862 1383 0 795 795 -67
+PID0 output 0 o:1004 1004 50729 155.0 -15.0 -67.0 15.0 -67.0 0.0 -67.0
+Swerve3 FL 862 1383 1004 795 795 -67
+Swerve1 FR 811 1383 0 795 795 -16
+Swerve2 FR 811 1383 0 795 795 -16
+PID1 output 0 o:239 239 50745 156.0 -15.0 -16.0 15.0 -16.0 0.0 -16.0
+Swerve3 FR 811 1383 239 795 795 -16
+encoder10 raw:38346 map:871 out:524
+PID2 currentposition 524
+Swerve1 BL 524 1383 0 795 795 271
+Swerve2 BL 524 -1383 0 795 283 271
+PID2 output 0 o:3614 3599 50765 161.0 -15.0 -241.0 15.0 -240.0 0.0 -240.0
+Swerve3 BL 524 -1383 3614 795 283 271
+Swerve1 BR 1021 1383 0 795 795 -226
+Swerve2 BR 1021 1383 0 795 795 -226
+PID3 output 0 o:3389 3389 50781 161.0 -15.0 -226.0 15.0 -226.0 0.0 -226.0
+Swerve3 BR 1021 1383 3389 795 795 -226
+run motor 00800000 2 26000000 2E000000 2A000000 239 211
+Swerve updated -1 -1 0
+Swerve period 109
+Radio (481): 2(0) 7(5) 0(-1325) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:7, r:0 off: 0
+run motor 00800000 2 26000000 2E000000 2A000000 0 211
+Swerve updated 0 0 -1
+Swerve period 10
+Radio (482): 2(0) 7(0) 0(0) -552(-554) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (483): 2(0) 2(-5) 0(0) -19(533) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (484): 2(0) 2(0) 0(0) 2(21) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (485): 2(0) 7(5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (487): 2(0) 2(-5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (491): 2(0) 7(5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (492): 2(0) 2(-5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 10
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 6
+Radio (495): 2(0) 7(5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 6
+Radio (496): 2(0) 2(-5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 6
+Radio (497): 2(0) 7(5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (498): 2(0) 2(-5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 15
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (502): 2(0) 7(5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (505): 2(0) 2(-5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (508): 2(0) 7(5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (509): 2(0) 2(-5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (510): 2(0) 7(5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 6
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (512): 2(0) 2(-5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (513): 2(0) 7(5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (516): 2(0) 2(-5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (519): 2(0) 7(5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 12
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (520): 2(0) 2(-5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (521): 2(0) 7(5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (522): 2(0) 2(-5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (523): 2(0) 7(5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 13
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (524): 2(0) 2(-5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (525): 2(0) 7(5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (530): 2(0) 2(-5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (531): 2(0) 7(5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (533): 2(0) 2(-5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 6
+Swerve updating x:2, y:2, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Radio (541): 2(0) 7(5) 0(0) 2(0) -4(0) -5(0) -5(0) 0(0) 959(0) 1000(0) 483(0) 479(0) 479(0) 0(0) 479(0) 479(0) 0(0) 0(0)
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Swerve updating x:2, y:7, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Frame Lost 543 57008 6222
+Radio (543): 0(-2) 0(-7) 0(0) 0(-2) 20(24) 0(5) 0(5) 2000(2000) 2000(1041) 2000(1000) 2000(1517) 0(-479) 0(-479) 0(0) 0(-479) 0(
+-479) 0(0) 0(0)
+Swerve updating x:0, y:0, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Swerve updating x:0, y:0, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Failsafe 551 57816 6312
+Radio (551): 0(0) 0(0) 0(0) 0(0) 20(0) 0(0) 0(0) 2000(0) 2000(0) 2000(0) 2000(0) 0(0) 0(0) 0(0) 0(0) 0(0) 0(0) 0(0)
+Swerve updating x:0, y:0, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 5
+Swerve updating x:0, y:0, r:0 off: 0
+Swerve updated 0 0 -1
+Swerve period 6

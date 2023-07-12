@@ -10,9 +10,9 @@ OBJ
 
 VAR
   long sch, maxwrap, maxoutput
-  long sKp, sKi, sKd                                    ' float
+  long sKp, sKi, sKd                                    ' float, defaults to 0.0
   long currentpos, setpos
-  long error[3]                                         ' float
+  long error1, error2                                   ' float, defaults to 0.0
   long lasttime, lastout
   word debug3
 
@@ -20,9 +20,9 @@ PUB null()
   ' This is not a top-level object
 
 PUB init(ch, wrap, out)
-  lasttime := getms()
   longmove(@sch, @ch, 3)
   lastout := currentpos := -1
+  lasttime := getms()
 
 PUB setconstants(ch, Kp, Ki, Kd)
   ' out us maximum output value
@@ -30,14 +30,17 @@ PUB setconstants(ch, Kp, Ki, Kd)
   if utilities.longcomp(@sKp, @Kp, 3, true) && debugoutput()
     ' Kp, Ki, Kd are floats
     serial.fstr4(string("PID%d constants %.2g %.2g %.2g\r"), ch, sKp, sKi, sKd)
+  'serial.fstr4(string("PID%d constants %.2g %.2g %.2g\r"), ch, sKp, sKi, sKd)
 
 PUB currentposition(value)
   if (value <> currentpos\value) && debugoutput()
-    serial.fstr3(string("PID%d currentposition %d %d\r"), sch, value, currentpos)
+    serial.fstr2(string("PID%d currentposition %d\r"), sch, currentpos)
+  'serial.fstr2(string("PID%d currentposition %d\r"), sch, currentpos)
 
 PUB setposition(value)
   if (value <> setpos\value) && debugoutput()
-    serial.fstr3(string("PID%d setposition %d\r"), sch, value, setpos)
+    serial.fstr2(string("PID%d setposition %d\r"), sch, setpos)
+  'serial.fstr2(string("PID%d setposition %d\r"), sch, setpos)
 
 {
 https://en.wikipedia.org/wiki/PID_controller
@@ -45,10 +48,10 @@ https://en.wikipedia.org/wiki/PID_controller
   A0 := Kp + Ki*dt + Kd/dt
   A1 := -Kp - 2*Kd/dt
   A2 := Kd/dt
-  error[2] := 0 // e(t-2)
-  error[1] := 0 // e(t-1)
-  error[0] := 0 // e(t)
-  output := u0  // Usually the current value of the actuator
+  error[2] := 0 ' e(t-2)
+  error[1] := 0 ' e(t-1)
+  error[0] := 0 ' e(t)
+  output := u0  ' Usually the current value of the actuator
 
 loop:
   error[2] := error[1]
@@ -58,24 +61,24 @@ loop:
   wait(dt)
   goto loop
 }
-PUB output() : out | dt, time, temp, A[3]
+PUB output() : out, delta | dt, time, A0, A1, A2, error0
 '' output is +- maxoutput
-  ' calculate dt each time
-  dt := float((time := getms()) - lasttime)
-  lasttime := time
-  ' find shortest angle allowing wrapping
-  error[2], error[1], error[0] := error[1], error[0], float(utilities.wrapangles(setpos, currentpos, maxwrap))
+  ' calculate dt and A? constants each time, A2 default to 0.0
+  dt := float((time := getms()) - lasttime\time)
   ifnot dt ==. 0.0
-    temp := sKd/.dt
-  A[0] := sKp +. sKi*.dt +. temp
-  A[1] := -.sKp -. 2.0*.temp
-  A[2] := temp
-  out := utilities.clamp(lastout + round(A[0]*.error[0] +. A[1]*.error[1] +. A[2]*.error[2]), maxoutput)
-  time := getms() - lasttime
-  if (out <> lastout) && debugoutput()
-    serial.fstr5(string("PID%d output %d %d %.2g %.2g"), sch, out, lastout, dt, temp)
-    serial.fstr7(string(" %.2g %.2g %.2g %.2g %.2g %.2g %d\r"), A[0], error[0], A[1], error[1], A[2], error[2], time)
-  lastout := out
+    A2 := sKd/.dt
+  A0 := sKp +. sKi*.dt +. A2
+  A1 := -2.0*.A2 -. sKp
+  ' error0 is shortest angle allowing for wrapping
+  error0 := float(delta := utilities.wrapangles(currentpos, setpos, maxwrap))
+  out := utilities.clamp(lastout + round(A0*.error0 +. A1*.error1 +. A2*.error2), maxoutput)
+  ' how long the above calculations took
+  time := getms() - time
+  if {(out <> lastout) &&} debugoutput()
+    serial.fstr5(string("PID%d output %d o:%d %d %d"), sch, time, out, lastout, lasttime)
+    serial.fstr7(string(" %.2g %.2g %.2g %.2g %.2g %.2g %.2g\r"), dt, A0, error0, A1, error1, A2, error2)
+  ' update inputs for next time, lasttime already been updated
+  error2, error1, lastout := error1, error0, out
 
 PRI debugoutput() : retv
   retv := debug3 > DEBUG_OUTPUT
