@@ -13,19 +13,20 @@ p2 edge - p2 edge connector
 4x 2x5 0.05" SHF-105-01-L-D-SM	- encoders
 
 
-take p2 edge board
-remove prototype holes
 
-extend back of board
-	3x 4pin qwiic (usfs, gps, motor drivers)
-		Gnd, 3.3V, 20, 21
-		Gnd, 3.3V, 24, 25
-		Gnd, 3.3V, 22, 23
-	1x 6pin qwiic (pmw3901)
-		gnd, 3.3V, 16, 17, 18, 19
-extend front of board
-	1x 5pin qwiic
-		Gnd, 5V, 5 (sport), 6 (sbus out), 7 (sbus in)
-	4x 2x5pin
+Board 1
+	2x 2x6 socket to edge board
+		0-7, 8-15
+	4x 2x5 for encoder
 		Gnd (10), 5V (2), 8 (9), 9 (9), 10 (9), 11 (9)
-
+	1x 5pin qwiic to radio
+		Gnd, 5V, 5 (sport), 6 (sbus out), 7 (sbus in)
+Board 2
+	2x 2x6 socket to edge board
+		16-23, 24-31
+	3x 4pin qwiic usfs, gps, motor driver
+		Gnd, 3.3V, 20, 21 usfs
+		Gnd, 3.3V, 24, 25 gps
+		Gnd, 3.3V, 22, 23 motor, solder jumper to 5V
+	1x 6pin qwiic pwm3901
+		gnd, 3.3V, 16 (SDI), 17 (SDO), 18 (SCK), 19 (CS)

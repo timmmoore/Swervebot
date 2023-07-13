@@ -46,19 +46,22 @@ PUB stop()
 
 PUB readall(pvals) | ch
   repeat ch from 0 to NOPWMIN-1
-    long[pvals][ch] := read(ch)
+    long[pvals][ch] := read(ch, false)
 
-PUB read(ch) : out | raw, map
+PUB read(ch, display) : out | raw, map
   ' min pulse width 0.9us, max pulse width 4506us
   raw := (rdpin(pp+pinoffsets[ch]) / (clkfreq / 20_000_000)) >> 1 ' convert pulse to 100 picoseconds
   map := utilities.map(raw, MININCLK, MAXINCLK, minv, maxv) ' map to required range
   out := (map + angleoffsets[ch]) // maxv               ' add the angular offset for the encoder and wrap to maxv
-  if (out <> lastvalues[ch]\out) && debugoutput()
-    serial.fstr4(string("encoder%d raw:%d map:%d out:%d\r"), pp+ch, raw, map, out)
+  if (out <> lastvalues[ch]\out)
+    if debugoutput(UTILITIES.DEBUGOUT1)
+      serial.fstr4(string("encoder%d raw:%d map:%d out:%d\r"), pp+ch, raw, map, out)
+  if display
+    serial.fstr5(string("encoder%d raw:%d map:%d out:%d offset:%.2g\r"), pp+ch, raw, map, out, (float((maxv - map)//maxv)*.360.0)/.1024.0)
 
 PUB updatedebug(tdebug)
   debug1 := tdebug
 
-PRI debugoutput() : retv
-  retv := debug1 > DEBUG_OUTPUT
+PRI debugoutput(type) : retv
+  retv := utilities.debugoutput(debug1, type)
 '

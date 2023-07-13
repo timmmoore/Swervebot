@@ -27,20 +27,17 @@ PUB init(ch, wrap, out)
 PUB setconstants(ch, Kp, Ki, Kd)
   ' out us maximum output value
   ' wrap is maximum input value
-  if utilities.longcomp(@sKp, @Kp, 3, true) && debugoutput()
+  if utilities.longcomp(@sKp, @Kp, 3, 0, true) && debugoutput(UTILITIES.DEBUGOUT1)
     ' Kp, Ki, Kd are floats
     serial.fstr4(string("PID%d constants %.2g %.2g %.2g\r"), ch, sKp, sKi, sKd)
-  'serial.fstr4(string("PID%d constants %.2g %.2g %.2g\r"), ch, sKp, sKi, sKd)
 
 PUB currentposition(value)
-  if (value <> currentpos\value) && debugoutput()
+  if (value <> currentpos\value) && debugoutput(UTILITIES.DEBUGOUT3)
     serial.fstr2(string("PID%d currentposition %d\r"), sch, currentpos)
-  'serial.fstr2(string("PID%d currentposition %d\r"), sch, currentpos)
 
 PUB setposition(value)
-  if (value <> setpos\value) && debugoutput()
+  if (value <> setpos\value) && debugoutput(UTILITIES.DEBUGOUT3)
     serial.fstr2(string("PID%d setposition %d\r"), sch, setpos)
-  'serial.fstr2(string("PID%d setposition %d\r"), sch, setpos)
 
 {
 https://en.wikipedia.org/wiki/PID_controller
@@ -64,7 +61,7 @@ loop:
 PUB output() : out, delta | dt, time, A0, A1, A2, error0
 '' output is +- maxoutput
   ' calculate dt and A? constants each time, A2 default to 0.0
-  dt := float((time := getms()) - lasttime\time)
+  dt := float((time := getms()) - lasttime\time)/.1000.0
   ifnot dt ==. 0.0
     A2 := sKd/.dt
   A0 := sKp +. sKi*.dt +. A2
@@ -74,14 +71,14 @@ PUB output() : out, delta | dt, time, A0, A1, A2, error0
   out := utilities.clamp(lastout + round(A0*.error0 +. A1*.error1 +. A2*.error2), maxoutput)
   ' how long the above calculations took
   time := getms() - time
-  if {(out <> lastout) &&} debugoutput()
-    serial.fstr5(string("PID%d output %d o:%d %d %d"), sch, time, out, lastout, lasttime)
-    serial.fstr7(string(" %.2g %.2g %.2g %.2g %.2g %.2g %.2g\r"), dt, A0, error0, A1, error1, A2, error2)
+  if (out <> lastout) && debugoutput(UTILITIES.DEBUGOUT1)
+    serial.fstr5(string("PID%d output o:%d lo:%d c:%d s:%d"), sch, out, lastout, currentpos, setpos)
+    serial.fstr7(string(" dt:%.4g A0:%.2g E0:%.2g A1:%.2g E1:%.2g A2:%.2g E2:%.2g\r"), dt, A0, error0, A1, error1, A2, error2)
   ' update inputs for next time, lasttime already been updated
   error2, error1, lastout := error1, error0, out
 
-PRI debugoutput() : retv
-  retv := debug3 > DEBUG_OUTPUT
+PRI debugoutput(type) : retv
+  retv := utilities.debugoutput(debug3, type)
 
 PUB updatedebug(tdebug3)
   debug3 := tdebug3

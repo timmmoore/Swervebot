@@ -28,6 +28,7 @@ VAR
 OBJ
   serial        : "isp_serial_singleton_tmm"
   i2c           : "jm_i2c_tmm"
+  utilities     : "utilities"
 
 PUB null()
   ' This is not a top-level object
@@ -39,15 +40,19 @@ PUB start(scl, sda, ppinvert) : retv | ch
     return $01|NO_MOTOR1|NO_MOTOR2
 
   if(i2c.present(MOTOR1<<1) == true)
-    'serial.fstr0(string("Swerve found motor board1\r"))
+    if debugoutput(UTILITIES.DEBUGOUT4)
+      serial.fstr0(string("Swerve found motor board1\r"))
   else
-    serial.fstr0(string("Swerve not found motor board1\r"))
+    if debugoutput(UTILITIES.DEBUGOUT1)
+      serial.fstr0(string("Swerve not found motor board1\r"))
     retv |= NO_MOTOR1
   i2c.stop()
   if(i2c.present(MOTOR2<<1) == true)
-    'serial.fstr0(string("Swerve found motor board2\r"))
+    if debugoutput(UTILITIES.DEBUGOUT4)
+      serial.fstr0(string("Swerve found motor board2\r"))
   else
-    serial.fstr0(string("Swerve not found motor board2\r"))
+    if debugoutput(UTILITIES.DEBUGOUT1)
+      serial.fstr0(string("Swerve not found motor board2\r"))
     retv |= NO_MOTOR2
   i2c.stop()
   ifnot retv & NO_MOTOR1
@@ -62,8 +67,8 @@ PUB start(scl, sda, ppinvert) : retv | ch
 
 PRI initpwm(addr) | oldmode
   '' init pwm on motor driver board
-  'if debugoutput()
-  '  serial.fstr1(string("initpwm %x\r"), addr)
+  if debugoutput(UTILITIES.DEBUGOUT4)
+    serial.fstr1(string("initpwm %x\r"), addr)
   write8(addr, PCA9685_MODE1, $0)
   oldmode := read8(addr, PCA9685_MODE1)
   write8(addr, PCA9685_MODE1, (oldmode&$7F) | $10)      ' go to sleep
@@ -71,7 +76,7 @@ PRI initpwm(addr) | oldmode
   write8(addr, PCA9685_MODE1, oldmode)
   waitus(5)
   write8(addr, PCA9685_MODE1, oldmode | $a1)            ' This sets the MODE1 register to turn on auto increment.
-  if debugoutput()
+  if debugoutput(UTILITIES.DEBUGOUT4)
     serial.fstr1(string("initpwm done %x\r"), addr)
 
 PRI read8(addr, adr) : ret1
@@ -101,8 +106,8 @@ PRI setPWM(addr, num, value) | word values[3]
   i2c.start()
   i2c.wr_block(@values, 6)
   i2c.stop()
-  'if debugoutput()
-  '  serial.fstr4(string("setpwm done %x %d %d %d\r"), addr, num, on, off)
+  if debugoutput(UTILITIES.DEBUGOUT4)
+    serial.fstr4(string("setpwm done %x %d %d %d\r"), addr, num, values[1], values[2])
 
 PRI setPWMAll(addr, num3, num2, num1, value1, value2, value3)
   '' set direction/PWM values for a motor on motor driver board
@@ -119,8 +124,8 @@ PRI setPWMAll(addr, num3, num2, num1, value1, value2, value3)
   i2c.start()
   i2c.wr_block(@num1.word[1], 14)
   i2c.stop()                                            ' pins are updated on I2C stop so write order for one batch doesn't matter
-  'if debugoutput()
-  '  serial.fstr7(string("setpwmall done %x %d %x %d %x %d %x\r"), addr, num1, value1, num2, value2, num3, value3)
+  if debugoutput(UTILITIES.DEBUGOUT3)
+    serial.fstr7(string("setpwmall done %x %d %x %d %x %d %x\r"), addr, num1, value1, num2, value2, num3, value3)
 
 PUB run(motor, speed) | addr, pwm, in1, in2, in2v, pwmv, temp
 '' set speed of 1 motor of a swerve module
@@ -136,17 +141,19 @@ PUB run(motor, speed) | addr, pwm, in1, in2, in2v, pwmv, temp
 
   ' invert the direction registers if needed by switching the 2 direction pins
   if word[pinvert][motor] ^^ (speed < 0)
+    'serial.fstr5(string("invert1 %d %d, %.8x %.8x %d\r"), word[pinvert][motor], motor, in2, in1, speed)
     in1, in2 := in2, in1
+    'serial.fstr5(string("invert2 %d %d, %.8x %.8x %d\r"), word[pinvert][motor], motor, in2, in1, speed)
 
   temp := getct()
   ' 210-215us
   setPWMAll(addr, pwm, in2, in1, 0, in2v, pwmv)
   temp := getct() - temp - 40
-  if debugoutput()
+  if debugoutput(UTILITIES.DEBUGOUT3)
     serial.fstr7(string("run motor %.8x %d %.8x %.8x %.8x %d %d\r"), addr, motor, pwm, in2, in1, speed, temp/uscount)
 
-PRI debugoutput() : retv
-  retv := debug2 > DEBUG_OUTPUT
+PRI debugoutput(type) : retv
+  retv := utilities.debugoutput(debug2, type)
 
 PUB updatedebug(tdebug)
   debug2 := tdebug

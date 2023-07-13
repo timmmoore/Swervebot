@@ -14,8 +14,6 @@ CON
   NO_MOTOR1         =           MOTOR.NO_MOTOR1
   NO_MOTOR2         =           MOTOR.NO_MOTOR2
 
-  DEBUG_OUTPUT      =           500
-
   BOT_WIDTH                     = 0
   BOT_LENGTH                    = 1
 
@@ -41,6 +39,7 @@ VAR
   long acctime
   long cosbot[2]                        ' float, bot size/rad
   long overridemax
+  word inverts[MAX_SWERVE_MODULES*2]
 
 OBJ
   serial        : "isp_serial_singleton_tmm"
@@ -58,30 +57,33 @@ PUB start(scl, sda, epin, pbot, ppinoffsets, pangleoffsets, pinvert, pmotor) : r
   rad := fsqrt(long[pbot][BOT_WIDTH]*.long[pbot][BOT_WIDTH] +. long[pbot][BOT_LENGTH]*.long[pbot][BOT_LENGTH])/.2.0 ' diag of bot
   cosbot[BOT_WIDTH], cosbot[BOT_LENGTH] := long[pbot][BOT_WIDTH]/.rad, long[pbot][BOT_LENGTH]/.rad
   acctime := getms()
-  if debugoutput()
+  if debugoutput(UTILITIES.DEBUGOUT2)
     serial.fstr3(string("Swerve starting %.2g %.2g %.2g\r"), long[pbot][BOT_WIDTH], long[pbot][BOT_LENGTH], rad)
 
-  retv := motor.start(scl, sda, pinvert)
+  ' switch invert flags to match order of motordrivers, not swerve modules
+  repeat ch from 0 to 7
+    inverts[long[pmotor][ch]] := word[pinvert][ch]
+  retv := motor.start(scl, sda, @inverts)
 
   encoder.start(epin, 0, MAXANGLE, ppinoffsets, pangleoffsets) ' 0-MAXANGLE output
 
   repeat ch from 0 to MAX_SWERVE_MODULES-1
     pid[ch].init(ch, MAXANGLE, MAXSPEED)                   ' 0-MAXANGLE input, +- MAXSPEED output
     pid[ch].setposition(0)                                 ' start angle
-  if debugoutput()
+  if debugoutput(UTILITIES.DEBUGOUT4)
     serial.fstr1(string("Swerve started %x\r"), retv)
 
-PUB setpidconstants(Kp, Ki, Kd, overmax) | ch
+PUB setpidconstants(pKp, pKi, pKd, overmax) | ch
   overridemax := overmax
   '' config pid constants for steering pids
   repeat ch from 0 to MAX_SWERVE_MODULES-1
-    pid[ch].setconstants(ch, Kp, Ki, Kd)
+    pid[ch].setconstants(ch, long[pKp][ch], long[pKi][ch], long[pKd][ch])
 
 PRI setmotorspeeds(pspeeds) | ch, speed
   ' set all motor speeds, drive and angle
   ' swerve modules on 1st and 2nd motor driver
-'  repeat ch from 0 to 7
-  repeat ch from 0 to 7 step 1
+  'repeat ch from 0 to 7 step 2
+  repeat ch from 0 to 7
     speed := long[pspeeds][ch]
     ' final clamping to max motor speed
     motor.run(motors[ch], abs(speed) > minmotorspeed[ch&1] ? utilities.clamp(speed, overridemax) : 0)
@@ -91,7 +93,7 @@ PRI angletospeed(pspeeds, pangles) : retv | rawangle, requestangle, ch, wrappeda
   ' return false if all swerves are at correct angle
   repeat ch from 0 to MAX_SWERVE_MODULES-1
     ponespeed := @long[pspeeds][ch<<1]
-    rawangle := encoder.read(ch)                        ' current angular position, encoder handles encoder offset
+    rawangle := encoder.read(ch, false)                 ' current angular position, encoder handles encoder offset
     pid[ch].currentposition(rawangle)                   ' current angle of swerve
     ' if request/current angle > MAXANGLE/2 apart then pid will wrap and invert
     wrappedangle := utilities.wrapangles(rawangle, requestangle := long[pangles][ch], MAXANGLE)
@@ -102,18 +104,16 @@ PRI angletospeed(pspeeds, pangles) : retv | rawangle, requestangle, ch, wrappeda
       requestangle := (requestangle - MAXANGLE/2) // MAXANGLE
       ' and invert the drive speed
       -= long[ponespeed]
-    'else
-    '  requestangle := wrappedangle
     SwerveDebug(2, @@sptr[ch], rawangle, long[ponespeed], long[ponespeed][1], long[pangles][ch], requestangle, wrappedangle)
     pid[ch].setposition(requestangle)                   ' wanted angle of swerve
     long[ponespeed][1], delta := pid[ch].output()       ' speed to move steering motor
     retv |= long[ponespeed][1] <> 0                     ' have we reached correct steering angle?
     ' slowdown drive speed depending on how far out of alignment the swerve module is
-    'long[ponespeed] := qcos(long[ponespeed], delta, MAXANGLE)
+    long[ponespeed] := qcos(long[ponespeed], delta, MAXANGLE)
     SwerveDebug(3, @@sptr[ch], rawangle, long[ponespeed], long[ponespeed][1], long[pangles][ch], requestangle, wrappedangle)
 
 PRI SwerveDebug(no, p1, p2, p3, p4, p5, p6, p7)
-  if debugoutput()
+  if debugoutput(UTILITIES.DEBUGOUT2)
     serial.fstr8(string("Swerve%d %s %d %d %d %d %d %d\r"), no, p1, p2, p3, p4, p5, p6, p7)
 
 PRI scalemaxspeed(pspeeds) | highest, index
@@ -125,7 +125,7 @@ PRI scalemaxspeed(pspeeds) | highest, index
   if(highest > MAXSPEED)
     repeat index from D_FRONT_LEFT to D_BACK_RIGHT step D_FRONT_RIGHT-D_FRONT_LEFT
       long[pspeeds][index] := scalespeed(long[pspeeds][index], highest)
-  if debugoutput()
+  if debugoutput(UTILITIES.DEBUGOUT4)
     serial.fstr4(string("Swerve maxspeeds %d %d %d %d\r"), long[pspeeds][D_FRONT_LEFT], long[pspeeds][D_FRONT_RIGHT], long[pspeeds][D_BACK_LEFT], long[pspeeds][D_BACK_RIGHT])
 
 PRI scalespeed(in, max) : scaled
@@ -137,8 +137,8 @@ PRI calculate(x, y, r, pspeeds, pangles) | a, b, c, d, xrl, yrl, rl
 ' translate x, y and rotation into swerve speed and angle per swerve module
   rl := float(r)
   xrl, yrl := round(rl *. cosbot[BOT_WIDTH]), round(rl *. cosbot[BOT_LENGTH])
-  a, b, c, d :=  x - xrl, x + xrl, -y - yrl, -y + yrl
-  if debugoutput()
+  a, b, c, d :=  -x - xrl, -x + xrl, y - yrl, y + yrl
+  if debugoutput(UTILITIES.DEBUGOUT3)
     serial.fstr4(string("Swerve calculate %d %d %d %d\r"), a, b, c, d)
 
   ' xypol returns length and unsigned 32-bit angle, where $00000000..$FFFFFFFF = 0..359.9999999 degrees
@@ -157,7 +157,7 @@ PRI calculate(x, y, r, pspeeds, pangles) | a, b, c, d, xrl, yrl, rl
   Swerve1Debug(3, pspeeds, pangles, D_BACK_RIGHT, A_BACK_RIGHT)
 
 PRI Swerve1Debug(no, pspeeds, pangles, p1, p2)
-  if debugoutput()
+  if debugoutput(UTILITIES.DEBUGOUT1)
     serial.fstr4(string("Swerve %s speed/angle %d %d(%.2f)\r"), @@sptr[no], long[pspeeds][p1],  long[pangles][p2],  scaleangle360(long[pangles][p2]))
 
 PRI scaleangle360(inangle) : scaledangle
@@ -169,8 +169,8 @@ PRI scaleangle(ind, inangle) : rd, scaledangle
   rd, scaledangle := ind, inangle SCA MAXANGLE
 
 CON
-  ACCINTERVAL   = 100                                       ' acceleration limiting interval, ms
-  ACCSHIFT      = 3                                         ' /8
+  ACCINTERVAL   = 50                                        ' acceleration limiting interval, ms
+  ACCSHIFT      = 2                                         ' /4
   ACCLIMIT      = (1<<ACCSHIFT)-1                           ' acceleration increments
 
 PRI adjustandclampspeed(lastspeed, newspeed) : adjustedspeed | deltaspeed, upperclampspeed, lowerclampspeed, t
@@ -197,24 +197,24 @@ PRI limitacceleration(x, y, r) : lx, ly, lr, changed, notcomplete | lcx, lcy, lc
     acctime := getms() + ACCINTERVAL
     changed := true
   ' output not matching input speed, still have more ramping up/down to do
-  notcomplete := utilities.longcomp(@lastcx, @x, 3, false)
+  notcomplete := utilities.longcomp(@lastcx, @x, 3, 0, false)
   longmove(@lx, @lastcx, 3)
 
 PRI Swerve2Debug(type, last, in, out)
-  if debugoutput()
-    serial.fstr4(string("Swerve %c limit %d %d %d\r"), type, last, in, out)
+  if debugoutput(UTILITIES.DEBUGOUT3)
+    serial.fstr4(string("Swerve %c limit l:%d i:%d n:%d\r"), type, last, in, out)
 
-PUB update(x, y, r, off) : notcomplete | changed, newoffstate, previousoffstate
+PUB update(x, y, r, off) : notcomplete | changed, newoffstate, previousoffstate, ch
 '' return true if needs calling again, either not fully update to speed or swerve angle not in position
 
-  if debugoutput()
+  if debugoutput(UTILITIES.DEBUGOUT3)
     serial.fstr4(string("Swerve updating x:%d, y:%d, r:%d off: %d\r"), x, y, r, off)
 
   newoffstate, previousoffstate := motorsoff(off)
   ifnot newoffstate
     x, y, r, changed, notcomplete := limitacceleration(x, y, r)
     if(changed == true)
-      if debugoutput()
+      if debugoutput(UTILITIES.DEBUGOUT2)
         serial.fstr3(string("Swerve updating after limiting x:%d, y:%d, r:%d\r"), x, y, r)
 
       calculate(x, y, r, @speeders, @angles)            ' calculate speed/angle for each swerve wheel
@@ -226,7 +226,10 @@ PUB update(x, y, r, off) : notcomplete | changed, newoffstate, previousoffstate
       setmotorspeeds(@speeders)                         ' set speeds of drive and steering motors
   elseifnot previousoffstate                            ' if not already off, make sure motors are off
     setmotorspeeds(@zerospeeds)
-  if debugoutput()
+  else
+    repeat ch from 0 to MAX_SWERVE_MODULES-1
+      encoder.read(ch, true)                            ' read encoder when motors off, so can manually adjust them
+  if debugoutput(UTILITIES.DEBUGOUT3)
     serial.fstr3(string("Swerve updated %d %d %d\r"), changed, notcomplete, motorsareoff)
 
 PRI motorsoff(off) : retv, previous
@@ -240,8 +243,8 @@ PUB debugconfig(tdebug2, tdebug3) | ch
   repeat ch from 0 to MAX_SWERVE_MODULES-1
     pid[ch].updatedebug(tdebug3)
 
-PRI debugoutput() : retv
-  retv := debug2 > DEBUG_OUTPUT
+PRI debugoutput(type) : retv
+  retv := utilities.debugoutput(debug2, type)
 
 dat
   zerospeeds  long 0, 0, 0, 0, 0, 0, 0, 0
