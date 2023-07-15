@@ -90,19 +90,22 @@ PRI read8(addr, adr) : ret1
   ret1 := i2c.read(i2c.NAK)
   i2c.stop()
 
-PRI write8(addr, adr, d)
+PRI write8(addr, adr, d) | byte values[3]
   '' write byte to motor driver
   i2c.start()
-  i2c.write(addr<<1)
-  i2c.write(adr)
-  i2c.write(d)
+  values[0] := addr<<1
+  values[1] := adr
+  values[2] := d
+  i2c.wr_block(@values, 3)
   i2c.stop()
 
-PRI setPWM(addr, num, value) | word values[3]
+PRI setPWM(addr, num, value) | byte values[6]
   '' set PWM on/off for single motor pin on motor driver board
-  values.byte[0] := addr
-  values.byte[1] := num
-  wordmove(@values[1], @value, 2)
+  ' addr must be already shifted
+  values[0] := addr
+  values[1] := num
+'  bytemove(@values[2], @value, 4)
+  long[@values[2]] := value
   i2c.start()
   i2c.wr_block(@values, 6)
   i2c.stop()
@@ -113,6 +116,7 @@ PRI setPWMAll(addr, num3, num2, num1, value1, value2, value3)
   '' set direction/PWM values for a motor on motor driver board
   ' sort led registers and values, led registers need to be contiguous
   ' registers in reverse order to values and register value is in MSB of numX.
+  ' addr must be already shifted
   if num3 +< num1
     num1, num3, value1, value3 := num3, num1, value3, value1
   elseif num2 +< num1
@@ -124,12 +128,11 @@ PRI setPWMAll(addr, num3, num2, num1, value1, value2, value3)
   i2c.start()
   i2c.wr_block(@num1.word[1], 14)
   i2c.stop()                                            ' pins are updated on I2C stop so write order for one batch doesn't matter
-  if debugoutput(UTILITIES.DEBUGOUT3)
-    serial.fstr7(string("setpwmall done %x %d %x %d %x %d %x\r"), addr, num1, value1, num2, value2, num3, value3)
+  'if debugoutput(UTILITIES.DEBUGOUT4)
+  '  serial.fstr7(string("setpwmall done %x %d %x %d %x %d %x\r"), addr, num1, value1, num2, value2, num3, value3)
 
 PUB run(motor, speed) | addr, pwm, in1, in2, in2v, pwmv, temp
 '' set speed of 1 motor of a swerve module
-
   ' lookup PCA9865 board address and PCA9865 led registers used for each motor driver pin: pwm, in1, in2
   ' note addr is already << 1 shifted and pins are register indexes
   addr, pwm, in1, in2 := addrs[motor>>2], pwmpins[temp:=motor&3], in1pins[temp], in2pins[temp]
@@ -141,15 +144,13 @@ PUB run(motor, speed) | addr, pwm, in1, in2, in2v, pwmv, temp
 
   ' invert the direction registers if needed by switching the 2 direction pins
   if word[pinvert][motor] ^^ (speed < 0)
-    'serial.fstr5(string("invert1 %d %d, %.8x %.8x %d\r"), word[pinvert][motor], motor, in2, in1, speed)
     in1, in2 := in2, in1
-    'serial.fstr5(string("invert2 %d %d, %.8x %.8x %d\r"), word[pinvert][motor], motor, in2, in1, speed)
 
   temp := getct()
   ' 210-215us
   setPWMAll(addr, pwm, in2, in1, 0, in2v, pwmv)
   temp := getct() - temp - 40
-  if debugoutput(UTILITIES.DEBUGOUT3)
+  if debugoutput(UTILITIES.DEBUGOUT4)
     serial.fstr7(string("run motor %.8x %d %.8x %.8x %.8x %d %d\r"), addr, motor, pwm, in2, in1, speed, temp/uscount)
 
 PRI debugoutput(type) : retv

@@ -13,9 +13,6 @@ CON
 
   DEBUG_OUTPUT  = 500
 
-  MININCLK      = 90
-  MAXINCLK      = 45060
-
 VAR
   long setup
   long pp, minv, maxv                                   ' start pin, min/max values
@@ -23,6 +20,8 @@ VAR
   long lastvalues[NOPWMIN]
   long angleoffsets[NOPWMIN]                            ' encoder angle offset, 0-MAXANGLE
   long pinoffsets[NOPWMIN]                              ' encoder actual pin
+  long minclk[NOPWMIN], maxclk[NOPWMIN]
+  long minencoder[NOPWMIN], maxencoder[NOPWMIN]
 
 OBJ
   serial        : "isp_serial_singleton_tmm"
@@ -31,11 +30,16 @@ OBJ
 PUB null()
   ' This is not a top-level object
 
-PUB start(pin, minvalue, maxvalue, ppinoffsets, poffsets)
+PUB start(pin, minvalue, maxvalue, ppinoffsets, poffsets, pminencoder, pmaxencoder) | i
   stop()
   longmove(@pp, @pin, 3)
   longmove(@angleoffsets, poffsets, NOPWMIN)            ' angle offset of each encoder
   longmove(@pinoffsets, ppinoffsets, NOPWMIN)           ' actual pin of each encoder
+  '        0.9us @ 200000000/sec -> 90*2 -> 180
+  '        4506us @ 200000000/sec -> 450600*2 -> 901200
+  longmove(@minclk, pminencoder, NOPWMIN)
+  longmove(@maxclk, pmaxencoder, NOPWMIN)
+  longfill(@minencoder, $FFFFFFFF, NOPWMIN)
   pinstart(pp ADDPINS NOPWMIN-1, P_HIGH_TICKS, 0, 0)    ' start for NOPWMIN pins, clock ticks for pin high
   setup~~                                               ' mark setup
 
@@ -48,16 +52,18 @@ PUB readall(pvals) | ch
   repeat ch from 0 to NOPWMIN-1
     long[pvals][ch] := read(ch, false)
 
-PUB read(ch, display) : out | raw, map
-  ' min pulse width 0.9us, max pulse width 4506us
-  raw := (rdpin(pp+pinoffsets[ch]) / (clkfreq / 20_000_000)) >> 1 ' convert pulse to 100 picoseconds
-  map := utilities.map(raw, MININCLK, MAXINCLK, minv, maxv) ' map to required range
+PUB read(ch, display) : out | raw, map, dout
+  map := utilities.map(raw := rdpin(pp+pinoffsets[ch]), minclk[ch], maxclk[ch], minv, maxv) ' map to required range
+  if raw +< minencoder[ch]
+    minencoder[ch] := raw                               ' keep min encoder value
+  if raw +> maxencoder[ch]
+    maxencoder[ch] := raw                               ' keep max encoder value
   out := (map + angleoffsets[ch]) // maxv               ' add the angular offset for the encoder and wrap to maxv
   if (out <> lastvalues[ch]\out)
-    if debugoutput(UTILITIES.DEBUGOUT1)
-      serial.fstr4(string("encoder%d raw:%d map:%d out:%d\r"), pp+ch, raw, map, out)
-  if display
-    serial.fstr5(string("encoder%d raw:%d map:%d out:%d offset:%.2g\r"), pp+ch, raw, map, out, (float((maxv - map)//maxv)*.360.0)/.1024.0)
+    dout := debugoutput(UTILITIES.DEBUGOUT2)
+  if display or dout
+    ' output offset value assuming current position is 0
+    serial.fstr7(string("encoder%d raw:%u map:%d out:%d offset:%.2g min:%u max:%u\r"), ch, raw>>1, map, out, (float((maxv - map)//maxv)*.360.0)/.1024.0, minencoder[ch]>>1, maxencoder[ch]>>1)
 
 PUB updatedebug(tdebug)
   debug1 := tdebug

@@ -27,7 +27,7 @@ PUB init(ch, wrap, out)
 PUB setconstants(ch, Kp, Ki, Kd)
   ' out us maximum output value
   ' wrap is maximum input value
-  if utilities.longcomp(@sKp, @Kp, 3, 0, true) && debugoutput(UTILITIES.DEBUGOUT1)
+  if utilities.longcomp(@sKp, @Kp, 3, 0, true) && debugoutput(UTILITIES.DEBUGOUT4)
     ' Kp, Ki, Kd are floats
     serial.fstr4(string("PID%d constants %.2g %.2g %.2g\r"), ch, sKp, sKi, sKd)
 
@@ -71,7 +71,7 @@ PUB output() : out, delta | dt, time, A0, A1, A2, error0
   out := utilities.clamp(lastout + round(A0*.error0 +. A1*.error1 +. A2*.error2), maxoutput)
   ' how long the above calculations took
   time := getms() - time
-  if (out <> lastout) && debugoutput(UTILITIES.DEBUGOUT1)
+  if (out <> lastout) && debugoutput(UTILITIES.DEBUGOUT2)
     serial.fstr5(string("PID%d output o:%d lo:%d c:%d s:%d"), sch, out, lastout, currentpos, setpos)
     serial.fstr7(string(" dt:%.4g A0:%.2g E0:%.2g A1:%.2g E1:%.2g A2:%.2g E2:%.2g\r"), dt, A0, error0, A1, error1, A2, error2)
   ' update inputs for next time, lasttime already been updated

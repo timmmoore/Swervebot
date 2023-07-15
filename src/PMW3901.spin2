@@ -61,8 +61,9 @@ CON
   SPI_CLK_SPEED                 = 4000                  ' datasheet says 2MHz but 4Mhz works and bitcraze also use 4MHz
 
 OBJ
-  spi      : "jm_spi_tmm"
-  'serial   : "isp_serial_singleton_tmm"
+  spi           : "jm_spi_tmm"
+  utilities     : "utilities"
+  'serial        : "isp_serial_singleton_tmm"
 
 VAR
   long CS
@@ -106,21 +107,17 @@ PUB readMotionAccum(reset) : accumX_L, accumX_H, accumY_L, accumY_H, dt
     accumtime := getms()
 
 PRI AccumXY(X, Y)
-' unsigned 64bit delta x, y accumulators
-  currentX_L += X
-  if currentX_L +< X            ' overflow occured
-    currentX_H++
-  currentY_L += Y
-  if currentY_L +< Y            ' overflow occured
-    currentY_H++
+' signed 64bit delta x, y accumulators
+  currentX_L, currentX_H := utilities.add64(currentX_L, currentX_H, X)
+  currentY_L, currentY_H := utilities.add64(currentY_L, currentY_H, Y)
 
 PUB readMotionCount() : retv, deltaX, deltaY
 ' 97us (4Mhz)
   retv := registerRead(MOTION)
   deltaX := ((registerRead(DELTA_X_H) << 8) | registerRead(DELTA_X_L)) SIGNX 15
   deltaY := ((registerRead(DELTA_Y_H) << 8) | registerRead(DELTA_Y_L)) SIGNX 15
-  retv &= %1000_0000
-  AccumXY(deltaX, deltaY)
+  if retv &= %1000_0000
+    AccumXY(deltaX, deltaY)
 
 PUB readMotionCountBurstQuick() : retv, deltaX, deltaY | byte values[7]
 ' 24us (@4Mhz)
@@ -135,8 +132,8 @@ PUB readMotionCountBurstQuick() : retv, deltaX, deltaY | byte values[7]
   pinhigh(cs)
   deltaX := word[@values[3]] SIGNX 15
   deltaY := word[@values[5]] SIGNX 15
-  AccumXY(deltaX, deltaY)
-  retv := values[1]&%1000_0000
+  if retv := values[1]&%1000_0000
+    AccumXY(deltaX, deltaY)
 
 PUB readMotionCountBurst() : retv, deltaX, deltaY | byte values[13]
 ' 38us (@4Mhz)

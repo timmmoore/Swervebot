@@ -39,7 +39,7 @@ pub fmt_number(value, radix, digits, width, pad) : p_str
 '' -- width is width of final fields (max)
 '' -- pad is character used to pad final field (if needed)
 
-  if lookdown(radix: 02, 04, 08, 10, 16) <> 0
+  if lookdown(radix: -10, 02, 04, 08, 10, 16) <> 0
     p_str := padstr(itoa(value,  radix, digits, 0), width, pad)
   elseif radix == 99
     p_str := padstr(dpdec(value, digits), width, pad)   ' special case
@@ -120,20 +120,11 @@ pub itoa(value, radix, digits, negs) : p_str | sign, len, d
 
 '' Convert integer to string
 '' -- supports radix 10, 2, 4, 8, and 16
+'' -- -10 is unsigned decimal
 '' -- digits is 0 (auto size) to limit for long using radix
 
   bytefill(@nbuf, 0, NBUF_SIZE)                                 ' clear buffer
   p_str := @nbuf                                                ' point to it
-
-  case radix                                                    ' fix digits
-    02    : digits := 0 #> digits <# 32
-    04    : digits := 0 #> digits <# 16
-    08    : digits := 0 #> digits <# 11
-    10    : digits := 0 #> digits <# 10
-    16    : digits := 0 #> digits <#  8
-    other :
-      byte[p_str] := 0
-      return
 
   if ((radix == 10) && (value < 0))                             ' deal with negative decimals
     if (value == negx)
@@ -147,6 +138,17 @@ pub itoa(value, radix, digits, negs) : p_str | sign, len, d
 
   if(negs)
     sign := 1
+
+  radix := abs(radix)                                           ' handle -10
+  case radix                                                    ' fix digits
+    02    : digits := 0 #> digits <# 32
+    04    : digits := 0 #> digits <# 16
+    08    : digits := 0 #> digits <# 11
+    10    : digits := 0 #> digits <# 10
+    16    : digits := 0 #> digits <#  8
+    other :
+      byte[p_str] := 0
+      return
 
   len := 0
 

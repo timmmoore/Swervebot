@@ -354,6 +354,8 @@ pub format(p_str, p_args) | idx, c, asc, field1, digits, kindaLock, pad
         str(nstr.fmt_number(long[p_args][idx++], 100, digits, field1, pad))
       elseif (c == "d")
         str(nstr.fmt_number(long[p_args][idx++], 10, digits, field1, " "))
+      elseif (c == "u")
+        str(nstr.fmt_number(long[p_args][idx++], -10, digits, field1, " "))
       elseif (c == "x")
         str(nstr.fmt_number(long[p_args][idx++], 16, digits, field1, " "))
       elseif (c == "o")

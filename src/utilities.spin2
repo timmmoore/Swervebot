@@ -100,7 +100,15 @@ con
 
 PUB debugoutput(debug1, type) : retv
   if type > 0 and type < 4
-    retv := debug1 >= debugtypes[type]
+    retv := debug1 >= debugtypes[type-1]
 
 dat
   debugtypes long  DEBUG1_OUTPUT, DEBUG2_OUTPUT, DEBUG3_OUTPUT, DEBUG4_OUTPUT
+
+PUB add64(xl, xh, x) : rxl, rxh
+  longmove(@rxl, @xl, 2)
+
+  org
+    add   rxl, x                  wc
+    addsx rxh, #0
+  end
