@@ -1,0 +1,7 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "M20-7810645R")(type "KiCad")(uri "C:/Users/timmoore/Downloads/138850262_LIB_M20-7810645R/M20-7810645R/KiCad/M20-7810645R.kicad_sym")(options "")(descr ""))
+  (lib (name "2023-07-16_03-16-01")(type "KiCad")(uri "C:/Users/timmoore/Downloads/ul_BM05B-SRSS-TB-LF-SN-/KiCADv6/2023-07-16_03-16-01.kicad_sym")(options "")(descr ""))
+  (lib (name "2023-07-16_19-20-38")(type "KiCad")(uri "C:/Users/timmoore/Downloads/ul_BM04B-SRSS-TBT-LF-SN-/KiCADv6/2023-07-16_19-20-38.kicad_sym")(options "")(descr ""))
+  (lib (name "2023-07-16_19-21-55")(type "KiCad")(uri "C:/Users/timmoore/Downloads/ul_BM06B-SRSS-TB-LF-SN-/KiCADv6/2023-07-16_19-21-55.kicad_sym")(options "")(descr ""))
+)

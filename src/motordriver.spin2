@@ -59,11 +59,15 @@ PUB start(scl, sda, ppinvert) : retv | ch
     initpwm(MOTOR1)
   ifnot retv & NO_MOTOR2
     initpwm(MOTOR2)
+  stopmotors()
+
+PUB stop()
+  stopmotors()
+
+PRI stopmotors() | ch
   repeat ch from 0 to 15                                ' all pins off
-    ifnot retv & NO_MOTOR1
-      setPWM(MOTOR1<<1, ch+LED0_ON_L, 0)
-    ifnot retv & NO_MOTOR2
-      setPWM(MOTOR2<<1, ch+LED0_ON_L, 0)
+    setPWM(MOTOR1<<1, ch+LED0_ON_L, 0)
+    setPWM(MOTOR2<<1, ch+LED0_ON_L, 0)
 
 PRI initpwm(addr) | oldmode
   '' init pwm on motor driver board

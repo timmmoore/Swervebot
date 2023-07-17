@@ -74,6 +74,9 @@ PUB start(scl, sda, epin, pbot, ppinoffsets, pangleoffsets, pminencoder, pmaxenc
   if debugoutput(UTILITIES.DEBUGOUT4)
     serial.fstr1(string("Swerve started %x\r"), retv)
 
+PUB stop()
+  motor.stop()
+
 PUB setpidconstants(pKp, pKi, pKd, overmax) | ch
   overridemax := overmax
   '' config pid constants for steering pids

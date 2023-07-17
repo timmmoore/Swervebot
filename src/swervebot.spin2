@@ -63,6 +63,8 @@ con { fixed io pins }
   MINDELTA                      = 5                                             ' minimum channel change
 
   SBUS_RX                       = 7   { IO }
+  SBUS_SPORT                    = 6
+  SBUS_TX                       = 5
 
   MOTOR_SDA                     = 23                                            ' i2c pins for motor controllers
   MOTOR_SCL                     = 22                                            ' SCK speed of 800KHz
@@ -97,6 +99,14 @@ con { fixed io pins }
                                                                                 ' SLK speed of 3Mhz
   USFSMAX_RESET                 = -1                                            ' reset pin is optional
 
+  BATTERY_ANALOG                = 31                                            ' battery via resistor divider
+                                                                                ' 8K2 + 3K3
+
+  BATTERY_LOW                   = 0
+  BATTERY_HIGH                  = 2500                                          ' 12.5 * 200
+  BATTERY_DIVIDER               = 200.0
+  BATTERY_MINIMUM               = 9.9                                           ' minimum voltage
+
   ' Bellevue, WA 98008
   M_V                           = 49.4643
   M_H                           = 19.0285
@@ -121,10 +131,13 @@ con { fixed io pins }
   PMWCHANGE                     = $04                                           ' pmw
   IMUCHANGE                     = $08                                           ' imu
   GPSCHANGE                     = $10                                           ' gps
+  VOLTAGECHANGE                 = $20
 
-  PIDCONSTANTSDIVIDER           = 10.0
-  MINPIDCONSTANT                = -400                                          ' PID constants are in range +-40.0
-  MAXPIDCONSTANT                = 400
+  PIDCONSTANTSDIVIDER10         = 10.0
+  PIDCONSTANTSDIVIDER100        = 100.0
+  PIDCONSTANTSDIVIDER1000       = 1000.0
+  MINPIDCONSTANT                = -1000                                         ' PID constants are in range +-4.0
+  MAXPIDCONSTANT                = 1000
 
   MINSBUSCHANNEL                = 240
   MAXSBUSCHANNEL                = 1807
@@ -143,28 +156,32 @@ con { fixed io pins }
   SHAREDPMW                     = 5                     ' xsensor_l, xsensor_h, ysensor_l, ysensor_h, tsensor                     '
   SHAREDIMU                     = 4                     ' osensor
   SHAREDGPS                     = 10                    ' ogpst, ohour, omin, osec, onorthdeg, owestdeg, ospeed, oalt, ofix, osatno
-  SHAREDVARIABLES               = 1+NOCHANNELS+SHAREDIMU+SHAREDPMW+SHAREDGPS
+  SHAREVOLTAGE                  = 1
+  SHAREDVARIABLES               = 1+NOCHANNELS+SHAREDIMU+SHAREDPMW+SHAREDGPS+1
+
+  NO_SWERVE_MODULES             = 4
 
 VAR
   ' shared variables
   long synclock, printlock
 
   long sharedupdate, channels[NOCHANNELS], output[4], deltax_l, deltax_h, deltay_l, deltay_h, deltat
-  long gpst, hour, min, sec, northdeg, westdeg, speed, alt, fix, satno
+  long gpst, hour, min, sec, northdeg, westdeg, speed, alt, fix, satno, voltage
 
   ' swerve cog
   long swerveupdate, swervechannels[NOCHANNELS], oswerve[4], xswerve_l, xswerve_h, yswerve_l, yswerve_h, tswerve   ' swerve cog locals
-  long sgpst, shour, smin, ssec, snorthdeg, swestdeg, sspeed, salt, sfix, ssatno
+  long sgpst, shour, smin, ssec, snorthdeg, swestdeg, sspeed, salt, sfix, ssatno, svoltage
 
   long lastchannels[NOCHANNELS]
   long debug1
 
   ' sensor cog
   long sensorupdate, sbuschannels[NOCHANNELS], osensor[4], xsensor_l, xsensor_h, ysensor_l, ysensor_h, tsensor     ' sensor cog locals
-  long ogpst, ohour, omin, osec, onorthdeg, owestdeg, ospeed, oalt, ofix, osatno
+  long ogpst, ohour, omin, osec, onorthdeg, owestdeg, ospeed, oalt, ofix, osatno, ovoltage
 
   long osensor1[4]
   long qt[4]
+  long stopped                                                                  ' stop bot if true
   long StkAddr[10000]
 
 OBJ
@@ -172,13 +189,14 @@ OBJ
                                                                 '  2nd cog - query sensors
   serial        : "isp_serial_singleton_tmm"
   sbus          : "jm_sbus_rx"                                  ' 1 cog - read sbus
-  swerve        : "swervemotor"
+  swerve        : "swervemotor" | MAX_SWERVE_MODULES=NO_SWERVE_MODULES
   utilities     : "utilities"
   pmw           : "pmw3901"
   usfsmax       : "usfsmax"
   gps           : "gps_pa1010d"
+  battery       : "jm_ez_analog"
 
-PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_time, again, temp, temp1, tkp[4], tki[4], tkd[4]
+PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_time, again, temp, temp1
   debug1, debug2, debug3 := INIT_DEBUG, INIT_DEBUG, INIT_DEBUG
   longfill(@lastchannels, -1, NOCHANNELS)
   serial.start(BR_SERIAL)
@@ -197,7 +215,7 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
       serial.fstr0(string("Swerve Controller failed to allocate printlock\r"))
 
   swerve.debugconfig(debug2, debug3)
-  swerve.setpidconstants(@defaultKp, @defaultKi, @defaultKd, Defaults[CHANNEL_TESTMAX])
+  dopidconstants(true)
 
   ' initialize server modules and motors
   if (havemotors := swerve.start(MOTOR_SCL, MOTOR_SDA, ENCODERPIN1, @bot, @pinoffsets, @angleoffsets, @minencoder, @maxencoder, @invert, @motoroffsets))
@@ -215,12 +233,17 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
 
   repeat
     waitms(temp := ((SWERVEPERIOD - (getms() - delaystart)) #> 1)) ' max delay SWERVEPERIOD
+    if stopped                                          ' bot needs to be stopped
+      serial.fstr0(string("Swerve stopped\r"))
+      waitms(100)                                       ' let the message out
+      quit                                              ' stop cog
     ' make sure shared variables are not being updated
     ' copy to local variables
     acq_time := getms()
     takesynclock()
     longmove(@swerveupdate, @sharedupdate, SHAREDVARIABLES) ' copy shared variables to local copy
     releasesynclock()
+
     ' use local variables and see if any channel changes or swerve modules need updating again
     if swerveupdate & CHANNELCHANGE || again
       ' update local debug variable before using it
@@ -230,19 +253,10 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
       ' take the print lock if any debug level is on
       if debugo := (debugoutput(UTILITIES.DEBUGOUT1) || utilities.debugoutput(debug2, UTILITIES.DEBUGOUT1) || utilities.debugoutput(debug3, UTILITIES.DEBUGOUT1))
         takeprintlock()
-      ' update pid constants, constants are channel values mapped to MINPIDCONSTANT to MAXPIDCONSTANT divided by PIDCONSTANTSDIVIDER
-      ' set override max output speed
-      'serial.fstr3(string("radio pid:%d %d %d\r"), swervechannels[CHANNEL_KP], swervechannels[CHANNEL_KI], swervechannels[CHANNEL_KD])
-      tkp[3] := float(swervechannels[CHANNEL_KP])/.PIDCONSTANTSDIVIDER
-      longfill(@tkp, tkp[3], 3)
-      tki[3] := float(swervechannels[CHANNEL_KI])/.PIDCONSTANTSDIVIDER
-      longfill(@tki, tki[3], 3)
-      tkd[3] := float(swervechannels[CHANNEL_KD])/.PIDCONSTANTSDIVIDER
-      longfill(@tkd, tkd[3], 3)
-      ' disable pid constant updates
-      'swerve.setpidconstants(@tkp, @tki, @tkd, swervechannels[CHANNEL_TESTMAX])
-      swerve.setpidconstants(@defaultKp, @defaultKi, @defaultKd, swervechannels[CHANNEL_TESTMAX])
 
+      dopidconstants(false)
+
+      delaystart := getms()                             ' delay from after motors updated, debug print delays still part of processing time
       ' update swerve modules with updated movements
       if havemotors <> (swerve.NO_MOTOR1|swerve.NO_MOTOR2)
         again := swerve.update(swervechannels[CHANNEL_X], swervechannels[CHANNEL_Y], swervechannels[CHANNEL_R], swervechannels[CHANNEL_OFF])
@@ -250,9 +264,28 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
         if debugoutput(UTILITIES.DEBUGOUT3)
           serial.fstr2(string("Swerve period %d %d\r"), temp1 := getms()-acq_time, temp)
         releaseprintlock()                              ' release lock soon as we have finished printing
-    delaystart := getms()                               ' delay from after motors updated, debug print delays still part of processing time
+    else
+      delaystart := getms()                             ' delay from after motors updated, debug print delays still part of processing time
 
-PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_time, compute_time1, havepmw, haveusfsmax, havegps, sbusstatus, lsbusstatus, ch, lastx_l, lastx_h, lasty_l, lasty_h, lasto[4], debugo, delaystart, gpsret, gpsrel, xl, xh, yl, yh
+PRI dopidconstants(init) | tkp[NO_SWERVE_MODULES], tki[NO_SWERVE_MODULES], tkd[NO_SWERVE_MODULES], i
+  ' update pid constants
+  ' start with defaults
+  longmove(@tkp, @defaultKp, NO_SWERVE_MODULES)
+  longmove(@tki, @defaultKi, NO_SWERVE_MODULES)
+  longmove(@tkd, @defaultKd, NO_SWERVE_MODULES)
+  ' if not init then radio values delta on top of the defaults
+  ifnot init
+    repeat i from 0 to NO_SWERVE_MODULES-1
+      tkp[i] := float(swervechannels[CHANNEL_KP])/.PIDCONSTANTSDIVIDER100 +. tkp[i]
+      tki[i] := float(swervechannels[CHANNEL_KI])/.PIDCONSTANTSDIVIDER100 +. tki[i]
+      tkd[i] := float(swervechannels[CHANNEL_KD])/.PIDCONSTANTSDIVIDER1000 +. tkd[i]
+
+  if debugoutput(UTILITIES.DEBUGOUT3)
+    serial.fstr4(string("radio %d pid:%.2g %.2g %.2g\r"), init, tkp[0], tki[0], tkd[0])
+  ' set override max output speed
+  swerve.setpidconstants(@tkp, @tki, @tkd, swervechannels[CHANNEL_TESTMAX])
+
+PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_time, compute_time1, havepmw, haveusfsmax, havegps, sbusstatus, lsbusstatus, ch, lastx_l, lastx_h, lasty_l, lasty_h, lasto[4], debugo, delaystart, gpsret, gpsrel, xl, xh, yl, yh, oldvoltage, volt
 
   ' init optical flow sensor
   ifnot pmw.begin(PMW_CS, PMW_SCK, PMW_SDO, PMW_SDI) == false
@@ -288,6 +321,9 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
     havegps := true
   if debugoutput(havegps?UTILITIES.DEBUGOUT3:UTILITIES.DEBUGOUT1)
     serial.fstr2(string("GPS%sfound %x\r"), havegps?string(" "):string(" not "), Acq_time)
+
+  battery.start(BATTERY_ANALOG, BATTERY_LOW, BATTERY_HIGH)
+
   delaystart := getms()
 
   repeat
@@ -318,13 +354,12 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
 
     ' optical flow sensor
     if havepmw
-      takeprintlock()
+      'takeprintlock()
       Acq_time := getct()
       ch, _, _ := pmw.readMotionCountBurstQuick()                   ' acquire 24us (4Mhz)
       xsensor_l, xsensor_h, ysensor_l, ysensor_h, tsensor := pmw.readMotionAccum(false)
       Acq_time := getct() - Acq_time - 40
-      'serial.fstr6(string("pmw %d %d %d:%d %d:%d\r"), xsensor_l, ysensor_l, xh, xl, yh, yl)
-      releaseprintlock()                                ' release lock soon as we have finished printing
+      'releaseprintlock()                                ' release lock soon as we have finished printing
       if ch && utilities.longcomp(@lastx_l, @xsensor_l, 4, 0, ch)
         sensorupdate |= PMWCHANGE                       ' pmw changed
 
@@ -355,6 +390,12 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
         sensorupdate |= GPSCHANGE                       ' GPS changed
         'serial.fstr0(string("gps input changed\r"))
       'releaseprintlock()                                ' release lock soon as we have finished printing
+
+    volt := ++volt // BATTERY_HIGH
+    if volt < 2000
+      volt := 2001
+    if fabs((ovoltage := float({battery.read()}volt)/.BATTERY_DIVIDER) -. oldvoltage\ovoltage) > 0.2
+      sensorupdate |= VOLTAGECHANGE
 
     takesynclock()
     longmove(@sharedupdate, @sensorupdate, SHAREDVARIABLES) ' copy local to shared variables
@@ -395,6 +436,15 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
           serial.fstr2(string("%8.5g %10.5g "), onorthdeg, owestdeg)
           serial.fstr4(string("%.4g %.4g %d %d\r"), ospeed, oalt, fix, satno)
 
+      if sensorupdate & VOLTAGECHANGE
+        if debugoutput(UTILITIES.DEBUGOUT3)
+          serial.fstr1(string("Voltage %.2g\r"), ovoltage)
+        if ovoltage < BATTERY_MINIMUM
+          serial.fstr1(string("Minimum Voltage reached %.2g\r"), ovoltage)
+          sbus.stop()                                   ' stop the sbus cog
+          stopped := true
+          quit                                          ' stop this cog
+
       if debugoutput(UTILITIES.DEBUGOUT4)
         serial.fstr1(string("Sensor period %d\r"), getms()-period_time)
       releaseprintlock()                                ' release lock soon as we have finished printing
@@ -421,11 +471,16 @@ PRI releasesynclock()
 
 DAT
   ' default channel values, after mapping
-  '                     X  Y   OFF   R      Kp  Ki  Kd        D1        D2        D3
-  '                     1  2    3    4       5   6   7         8         9        10
-  Defaults      word    0, 0,   0,   0,     20,  0,  0,    MINDEBUG, MINDEBUG, MINDEBUG
-  '
-  '                     11        12    13    14    15    16    17    18
+  '                     X  Y   OFF   R
+  '                     1  2    3    4
+  Defaults      word    0, 0,   0,   0
+  '                            Kp                                 Ki                                Kd
+  '                            5                                  6                                 7
+                word    trunc(-0.0*.PIDCONSTANTSDIVIDER100), trunc(-0.0*.PIDCONSTANTSDIVIDER100), trunc(-0.0*.PIDCONSTANTSDIVIDER1000)
+  '                        D1        D2        D3
+  '                         8         9        10
+                word    MINDEBUG, MINDEBUG, MINDEBUG
+  '                      11       12    13    14    15    16    17    18
                 word   MAXTEST,    0,    0,    0,    0,    0,    0,    0
   ' minimum sbus mapping
   minmap        long    -swerve.MAXSPEED, -swerve.MAXSPEED, 0, -swerve.MAXSPEED
@@ -444,6 +499,7 @@ DAT
   ' yaw offset for usfsmax to front bot in 0-360.0 degrees
   yawoffset     long    1.0
 
+  ' following data needs to be 1 per swerve module, i.e, 1 per NO_SWERVE_MODULES
   ' angle offsets of each swerve module encoder, 0-MAXANGLE
   ' to find value, point each swerve wheel forward, look at encoder debugoutput for raw, map and out
   ' raw is encoder pwm, map is pwm mapped to angle 0-MAXANGLE, out is + encoder offset mod MAXANGLE
@@ -462,6 +518,12 @@ DAT
   ' encoder pin offsets in order of FL, FR, BL, BR
   pinoffsets    long    3, 1, 2, 0
 
+  '                       FL,    FR     BL     BR
+  defaultKp     long     -9.0,  -9.0,  -9.0,  -9.0
+  defaultKi     long    -20.0, -20.0, -20.0, -20.0
+  defaultKd     long     -0.1,  -0.1,  -0.1,  -0.1
+
+  ' 1 per motor, i.e., 2 motors per NO_SWERVE_MODULES
   ' match how motors are connected to the motor driver boards
   ' motor channels 0-3 on board 1, 4-7 on board 2
   '                     FL    FR    BL    BR
@@ -474,11 +536,7 @@ DAT
   '                     D  S  D  S  D  S  D  S
   invert        word    0, 1, 1, 1, 1, 0, 0, 0
 
-  '                       FL,    FR     BL     BR
-  defaultKp     long     -8.5,  -8.5,  -8.5,  -8.5
-  defaultKi     long    -20.0, -20.0, -20.0, -20.0
-  defaultKd     long     -0.1,  -0.1,  -0.1,  -0.1
-
+  ' usfsmax configuration
   Config
                 LONG M_V
                 LONG M_H
