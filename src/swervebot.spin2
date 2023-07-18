@@ -103,9 +103,10 @@ con { fixed io pins }
                                                                                 ' 8K2 + 3K3
 
   BATTERY_LOW                   = 0
-  BATTERY_HIGH                  = 2500                                          ' 12.5 * 200
-  BATTERY_DIVIDER               = 200.0
+  BATTERY_HIGH                  = 33482                                         ' 8K2 + 3K resistor divider, max voltage is 12.5V * 3000/11200 -> 3.3482
+  BATTERY_DIVIDER               = 2678.56                                       ' 33482/2678.56 -> 12.5
   BATTERY_MINIMUM               = 9.9                                           ' minimum voltage
+  BATTERY_TEST                  = true
 
   ' Bellevue, WA 98008
   M_V                           = 49.4643
@@ -391,10 +392,9 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
         'serial.fstr0(string("gps input changed\r"))
       'releaseprintlock()                                ' release lock soon as we have finished printing
 
-    volt := ++volt // BATTERY_HIGH
-    if volt < 2000
-      volt := 2001
-    if fabs((ovoltage := float({battery.read()}volt)/.BATTERY_DIVIDER) -. oldvoltage\ovoltage) > 0.2
+    ovoltage := float((BATTERY_TEST == true)?27000 + (++volt // (BATTERY_HIGH-27000)):battery.read())/.BATTERY_DIVIDER
+    if utilities.frel(fabs(ovoltage -. oldvoltage), 0.2, UTILITIES.FGT)
+      oldvoltage := ovoltage
       sensorupdate |= VOLTAGECHANGE
 
     takesynclock()
@@ -519,8 +519,8 @@ DAT
   pinoffsets    long    3, 1, 2, 0
 
   '                       FL,    FR     BL     BR
-  defaultKp     long     -9.0,  -9.0,  -9.0,  -9.0
-  defaultKi     long    -20.0, -20.0, -20.0, -20.0
+  defaultKp     long    -16.0, -16.0, -16.0, -16.0      ' -9.0
+  defaultKi     long    -30.0, -30.0, -30.0, -30.0      ' -20
   defaultKd     long     -0.1,  -0.1,  -0.1,  -0.1
 
   ' 1 per motor, i.e., 2 motors per NO_SWERVE_MODULES

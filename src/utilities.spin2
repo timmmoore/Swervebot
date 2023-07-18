@@ -58,12 +58,20 @@ PUB swapbytes(val) : result
     movbyts result, #%%0123
   end
 '
+CON
+  FLT           = $a2
+  FGT           = $a4
+  FNE           = $a6
+  FEQ           = $a8
+  FLTE          = $aa
+  FGTE          = $ac
+
 PUB frel(t1, t2, p): r | x, w, y, _FFFFFFFF, paa
 
   w := t1
   x := t2
   paa := p
-  _FFFFFFFF := $FFFFFFFF
+  _FFFFFFFF~~
   org
 
                 bitl    w,#31           wcz     'make left-side comparable

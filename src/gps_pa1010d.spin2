@@ -139,12 +139,12 @@ PRI parse(ptr) : retv | char, temp, p1
       Minutes, ptr := buildcommaconvert(ptr, 2)         ' Get Minutes
       Hours := Hours +. float(trunc(Offset))            ' Convert to Local Time
       Minutes := Minutes +. ((Offset -. float(trunc(Offset))) *. 100.0) ' Convert to Local Time
-      if utilities.frel(Minutes, 60.0, $a4) 'Minutes >. 60.0
+      if utilities.frel(Minutes, 60.0, UTILITIES.FGT) 'Minutes >. 60.0
         Hours := Hours +. 1.0
         Minutes := Minutes -. 60.0
-      if utilities.frel(0.0, Hours, $a4) '0.0 >. Hours  ' Check for negative time..., note <. doesn't work correctly
+      if utilities.frel(Hours, 0.0, UTILITIES.FLT) 'Hours <. 0.0 ' Check for negative time..., note <. doesn't work correctly
         Hours := Hours +. 24.0                          ' if so, add 24 hours
-      if utilities.frel(Hours, 24.0, $a4) 'Hours >. 24.0
+      if utilities.frel(Hours, 24.0, UTILITIES.FGT) 'Hours >. 24.0
         Hours := Hours -. 24.0
       Seconds_F, ptr := buildcommaconvert(ptr, 0)       ' Get Seconds, as ss.sss
       Hours := trunc(Hours)
