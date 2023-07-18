@@ -142,9 +142,9 @@
       (stroke (width 0.1) (type solid)) (layer "F.Fab") (tstamp f9a2723c-79d3-44cb-97f1-782eedd6164e))
     (fp_line (start 1 0.625) (end -1 0.625)
       (stroke (width 0.1) (type solid)) (layer "F.Fab") (tstamp 3d59e373-d903-45a0-9893-dabb4c10089d))
-    (pad "1" smd roundrect (at -1 0) (size 1.2 1.4) (layers "F.Cu" "F.Paste" "F.Mask") (roundrect_rratio 0.208333)
+    (pad "1" smd roundrect (at -1 0) (size 1.2 1.4) (layers "F.Cu" "F.Paste" "F.Mask") (roundrect_rratio 0.2083333333)
       (net 11 "Net-(ADC1-Pad1)") (pintype "passive") (tstamp cc5761bb-5b85-4742-9dfd-a2153d7f20b9))
-    (pad "2" smd roundrect (at 1 0) (size 1.2 1.4) (layers "F.Cu" "F.Paste" "F.Mask") (roundrect_rratio 0.208333)
+    (pad "2" smd roundrect (at 1 0) (size 1.2 1.4) (layers "F.Cu" "F.Paste" "F.Mask") (roundrect_rratio 0.2083333333)
       (net 20 "Net-(J1-Pad3)") (pintype "passive") (tstamp d0004fc6-f8b8-4917-bdbf-4188739d585a))
     (model "${KICAD6_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0805_2012Metric.wrl"
       (offset (xyz 0 0 0))
@@ -261,9 +261,9 @@
       (stroke (width 0.1) (type solid)) (layer "F.Fab") (tstamp b86d57e4-3014-4698-934e-06647466c128))
     (fp_line (start 1 0.625) (end -1 0.625)
       (stroke (width 0.1) (type solid)) (layer "F.Fab") (tstamp c14fd9a6-f977-453f-ba1d-9ffc6d9e88e9))
-    (pad "1" smd roundrect (at -1 0) (size 1.2 1.4) (layers "F.Cu" "F.Paste" "F.Mask") (roundrect_rratio 0.208333)
+    (pad "1" smd roundrect (at -1 0) (size 1.2 1.4) (layers "F.Cu" "F.Paste" "F.Mask") (roundrect_rratio 0.2083333333)
       (net 20 "Net-(J1-Pad3)") (pintype "passive") (tstamp 295af991-69b9-4ab2-b472-2049f4a13d80))
-    (pad "2" smd roundrect (at 1 0) (size 1.2 1.4) (layers "F.Cu" "F.Paste" "F.Mask") (roundrect_rratio 0.208333)
+    (pad "2" smd roundrect (at 1 0) (size 1.2 1.4) (layers "F.Cu" "F.Paste" "F.Mask") (roundrect_rratio 0.2083333333)
       (net 14 "Net-(ADC1-Pad4)") (pintype "passive") (tstamp e307e932-c391-459d-a9c6-993ae70bd99e))
     (model "${KICAD6_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0805_2012Metric.wrl"
       (offset (xyz 0 0 0))
