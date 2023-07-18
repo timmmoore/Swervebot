@@ -431,7 +431,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
             serial.fstr2(string("%d(%d) "), sbuschannels[ch], sbuschannels[ch]-lastchannels[ch]) ' channel value and delta from previous value
           serial.fstr0(string("\r"))
       if sensorupdate & GPSCHANGE
-        if debugoutput(UTILITIES.DEBUGOUT3)
+        if debugoutput(fix == 0?UTILITIES.DEBUGOUT3:UTILITIES.DEBUGOUT4)
           serial.fstr5(string("GPS (%s) %x %2.2d:%2.2d:%+4.8g "), gpsrel, ogpst, ohour, omin, osec)
           serial.fstr2(string("%8.5g %10.5g "), onorthdeg, owestdeg)
           serial.fstr4(string("%.4g %.4g %d %d\r"), ospeed, oalt, fix, satno)
