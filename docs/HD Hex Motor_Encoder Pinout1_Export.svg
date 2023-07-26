@@ -1,0 +1,26 @@
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" width="800" height="250" viewBox="0 0 800 250">
+  <g>
+    <rect x="486.36" y="69.66" width="113.15" height="53.64" transform="translate(1085.87 192.97) rotate(180)" fill="#fff" stroke="#58595b" stroke-miterlimit="10" stroke-width="0.75"/>
+    <polygon points="494.01 116.37 591.86 116.37 591.86 76.51 565.38 76.51 565.38 71.84 520.78 71.84 520.78 76.51 494.01 76.51 494.01 116.37" fill="#e6e7e8" stroke="#58595b" stroke-miterlimit="10" stroke-width="0.75"/>
+    <rect x="551.69" y="88.07" width="8.36" height="8.36" transform="translate(1111.75 184.51) rotate(180)" fill="#ec2227"/>
+    <rect x="575.11" y="88.07" width="8.36" height="8.36" transform="translate(1158.58 184.51) rotate(180)" fill="#010101"/>
+    <rect x="527.44" y="88.07" width="8.36" height="8.36" transform="translate(1063.25 184.51) rotate(180)" fill="#fff"/>
+    <rect x="504.03" y="88.07" width="8.36" height="8.36" transform="translate(1016.42 184.51) rotate(180)" fill="#3a53a4"/>
+    <rect x="402.06" y="145.39" width="65.2" height="45.02" fill="#3a53a4"/>
+    <rect x="474.24" y="145.39" width="65.2" height="45.02" fill="#fff" stroke="#010101" stroke-miterlimit="10"/>
+    <rect x="546.43" y="145.39" width="65.2" height="45.02" fill="#ed2224"/>
+    <rect x="618.61" y="145.39" width="65.2" height="45.02" fill="#010101"/>
+    <text transform="translate(406.83 176.54)" font-size="28.14" fill="#fff" font-family="RobotoCondensed-Regular, Roboto Condensed" letter-spacing="0.02em">Ch B</text>
+    <text transform="translate(479.63 175.74)" font-size="28.14" fill="#010101" font-family="RobotoCondensed-Regular, Roboto Condensed" letter-spacing="0.02em">Ch A</text>
+    <text transform="translate(553.8 176.69)" font-size="28.15" fill="#fff" font-family="RobotoCondensed-Regular, Roboto Condensed" letter-spacing="0.02em">3.3V</text>
+    <text transform="translate(626.05 176.69)" font-size="28.15" fill="#fff" font-family="RobotoCondensed-Regular, Roboto Condensed" letter-spacing="0.02em">GND</text>
+    <polygon points="236.27 58.67 236.27 58.67 236.27 58.67 236.27 56.79 179.38 56.79 179.38 74.76 236.27 74.76 236.27 58.67" fill="#fff" stroke="#58595b" stroke-miterlimit="10"/>
+    <rect x="171.53" y="69.14" width="72.23" height="83.46" transform="translate(318.52 -96.77) rotate(90)" fill="#f1f2f2" stroke="#58595b" stroke-miterlimit="10"/>
+    <rect x="218.83" y="94.23" width="14.47" height="14.47" transform="translate(327.52 -124.6) rotate(90)" fill="#ed2224"/>
+    <rect x="182.89" y="94.23" width="14.47" height="14.47" transform="translate(291.59 -88.66) rotate(90)" fill="#231f20"/>
+    <rect x="147.92" y="165" width="55.06" height="38.02" fill="#010101"/>
+    <text transform="translate(158.18 192.21)" font-size="28.03" fill="#fff" font-family="RobotoCondensed-Regular, Roboto Condensed">M -</text>
+    <rect x="212.3" y="165.26" width="55.06" height="38.02" fill="#ed1c24"/>
+    <text transform="translate(219.08 192.46)" font-size="28.03" fill="#fff" font-family="RobotoCondensed-Regular, Roboto Condensed">M +</text>
+  </g>
+</svg>

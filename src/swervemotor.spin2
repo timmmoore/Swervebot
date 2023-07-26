@@ -11,6 +11,9 @@ CON
   MAX_SWERVE_MODULES = 4
   MAX_ENCODERS  = MAX_SWERVE_MODULES                         ' 1 per swerve module
 
+                                                             ' adjust drive encoder ticks/sec to match +-MAXSPEED
+  DRIVEENCODERTICKS             = 6                          ' quadratue encoder: max a ticks per motor revolution in 100ms
+
   NO_MOTOR1         =           MOTOR.NO_MOTOR1
   NO_MOTOR2         =           MOTOR.NO_MOTOR2
 
@@ -38,21 +41,26 @@ VAR
   long lastcx, lastcy, lastcr, motorsareoff
   long acctime
   long cosbot[2]                        ' float, bot size/rad
-  long overridemax
+  long overridemax[2]
   word inverts[MAX_SWERVE_MODULES*2]
   long encodertime
+  long driveencodercount[MAX_SWERVE_MODULES]
+  long driveencodervelocity[MAX_SWERVE_MODULES]
+  long driveencodertime[MAX_SWERVE_MODULES]
 
 OBJ
   serial        : "isp_serial_singleton_tmm"
   encoder       : "pwm_in" | NOPWMIN = MAX_ENCODERS     ' angle position of each swerve
   pid[MAX_ENCODERS] : "pid"                             ' pid for controling angle of each swerve
+  driveencoders[MAX_SWERVE_MODULES] : "jm_quadrature_tmm"
+  dpid[MAX_ENCODERS] : "pid"                            ' pid for controling speed from drive motors of each swerve
   utilities     : "utilities"
   motor         : "motordriver"                         ' motor drivers for drive and steering motors
 
 PUB null()
   ' This is not a top-level object
 
-PUB start(scl, sda, epin, pbot, ppinoffsets, pangleoffsets, pminencoder, pmaxencoder, pinvert, pmotor) : retv | ch, t1, t2, rad
+PUB start(scl, sda, epin, pbot, ppinoffsets, pangleoffsets, pminencoder, pmaxencoder, pinvert, pmotor, pdencoders) : retv | ch, t1, t2, rad
   '' start 4 swerve modules
   longmove(@motors, pmotor, MAX_SWERVE_MODULES*2)
   rad := fsqrt(long[pbot][BOT_WIDTH]*.long[pbot][BOT_WIDTH] +. long[pbot][BOT_LENGTH]*.long[pbot][BOT_LENGTH])/.2.0 ' diag of bot
@@ -71,17 +79,23 @@ PUB start(scl, sda, epin, pbot, ppinoffsets, pangleoffsets, pminencoder, pmaxenc
   repeat ch from 0 to MAX_SWERVE_MODULES-1
     pid[ch].init(ch, MAXANGLE, MAXSPEED)                   ' 0-MAXANGLE input, +- MAXSPEED output
     pid[ch].setposition(0)                                 ' start angle
+    driveencoders[ch].start(long[pdencoders][ch], long[pdencoders][ch+4])
+    driveencodercount[ch], driveencodervelocity[ch] := driveencoders[ch].read() ' current quadrature count
+    driveencodertime[ch] := getms()
+    dpid[ch].init(ch, 0, MAXSPEED)                          ' no wrapping of input, +- MAXSPEED output
+    dpid[ch].setposition(0)                                 ' start speed
   if debugoutput(UTILITIES.DEBUGOUT4)
     serial.fstr1(string("Swerve started %x\r"), retv)
 
 PUB stop()
   motor.stop()
 
-PUB setpidconstants(pKp, pKi, pKd, overmax) | ch
-  overridemax := overmax
+PUB setpidconstants(pSKp, pSKi, pSKd, pDKp, pDKi, pDKd, povermax) | ch
+  longmove(@overridemax, povermax, 2)
   '' config pid constants for steering pids
   repeat ch from 0 to MAX_SWERVE_MODULES-1
-    pid[ch].setconstants(ch, long[pKp][ch], long[pKi][ch], long[pKd][ch])
+    pid[ch].setconstants(ch, long[pSKp][ch], long[pSKi][ch], long[pSKd][ch])
+    dpid[ch].setconstants(ch, long[pDKp][ch], long[pDKi][ch], long[pDKd][ch])
 
 PRI setmotorspeeds(pspeeds) | ch, speed
   ' set all motor speeds, drive and angle
@@ -89,7 +103,22 @@ PRI setmotorspeeds(pspeeds) | ch, speed
   repeat ch from 0 to 7
     speed := long[pspeeds][ch]
     ' final clamping to max motor speed
-    motor.run(motors[ch], abs(speed) > minmotorspeed[ch&1] ? utilities.clamp(speed, overridemax) : 0)
+    motor.run(motors[ch], abs(speed) > minmotorspeed[ch&1] ? utilities.clamp(speed, overridemax[ch&1]) : 0)
+
+PRI drivespeeds(pspeeds) : retv | ch, ponespeed, delta, dpido, denc, ct, dt
+  repeat ch from 0 to MAX_SWERVE_MODULES-1
+    ponespeed := @long[pspeeds][ch<<1]                  ' index for this swerve's motor speeds
+    driveencodercount[ch], driveencodervelocity[ch] := driveencoders[ch].read() ' current quadrature count
+    ct := getms()
+    denc := (DRIVEENCODERTICKS * driveencodervelocity[ch] * 1000)/(dt := (ct - driveencodertime[ch]))
+    driveencodertime[ch] := ct
+    dpid[ch].currentposition(denc)
+    dpid[ch].setposition(long[ponespeed])               ' requested drive motor speed
+    dpido, delta := dpid[ch].output()                   ' update drive motor speed
+    if debugoutput(UTILITIES.DEBUGOUT3)
+      serial.fstr6(string("drivespeeds %s %d %d %d %d %d\r"), @@sptr[ch], dt, driveencodervelocity[ch], denc, long[ponespeed], dpido)
+    'long[ponespeed] := dpido
+    retv |= delta <> 0                                  ' current and set drive speeds not same
 
 PRI angletospeed(pspeeds, pangles) : retv | rawangle, requestangle, ch, wrappedangle, ponespeed, delta
   ' convert required angle to motor speed to get there
@@ -140,7 +169,7 @@ PRI calculate(x, y, r, pspeeds, pangles) | a, b, c, d, xrl, yrl, rl
 ' translate x, y and rotation into swerve speed and angle per swerve module
   rl := float(r)
   xrl, yrl := round(rl *. cosbot[BOT_WIDTH]), round(rl *. cosbot[BOT_LENGTH])
-  a, b, c, d :=  x - xrl, x + xrl, -y - yrl, -y + yrl
+  a, b, c, d :=  y - yrl, y + yrl, -x - xrl, -x + xrl
   if debugoutput(UTILITIES.DEBUGOUT3)
     serial.fstr4(string("Swerve calculate %d %d %d %d\r"), a, b, c, d)
 
@@ -225,6 +254,8 @@ PUB update(x, y, r, off) : notcomplete | changed, newoffstate, previousoffstate,
       scalemaxspeed(@speeders)                          ' scale max drive speeds, so speed not larger than +-MAXSPEED
 
       notcomplete |= angletospeed(@speeders, @angles)   ' convert steering angle to steering motor speed
+
+      notcomplete |= drivespeeds(@speeders)             ' match drive speeds tp motor encoders
 
       setmotorspeeds(@speeders)                         ' set speeds of drive and steering motors
   elseifnot previousoffstate                            ' if not already off, make sure motors are off
