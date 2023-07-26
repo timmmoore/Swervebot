@@ -132,8 +132,8 @@ PRI setPWMAll(addr, num3, num2, num1, value1, value2, value3)
   i2c.start()
   i2c.wr_block(@num1.word[1], 14)
   i2c.stop()                                            ' pins are updated on I2C stop so write order for one batch doesn't matter
-  'if debugoutput(UTILITIES.DEBUGOUT4)
-  '  serial.fstr7(string("setpwmall done %x %d %x %d %x %d %x\r"), addr, num1, value1, num2, value2, num3, value3)
+  if debugoutput(UTILITIES.DEBUGOUT4)
+    serial.fstr7(string("setpwmall done %x %d %x %d %x %d %x\r"), addr, num1, value1, num2, value2, num3, value3)
 
 PUB run(motor, speed) | addr, pwm, in1, in2, in2v, pwmv, temp
 '' set speed of 1 motor of a swerve module
@@ -154,7 +154,7 @@ PUB run(motor, speed) | addr, pwm, in1, in2, in2v, pwmv, temp
   ' 210-215us
   setPWMAll(addr, pwm, in2, in1, 0, in2v, pwmv)
   temp := getct() - temp - 40
-  if debugoutput(UTILITIES.DEBUGOUT4)
+  if debugoutput(UTILITIES.DEBUGOUT3)
     serial.fstr7(string("run motor %.8x %d %.8x %.8x %.8x %d %d\r"), addr, motor, pwm, in2, in1, speed, temp/uscount)
 
 PRI debugoutput(type) : retv

@@ -1,0 +1,403 @@
+{
+ ************************************************************************************************************
+ *                                                                                                          *
+ *  AUTO-RECOVER NOTICE: This file was automatically recovered from an earlier Propeller Tool session.      *
+ *                                                                                                          *
+ *  ORIGINAL FOLDER:     C:\Users\timmoore\Documents\GitHub\Swervebot\src\                                  *
+ *  TIME AUTO-SAVED:     5 hours, 28 minutes ago (7/23/2023 3:26:28 PM)                                     *
+ *                                                                                                          *
+ *  OPTIONS:             1)  RESTORE THIS FILE by deleting these comments and selecting File -> Save.       *
+ *                           The existing file in the original folder will be replaced by this one.         *
+ *                                                                                                          *
+ *                           -- OR --                                                                       *
+ *                                                                                                          *
+ *                       2)  IGNORE THIS FILE by closing it without saving.                                 *
+ *                           This file will be discarded and the original will be left intact.              *
+ *                                                                                                          *
+ ************************************************************************************************************
+.}
+{FrSky S.Port}
+
+
+CON
+  SPORT_START                   = $7E
+  SPORT_HEADER_DISCARD          = $00
+  SPORT_HEADER_DATA             = $10
+  SPORT_HEADER_READ             = $30
+  SPORT_HEADER_WRITE            = $31
+  SPORT_HEADER_RESPONSE         = $32
+
+  FSSP_DLE                      = $7D
+  FSSP_DLE_XOR                  = $20
+
+  FSSP_DATA_FRAME               = $10
+  FSSP_MSPC_FRAME_SMARTPORT     = $30                   ' MSP client frame
+  FSSP_MSPC_FRAME_FPORT         = $31                   ' MSP client frame
+  FSSP_MSPS_FRAME               = $32                   ' MSP server frame
+
+' ID of sensor. Must be something that is polled by FrSky RX
+' 0x00,0xA1,0x22,0x83,0xE4,0x45,0xC6,0x67,0x48,0xE9,0x6A,0xCB,0xAC,0x0D,0x8E,0x2F,0xD0,0x71,0xF2,0x53,0x34,0x95,0x16,0xB7,0x98,0x39,0xBA,0x1B
+' shows up on tx as 224 + ID, i.e., battery monitor is 225, gps is 227, acc is 229
+  DATA_ID_VARIO                 = $00                   ' sensor 0 used for Alt and Vspeed
+  'DATA_ID_FLVSS                 = 1 '$A1                   '        1 used for Cell values
+  DATA_ID_FAS                   = 2 '$22                   '        2 used for vfas , current and fuel
+  DATA_ID_GPS                   = 3 '$83                   '        3 used for GPS data
+  DATA_ID_RPM                   = 4 '$E4                   '        4 used for rpm, T1, T2, airspeed
+  DATA_ID_ACC                   = 5 '$67                   '        7 used for Acc X, Y, Z
+
+  FSSP_SENSOR_ID1               = $1B
+  FSSP_SENSOR_ID2               = $0D
+  FSSP_SENSOR_ID3               = $34
+  FSSP_SENSOR_ID4               = $67
+' there are 32 ID's polled by smartport master
+' remaining 3 bits are crc (according to comments in openTx code)
+
+  SPORT_MIN_TELEMETRY_DELAY_US = 500
+
+  M_SPORTRX                     = P_ASYNC_RX | P_INVERT_IN
+  M_SPORTTX                     = P_ASYNC_TX | P_INVERT_OUT
+  M_SPORTTXOE                   = M_SPORTTX | P_OE
+  SPORT_BITS                    = 8
+  SPORT_BAUD                    = 57600
+
+  FSSP_DATAID_VFAS       = $0210                        ' in 0.01V according to SmartPort spec
+  FSSP_DATAID_VFAS1      = $0211
+  FSSP_DATAID_VFAS2      = $0212
+  FSSP_DATAID_VFAS3      = $0213
+  FSSP_DATAID_VFAS4      = $0214
+  FSSP_DATAID_VFAS5      = $0215
+  FSSP_DATAID_VFAS6      = $0216
+  FSSP_DATAID_VFAS7      = $0217
+  FSSP_DATAID_VFAS8      = $0218
+  FSSP_DATAID_CURRENT    = $0200                        ' in 0.1A according to SmartPort spec
+  FSSP_DATAID_CURRENT1   = $0201
+  FSSP_DATAID_CURRENT2   = $0202
+  FSSP_DATAID_CURRENT3   = $0203
+  FSSP_DATAID_CURRENT4   = $0204
+  FSSP_DATAID_CURRENT5   = $0205
+  FSSP_DATAID_CURRENT6   = $0206
+  FSSP_DATAID_CURRENT7   = $0207
+  FSSP_DATAID_CURRENT8   = $0208
+  FSSP_DATAID_RPM        = $0500
+  FSSP_DATAID_RPM1       = $0501
+  FSSP_DATAID_RPM2       = $0502
+  FSSP_DATAID_RPM3       = $0503
+  FSSP_DATAID_RPM4       = $0504
+  FSSP_DATAID_RPM5       = $0505
+  FSSP_DATAID_RPM6       = $0506
+  FSSP_DATAID_RPM7       = $0507
+  FSSP_DATAID_RPM8       = $0508
+  FSSP_DATAID_FUEL       = $0600
+  FSSP_DATAID_ADC1       = $F102
+  FSSP_DATAID_ADC2       = $F103
+  FSSP_DATAID_VARIO      = $0110
+  FSSP_DATAID_CELLS      = $0300
+  FSSP_DATAID_CELLS_LAST = $030F
+  ' DIY range $5100 to $52FF
+  FSSP_DATAID_CAP_USED   = $5250                        ' given in mAh, should be in percent according to SmartPort spec
+  FSSP_DATAID_PITCH      = $5230 ' custom               ' given in 10*deg
+  FSSP_DATAID_ROLL       = $5240 ' custom               ' given in 10*deg
+  FSSP_DATAID_ACCX       = $0700
+  FSSP_DATAID_ACCY       = $0710
+  FSSP_DATAID_ACCZ       = $0720
+  FSSP_DATAID_T1         = $0400
+  FSSP_DATAID_T11        = $0401
+  FSSP_DATAID_T2         = $0410
+  FSSP_DATAID_HOME_DIST  = $0420                        ' in cm according to SmartPort spec
+  FSSP_DATAID_LATLONG    = $0800
+  FSSP_DATAID_GPS_ALT    = $0820
+  FSSP_DATAID_SPEED      = $0830                        ' Speed should be sent in knots/1000 (GPS speed is in cm/s)
+  FSSP_DATAID_HEADING    = $0840
+  FSSP_DATAID_TIMEDATE   = $0850
+  FSSP_DATAID_ALTITUDE   = $0100                        '  in cm according to SmartPort spec
+  FSSP_DATAID_ASPD       = $0A00
+  FSSP_DATAID_TEMP       = $0B70
+  FSSP_DATAID_TEMP1      = $0B71
+  FSSP_DATAID_TEMP2      = $0B72
+  FSSP_DATAID_TEMP3      = $0B73
+  FSSP_DATAID_TEMP4      = $0B74
+  FSSP_DATAID_TEMP5      = $0B75
+  FSSP_DATAID_TEMP6      = $0B76
+  FSSP_DATAID_TEMP7      = $0B77
+  FSSP_DATAID_TEMP8      = $0B78
+  FSSP_DATAID_A3         = $0900
+  FSSP_DATAID_A4         = $0910                        ' in 0.01V according to SmartPort spec
+
+  VOLTS_AP_ID            = $003B
+  VOLTS_BP_ID            = $003A
+  DIY_STREAM_FIRST_ID    = $5000
+
+  MAXNOSENSORS           = 50
+
+VAR
+  long rxp, _physicalId
+  long cognum, clkx
+  long s_commandPrim, s_applicationId, s_value
+  long r_commandId, r_commandPrim, r_applicationId, r_value
+  long _sensorIndex
+  long lastsensortime[MAXNOSENSORS]                     ' last time this sensor has been sent, dont send more often
+  long lastsensorindex[MAXNOSENSORS]                    ' has sensor been sent, make sure all sensors for physicalid have been sent
+  long latitude, longitude, speed, time, date
+  long heading, pitch, roll
+  long StkAddr[10000]
+
+OBJ
+  serial        : "isp_serial_singleton_tmm"
+  utilities     : "utilities"
+
+PUB start(pin, physicalId) : retv | x
+  rxp := pin
+
+  _physicalId := physicalId
+  pinclear(rxp)                                                                 ' remove old settings
+
+  clkx := muldiv64(clkfreq, $1_0000, SPORT_BAUD) & $FFFFFC00                    ' set bit timing
+  clkx |= (SPORT_BITS-1)                                                        ' set bits (8 data)
+
+  setpinrx()                                                                    ' start smart pin rx for S.PORT
+
+  retv := cognum := COGSPIN(newcog, runsport(), @StkAddr)
+
+PUB stop()
+  if (cognum)                                                                   ' if running
+    cogstop(cognum-1)                                                           '  stop the cog
+    cognum := 0                                                                 '  mark stopped
+  pinclear(rxp)                                                                 ' remove old settings
+
+pub setgps(tlatitude, tlongitude, tspeed, ttime, tdate)
+  longmove(@latitude, @tlatitude, 5)
+
+pub setimu(theading, tpitch, troll)
+  longmove(@heading, @theading, 3)
+
+'' rethink this, the response needs to be called from the poll
+pub setCommand(command)
+' specify a command for us
+' need to poll readrecCommand to get the incoming command
+  r_commandId := command                                                        ' Listen to data send to thist physical ID
+
+pub readrecCommand() : prim, applicationIdt, valuet
+' read the last receive command
+' prim is 0 if no command received
+  prim := r_commandPrim\0                                                       ' remove command once read
+  applicationIdt := r_applicationId
+  valuet := r_value
+
+pri commandReceived(prim, applicationIdt, valuet)
+' save incase it is read
+  r_commandPrim := prim
+  r_applicationId := applicationIdt
+  r_value := valuet
+
+pub setSendCommand(prim, applicationIdt, valuet)
+  s_commandPrim := prim
+  s_applicationId := applicationIdt
+  s_value := valuet
+
+PRI SendCommand() : retv
+' have command saved ready for poll?
+  if retv := (s_commandPrim > 0)
+    serial.fstr0(string("sport SendCommand\r"))
+    SendData(s_commandPrim\0, s_applicationId, s_value)
+
+PRI runsport() | rx, byte buffer[10], valid, index, physicalId
+' main cog loop, get polls from receiver and respond to them
+' if poll is for us, send command is available, else send sensor value
+' if receive command then save
+  'serial.fstr0(string("sport cog running\r"))
+  lastsensortime[0] := getms()
+  longfill(@lastsensortime, lastsensortime[0], MAXNOSENSORS)
+  repeat
+    if (rx := rxcheck()) <> -1
+      if rx == SPORT_START
+        ' poll should be every 12ms
+        valid~~
+        index~
+      elseif valid && index == 1
+        physicalId := rx & $1f
+        'serial.fstr2(string("got phy %d %x\r"), getms(), physicalId)
+        if validid(physicalId) && rxcheck() == -1
+          'serial.fstr2(string("sport phy %x %x\r"), buffer[0], physicalId)
+          if SendCommand() == false
+            valid := !SendSensor(physicalId)
+        elseif r_commandId <> physicalId && rxcheck() == -1
+          ' if its not for us, then discard
+          ' if its a commandId we want, then commandReceived below will eventually be called
+          'serial.fstr2(string("sport not commandid %x %x\r"), buffer[0], physicalId)
+          valid~
+      if valid
+        buffer[index++] := rx
+        if index >= 10
+          valid~
+          'serial.fstr6(string("sport command received %x %x %x %x %x %x\r"), buffer[0], buffer[1], buffer[2], word[@buffer+3], long[@buffer+5], buffer[9])
+          'commandReceived(buffer[2], word[@buffer+3], long[@buffer+5])
+
+pri validid(physicalId) : sensorid
+' which physical sensors are enabled
+  sensorid := false
+  case physicalId
+'    DATA_ID_VARIO:                                     ' sensor 0 used for Alt and Vspeed
+'      sensorid := true
+'    DATA_ID_FLVSS:                                     '        1 used for Cell values
+'      sensorid := true
+'   DATA_ID_FAS:                                        '        2 used for vfas , current and fuel
+'      sensorid := true
+    DATA_ID_GPS:                                        '        3 used for GPS data
+      sensorid := true
+'    DATA_ID_RPM:                                       '        4 used for rpm, T1, T2, airspeed
+'      sensorid := true
+    DATA_ID_ACC:                                        '        5 used for Acc X, Y, Z
+      sensorid := true
+
+pri rxcheck() : rxbyte | o1
+'' Check for serial input
+'' -- returns -1 if nothing available
+  if pinread(rxp)
+    rxbyte := (rdpin(rxp) >> (32-SPORT_BITS))
+    return rxbyte & $ff
+  else
+    return -1
+
+pri sensor_getData(applicationIdt, subindex) : valuet, delay
+  delay := 500
+  case applicationIdt
+    FSSP_DATAID_LATLONG:
+      delay := 1000
+      if subindex == 0
+        valuet := round(89.0{latitude} *. 600000.0)
+        if valuet < 0
+          valuet := abs(valuet)
+          valuet |= DECOD (30-1)                                                ' West
+        else
+          valuet &= !DECOD (30-1)                                               ' east
+        valuet |= DECOD (31-1)                                                  ' Longitude
+      elseif subindex == 1
+        valuet := round(longitude *. 600000.0)
+        if valuet < 0
+          valuet := abs(valuet)
+          valuet |= DECOD (30-1)                                                ' South
+        else
+          valuet &= !DECOD (30-1)                                               ' North
+        valuet &= !DECOD (31-1)                                                 ' Lattitude
+    FSSP_DATAID_SPEED:                                                          ' Speed should be sent in knots/1000 (GPS speed is in cm/s)
+      delay := 1000
+      valuet := round((speed *. 1944.0) /. 100.0)
+    FSSP_DATAID_ALTITUDE:
+      delay := 1000
+      valuet := 10000
+    FSSP_DATAID_HEADING:                                                        ' in degrees * 100 according to SmartPort spec
+      valuet := round(heading *. 100.0)
+    FSSP_DATAID_PITCH:                                                          ' given in 10*deg
+      valuet := round(pitch *. 10.0)
+    FSSP_DATAID_ROLL:
+      valuet := round(roll *. 10.0)
+
+PRI SendSensor(physicalId) : retv | Index, applicationIdt, valuet, data, delay, i, clear
+  repeat _sensorCount/_sensornoentries                                          ' loop through known sensors, 1 sensor per poll
+    Index := _sensorIndex
+    _sensorIndex := (_sensorIndex+_sensornoentries) // _sensorCount             ' next entry, increment by amount of sensor info per entry
+    'serial.fstr5(string("sport Sensorindex %d %d %x %x %x\r"), Index, _sensorIndex, physicalId, word[@_sensors][Index], word[@_sensors][Index+1])
+    if (word[@_sensors][Index] == physicalId) and ((applicationIdt := word[@_sensors][Index+1]) > 0) and (lastsensorindex[Index/_sensornoentries] == 0) ' have a sensor
+      lastsensorindex[Index/_sensornoentries] := 1
+      clear := true
+      repeat i from 0 to (_sensorCount/_sensornoentries)-1
+        if (word[@_sensors][i*3] == physicalId) and (lastsensorindex[i] == 0)
+          clear := false
+          quit
+      if clear == true
+        repeat i from 0 to (_sensorCount/_sensornoentries)-1
+          if (word[@_sensors][i*3] == physicalId)
+            lastsensorindex[i] := 0
+      valuet, delay := sensor_getData(applicationIdt, word[@_sensors][Index+2]) ' have sensor data to send?
+      'serial.fstr5(string("sport Sensor %d %x %x %x %d\r"), Index, physicalId, applicationIdt, valuet, word[@_sensors][Index+2])
+      setpintx()                                                                ' switch pin to transmit
+      if (getms() - lastsensortime[Index/_sensornoentries]) > delay             ' send sensor value every 500ms
+        lastsensortime[Index/_sensornoentries] := getms()
+        SendData(SPORT_HEADER_DATA, applicationIdt, valuet) '                   ' send the sensor data
+      else
+        'serial.fstr2(string("sport Sensor empty %x %x\r"), physicalId, applicationIdt)
+        SendData(0, applicationIdt, 0) '                                        ' send empty sensor data
+      setpinrx()                                                                ' switch back to listening
+      return true                                                               ' Data send, end loop
+
+' config smartpin with 0 clk and no p_oe, then finishing smartpin config on sending 1st byte
+' needed to make sure 1st byte goes out correctly
+pri setpintx() | rp, x, clk, mode
+  rp := rxp
+  org
+   fltl  rp
+   wrpin ##(P_ASYNC_TX | P_INVERT_OUT), rp
+   wxpin #0, rp
+   drvl  rp
+   waitx #1
+   rdpin x, rp
+   wypin #0, rp
+  end
+
+pri setpinrx()
+  waitus(150)                                                                   ' make sure its flushed
+  pinstart(rxp, M_SPORTRX, clkx, 0)                                             ' start smart pin rx for S.PORT
+  waitus(20)
+  rxcheck()                                                                     ' discard first byte after switching to listen, its $ff
+  waitus(SPORT_MIN_TELEMETRY_DELAY_US)
+
+pri SendData(prim, applicationIdt, valuet) | byte frame[8], i
+  'serial.fstr3(string("sport SendData %x %x %x | "), prim, applicationIdt, valuet)
+  frame[0] := prim
+  word[@frame+1] := applicationIdt
+  long[@frame+3] := valuet
+  frame[7] := GetChecksum(@frame, 7)
+
+  ' Send the frame
+  repeat i from 0 to (8-1)
+    SendByte(frame[i], i==0)
+
+  'serial.fstr0(string("\r"))
+
+pri GetChecksum(pdata, len) : total | i
+
+  repeat i from 0 to (len - 1)
+    total += byte[pdata][i]
+    total += (total >> 8)
+    total &= $ff
+  total := $ff - total
+
+pri SendByte(b, first)
+' Send a data byte the FrSky way
+  if (b == SPORT_START) or (b == FSSP_DLE)
+    write(FSSP_DLE, first)
+    write(b ^ FSSP_DLE_XOR, false)
+  else
+    write(b, first)
+
+pri write(b, first) | rp, x, clk, mode
+  rp := rxp
+  clk := clkx
+  mode := M_SPORTTXOE                                   ' do not remove, needed for timing
+  'serial.fstr2(string("%x(%d) "), b, first)
+    org
+       testb first, #0          wc
+  if_c wrpin mode, rp
+  if_c wxpin clk, rp
+       waitx #1
+       wypin b, rp
+       waitx #1
+wait   rdpin x, rp              wc
+  if_c jmp #wait
+    end
+
+con
+  _sensornoentries              = 3                                             ' number entries for each sensor info
+
+dat
+' maximum of 50 sensors
+_sensorCount  long      (@_sensorsend - @_sensors)/2                            ' count of info, not count of sensors
+_sensors      word      DATA_ID_GPS, FSSP_DATAID_LATLONG, 0                     ' 800
+              word      DATA_ID_GPS, FSSP_DATAID_LATLONG, 1                     ' 800
+              word      DATA_ID_GPS, FSSP_DATAID_SPEED, 0                       ' 830
+              word      DATA_ID_GPS, FSSP_DATAID_ALTITUDE, 0                    ' 100
+              word      DATA_ID_ACC, FSSP_DATAID_HEADING, 0                     ' 840
+              word      DATA_ID_ACC, FSSP_DATAID_PITCH, 0                       ' $5230, given in 10*deg
+              word      DATA_ID_ACC, FSSP_DATAID_ROLL, 0                        ' $5240, given in 10*deg
+_sensorsend
+'

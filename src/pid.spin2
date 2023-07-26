@@ -66,7 +66,7 @@ PUB output() : out, delta | dt, time, A0, A1, A2, error0
     A2 := sKd/.dt
   A0 := sKp +. sKi*.dt +. A2
   A1 := -2.0*.A2 -. sKp
-  ' error0 is shortest angle allowing for wrapping
+  ' error0 is shortest angle allowing for wrapping, note no wrap if maxwrap is 0
   error0 := float(delta := utilities.wrapangles(currentpos, setpos, maxwrap))
   out := utilities.clamp(lastout + round(A0*.error0 +. A1*.error1 +. A2*.error2), maxoutput)
   ' how long the above calculations took

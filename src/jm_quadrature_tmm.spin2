@@ -1,0 +1,101 @@
+'' ===============================================================================================
+''
+''   File....... jm_quadrature.spin2
+''   Purpose.... Quadrature encoder with [optional] button
+''   Author..... Jon "JonnyMac" McPhalen
+''               Copyright (c) 2020 Jon McPhalen
+''               -- see below for terms of use
+''   E-mail..... jon.mcphalen@gmail.com
+''   Started....
+''   Updated.... 29 JUN 2020
+''
+'' =================================================================================================
+
+{
+
+  A/B quadrature encoder using P2 smart pin. B pin must be within +/-3 of A pin
+
+  Note that some detented encoders will return 4 counts per detent.
+  -- set det4x to true
+
+}
+
+var
+
+  long  apin, bpin                                                    ' A input
+  long  setup                                                   ' true when pin setup
+
+
+pub null()
+
+'' This is not a top-level object
+
+pub start(a, b) : result | dif, difb
+
+'' Start the encoder object
+'' -- a: continuous count mode
+'' -- b: velocity mode
+'' -- a & b are encoder inputs (active-low)
+
+  stop()
+
+  dif := b - a
+  difb -= dif
+  if ((dif == 0) or (abs(dif) > 3))                             ' check pins
+    result := false
+  else
+    apin, bpin := a, b                                          ' save pins & limits
+    pinstart(apin, P_QUADRATURE | dif.[2..0] << 24, 0, 0)       ' start a/b quadrature mode
+    pinstart(bpin, P_QUADRATURE | difb.[2..0] << 28, clkfreq/10, 0) ' clocks per 100ms
+    reset()                                                     ' reset encoder value
+    result := setup := true
+
+pub stop()
+
+'' Disable encoder smart pin if previously configured
+
+  if (setup)
+    pinclear(apin)                                              ' disable smart pin
+    pinclear(bpin)                                              ' disable smart pin
+    longfill(@apin, 0, 7)                                       ' mark disabled
+
+pub reset()
+
+'' Set encoder to reset value
+
+  pinfloat(apin)                                                ' reset & clear
+  pinfloat(bpin)                                                ' reset & clear
+  pinlow(apin)                                                  ' re-enable
+  pinlow(bpin)                                                  ' re-enable
+
+pub read() : resultc, resultv
+
+'' Returns encoder values
+
+  resultc := rdpin(apin)
+  resultv := rdpin(bpin)
+
+con { license }
+
+{{
+
+  Terms of Use: MIT License
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this
+  software and associated documentation files (the "Software"), to deal in the Software
+  without restriction, including without limitation the rights to use, copy, modify,
+  merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to the following
+  conditions:
+
+  The above copyright notice and this permission notice shall be included in all copies
+  or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+  PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+  CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+  OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+}}

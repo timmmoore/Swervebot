@@ -2,13 +2,30 @@
 
 {
   3S lithium battery
-        -> 2x I2C motor drivers with PCA9865 and 2x TN6612
         -> 5V regulator -> propeller 2
                 -> debug serial to PC (tx(62), rx(63))
-                -> 1x radio (sbus(55), Vio, Gnd)
-                -> 2x motor driver (SCL(56), SDA(57), Vio, Gnd)
-                -> 4x encoder (Vio, Gnd, analog(50, 51, 52, 53))
-                                mod encoder for 3.3V
+                -> 1x radio (sbus_in(7), SPORT(6), sbus_out(5), 5V, Gnd)
+                      FrSky R-XSR
+                      SPORT sends telemetry: GPS, yaw, pitch, roll
+                -> 2x motor driver (SCL(22), SDA(23), Vio, Gnd)
+                      I2C motor drivers with PCA9865 and 2x TN6612
+                      https://www.tindie.com/products/cburgess129/quad-motor-servo-shield-for-wireless-dev-board/
+                      motor is rev HD motor 6000 rpm free speed, quadrature encoder 28 counts/rev
+                                drive :gearing 1:3 planetary, 12:30 to drive leg, 1:2 wheel bevel -> 1:15
+                                       400 rpm @ wheel, wheel is 2" diameter -> 2500 in/min -> ground speed is 3.5 ft/sec
+                                steering: gearing 1:3, 1:4 planetary, 10:40 -> 1:48
+                                       absolute angle encoder
+                -> 4x encoder (5V, Gnd, pwm(8, 9, 10, 11))
+                      https://store.ctr-electronics.com/srx-mag-encoder/
+                -> USFSMax (SCL(20), SDA(21), Vio, Gnd)
+                      https://www.tindie.com/products/onehorse/usfsmax-module-and-carrier/
+                -> GPS PA1010D (SCL(25), SDA(24), Vio, Gnd)
+                      https://www.adafruit.com/product/4415
+                -> PMW3901 (CS(19), SCK(18), SO(17), SI(15), Vio, Gnd)
+                      https://shop.pimoroni.com/products/pmw3901-optical-flow-sensor-breakout?variant=27869870358611
+                -> Battery Voltage (31), 8K2, 3K resistor network
+                -> 4x quadrature encoders (Gnd, 3V3, A (14, 12, 3, 1), B (15, 13, 2, 0)), 1:3, 12:30, 1:2 -> 1:15
+                      7 ticks or 28 count/rev
 
 TODO
   Map USFSMax yaw angle to bot rotation
@@ -62,9 +79,11 @@ con { fixed io pins }
 
   MINDELTA                      = 5                                             ' minimum channel change
 
-  SBUS_RX                       = 7   { IO }
-  SBUS_SPORT                    = 6
-  SBUS_TX                       = 5
+  SBUS_RX                       = 7                                             ' rx channels from transmitter
+  SBUS_SPORT                    = 6                                             ' bi-directional: poll from receiver, send sensor values
+  SBUS_TX                       = 5                                             ' not used
+  SPORT_PHYSICAL_ID             = $22 '1B                                           ' id that R-XSR polls for sensor telemetry
+  SPORT_COMMAND_ID              = $1B
 
   MOTOR_SDA                     = 23                                            ' i2c pins for motor controllers
   MOTOR_SCL                     = 22                                            ' SCK speed of 800KHz
@@ -73,6 +92,15 @@ con { fixed io pins }
   ENCODERPIN2                   = 9
   ENCODERPIN3                   = 10
   ENCODERPIN4                   = 11
+
+  DRIVEENCODER1A                = 15                                            ' FL
+  DRIVEENCODER1B                = 14
+  DRIVEENCODER2A                = 3                                             ' FR
+  DRIVEENCODER2B                = 2
+  DRIVEENCODER3A                = 13                                            ' BL
+  DRIVEENCODER3B                = 12
+  DRIVEENCODER4A                = 1                                             ' BR
+  DRIVEENCODER4B                = 0
 
   ' min 98-101 max:402035-415613
   ' if use spec ranges then error bar is 20-30% which causes large 'deadband' around 0 and the pids oscillate
@@ -140,8 +168,8 @@ con { fixed io pins }
   MINPIDCONSTANT                = -1000                                         ' PID constants are in range +-4.0
   MAXPIDCONSTANT                = 1000
 
-  MINSBUSCHANNEL                = 240
-  MAXSBUSCHANNEL                = 1807
+  MINSBUSCHANNEL                = 172                   '240
+  MAXSBUSCHANNEL                = 1810                  '1807
   MIDSBUSCHANNEL                = (MAXSBUSCHANNEL+MINSBUSCHANNEL)/2
 
   MINDEBUG                      = 500
@@ -182,14 +210,15 @@ VAR
 
   long osensor1[4]
   long qt[4]
-  long stopped                                                                  ' stop bot if true
+  long stopped                                                  ' stop bot if true
   long StkAddr[10000]
 
 OBJ
                                                                 '  main cog - swerve system
                                                                 '  2nd cog - query sensors
   serial        : "isp_serial_singleton_tmm"
-  sbus          : "jm_sbus_rx"                                  ' 1 cog - read sbus
+  sbus          : "jm_sbus_rx"                                  ' 1 cog - read sbus from receiver
+  sport         : "frskysport"                                  ' 1 cig - handling polling from receiver
   swerve        : "swervemotor" | MAX_SWERVE_MODULES=NO_SWERVE_MODULES
   utilities     : "utilities"
   pmw           : "pmw3901"
@@ -219,7 +248,7 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
   dopidconstants(true)
 
   ' initialize server modules and motors
-  if (havemotors := swerve.start(MOTOR_SCL, MOTOR_SDA, ENCODERPIN1, @bot, @pinoffsets, @angleoffsets, @minencoder, @maxencoder, @invert, @motoroffsets))
+  if (havemotors := swerve.start(MOTOR_SCL, MOTOR_SDA, ENCODERPIN1, @bot, @pinoffsets, @angleoffsets, @minencoder, @maxencoder, @invert, @motoroffsets, @driveencoders))
     if debugoutput(UTILITIES.DEBUGOUT1)
       if havemotors & $01
         serial.fstr1(string("Swerve motors I2C bus error %x\r"), havemotors)
@@ -260,7 +289,7 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
       delaystart := getms()                             ' delay from after motors updated, debug print delays still part of processing time
       ' update swerve modules with updated movements
       if havemotors <> (swerve.NO_MOTOR1|swerve.NO_MOTOR2)
-        again := swerve.update(swervechannels[CHANNEL_X], swervechannels[CHANNEL_Y], swervechannels[CHANNEL_R], swervechannels[CHANNEL_OFF])
+        again := swerve.update(swervechannels[CHANNEL_Y], swervechannels[CHANNEL_X], swervechannels[CHANNEL_R], swervechannels[CHANNEL_OFF])
       if debugo
         if debugoutput(UTILITIES.DEBUGOUT3)
           serial.fstr2(string("Swerve period %d %d\r"), temp1 := getms()-acq_time, temp)
@@ -268,25 +297,30 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
     else
       delaystart := getms()                             ' delay from after motors updated, debug print delays still part of processing time
 
-PRI dopidconstants(init) | tkp[NO_SWERVE_MODULES], tki[NO_SWERVE_MODULES], tkd[NO_SWERVE_MODULES], i
+PRI dopidconstants(init) | tSkp[NO_SWERVE_MODULES], tSki[NO_SWERVE_MODULES], tSkd[NO_SWERVE_MODULES], tDkp[NO_SWERVE_MODULES], tDki[NO_SWERVE_MODULES], tDkd[NO_SWERVE_MODULES], omax[2], i
   ' update pid constants
   ' start with defaults
-  longmove(@tkp, @defaultKp, NO_SWERVE_MODULES)
-  longmove(@tki, @defaultKi, NO_SWERVE_MODULES)
-  longmove(@tkd, @defaultKd, NO_SWERVE_MODULES)
+  longmove(@tSkp, @defaultSteerKp, NO_SWERVE_MODULES)
+  longmove(@tSki, @defaultSteerKi, NO_SWERVE_MODULES)
+  longmove(@tSkd, @defaultSteerKd, NO_SWERVE_MODULES)
+  longmove(@tDkp, @defaultDriveKp, NO_SWERVE_MODULES)
+  longmove(@tDki, @defaultDriveKi, NO_SWERVE_MODULES)
+  longmove(@tDkd, @defaultDriveKd, NO_SWERVE_MODULES)
   ' if not init then radio values delta on top of the defaults
   ifnot init
     repeat i from 0 to NO_SWERVE_MODULES-1
-      tkp[i] := float(swervechannels[CHANNEL_KP])/.PIDCONSTANTSDIVIDER100 +. tkp[i]
-      tki[i] := float(swervechannels[CHANNEL_KI])/.PIDCONSTANTSDIVIDER100 +. tki[i]
-      tkd[i] := float(swervechannels[CHANNEL_KD])/.PIDCONSTANTSDIVIDER1000 +. tkd[i]
+      tDkp[i] := float(swervechannels[CHANNEL_KP])/.PIDCONSTANTSDIVIDER100 +. tDkp[i]
+      tDki[i] := float(swervechannels[CHANNEL_KI])/.PIDCONSTANTSDIVIDER100 +. tDki[i]
+      tDkd[i] := float(swervechannels[CHANNEL_KD])/.PIDCONSTANTSDIVIDER1000 +. tDkd[i]
 
   if debugoutput(UTILITIES.DEBUGOUT3)
-    serial.fstr4(string("radio %d pid:%.2g %.2g %.2g\r"), init, tkp[0], tki[0], tkd[0])
+    serial.fstr4(string("radio %d steer pid:%.2g %.2g %.2g\r"), init, tSkp[0], tSki[0], tSkd[0])
+    serial.fstr4(string("radio %d drive pid:%.2g %.2g %.2g\r"), init, tDkp[0], tDki[0], tDkd[0])
   ' set override max output speed
-  swerve.setpidconstants(@tkp, @tki, @tkd, swervechannels[CHANNEL_TESTMAX])
+  omax[0] := omax[1] := swervechannels[CHANNEL_TESTMAX]
+  swerve.setpidconstants(@tSkp, @tSki, @tSkd, @tDkp, @tDki, @tDkd, @omax)
 
-PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_time, compute_time1, havepmw, haveusfsmax, havegps, sbusstatus, lsbusstatus, ch, lastx_l, lastx_h, lasty_l, lasty_h, lasto[4], debugo, delaystart, gpsret, gpsrel, xl, xh, yl, yh, oldvoltage, volt
+PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_time, compute_time1, havepmw, haveusfsmax, havegps, sbusstatus, lsbusstatus, ch, lastx_l, lastx_h, lasty_l, lasty_h, lasto[4], debugo, delaystart, gpsret, gpsrel, xl, xh, yl, yh, oldvoltage, volt, s
 
   ' init optical flow sensor
   ifnot pmw.begin(PMW_CS, PMW_SCK, PMW_SDO, PMW_SDI) == false
@@ -299,7 +333,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
     pmw.set_orientation(PMW_X_INVERT, PMW_Y_INVERT, PMW_XY_SWAP)
     if PMW_LED
       pmw.setLed(PMW_LED)
-    pmw.readMotionAccum(true)                               ' reset accumulator
+    pmw.readMotionAccum(true)                           ' reset accumulator
 
   ' init IMU
   ifnot (Acq_time := usfsmax.startx(USFSMAX_SCL, USFSMAX_SDA, USFSMAX_RESET, @Config, yawoffset)) == 0
@@ -317,6 +351,8 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
   sbus.start(SBUS_RX, @Defaults)                        ' start s.bus rx
   waitms(100)
   sbus.reset_count()                                    ' reset frames received count
+  sport.start(SBUS_SPORT, SPORT_PHYSICAL_ID)
+  'sport.setCommand(SPORT_COMMAND_ID)
 
   if (Acq_time := gps.start(GPS_SCL, GPS_SDA)) == 0
     havegps := true
@@ -342,9 +378,12 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
       lsbusstatus := LOST
     else
       lsbusstatus := OK
+    'takeprintlock()
+    'serial.fstr0(string("radio raw: "))
     repeat ch from 0 to NOCHANNELS-1
       if lsbusstatus == OK
-        sbuschannels[ch] := utilities.map(sbus.read(ch+1), MINSBUSCHANNEL, MAXSBUSCHANNEL, minmap[ch], maxmap[ch])
+        sbuschannels[ch] := utilities.map(s := sbus.read(ch+1), MINSBUSCHANNEL, MAXSBUSCHANNEL, minmap[ch], maxmap[ch])
+        'serial.fstr1(string("%d "), s)
       else
         sbuschannels[ch] := Defaults[ch]                ' use defaults if not ok, defaults are post-mapped
     if utilities.longcomp(@lastchannels, @sbuschannels, NOCHANNELS, 2, false) ' not updating lastchannels since we use them later
@@ -352,12 +391,14 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
     if lsbusstatus <> sbusstatus\lsbusstatus
       sbustime := getms()
       sensorupdate |= (CHANNELSTATE | CHANNELCHANGE)
+    'serial.fstr0(string("\r"))
+    'releaseprintlock()                                  ' release lock soon as we have finished printing
 
     ' optical flow sensor
     if havepmw
       'takeprintlock()
       Acq_time := getct()
-      ch, _, _ := pmw.readMotionCountBurstQuick()                   ' acquire 24us (4Mhz)
+      ch, _, _ := pmw.readMotionCountBurstQuick()       ' acquire 24us (4Mhz)
       xsensor_l, xsensor_h, ysensor_l, ysensor_h, tsensor := pmw.readMotionAccum(false)
       Acq_time := getct() - Acq_time - 40
       'releaseprintlock()                                ' release lock soon as we have finished printing
@@ -379,6 +420,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
       osensor[YAW], osensor[PITCH], osensor[ROLL], osensor[PRESSURE] := usfsmax.computeIMUFixed(qt[0], qt[1], qt[2], qt[3])
       compute_time := getct() - compute_time - 40
       'releaseprintlock()                                ' release lock soon as we have finished printing
+      sport.setimu(osensor[YAW], osensor[PITCH], osensor[ROLL])
       if utilities.longcompf(@lasto, @osensor, 4, true)
         sensorupdate |= IMUCHANGE                       ' imu changed
 
@@ -387,6 +429,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
       'serial.fstr0(string("gps input\r"))
       if (gpsret := gps.input()) <> 0
         ohour, omin, osec, onorthdeg, owestdeg, ospeed, oalt, gpsrel, ofix, osatno := gps.gps()
+        sport.setgps(onorthdeg, owestdeg, ospeed, 0, 0)
         ogpst |= gpsret
         sensorupdate |= GPSCHANGE                       ' GPS changed
         'serial.fstr0(string("gps input changed\r"))
@@ -483,12 +526,14 @@ DAT
   '                      11       12    13    14    15    16    17    18
                 word   MAXTEST,    0,    0,    0,    0,    0,    0,    0
   ' minimum sbus mapping
-  minmap        long    -swerve.MAXSPEED, -swerve.MAXSPEED, 0, -swerve.MAXSPEED
+  '                            Y                 X                T                R
+  minmap        long    -swerve.MAXSPEED, -swerve.MAXSPEED,       0,        -swerve.MAXSPEED
                 long    MINPIDCONSTANT, MINPIDCONSTANT, MINPIDCONSTANT
                 long    MINDEBUG, MINDEBUG, MINDEBUG
                 long    MINTEST, MINDEFAULT, MINDEFAULT, MINDEFAULT, MINDEFAULT, MINDEFAULT, MINDEFAULT, MINDEFAULT
   ' maximum sbus mapping
-  maxmap        long    swerve.MAXSPEED, swerve.MAXSPEED, swerve.MAXSPEED, swerve.MAXSPEED
+  '                            Y                 X                T                R
+  maxmap        long     swerve.MAXSPEED,  swerve.MAXSPEED, swerve.MAXSPEED, swerve.MAXSPEED
                 long    MAXPIDCONSTANT, MAXPIDCONSTANT, MAXPIDCONSTANT
                 long    MAXDEBUG, MAXDEBUG, MAXDEBUG
                 long    MAXTEST, MAXDEFAULT, MAXDEFAULT, MAXDEFAULT, MAXDEFAULT, MAXDEFAULT, MAXDEFAULT, MAXDEFAULT
@@ -518,10 +563,15 @@ DAT
   ' encoder pin offsets in order of FL, FR, BL, BR
   pinoffsets    long    3, 1, 2, 0
 
-  '                       FL,    FR     BL     BR
-  defaultKp     long    -16.0, -16.0, -16.0, -16.0      ' -9.0
-  defaultKi     long    -30.0, -30.0, -30.0, -30.0      ' -20
-  defaultKd     long     -0.1,  -0.1,  -0.1,  -0.1
+  '                        FL,    FR     BL     BR
+  defaultSteerKp long    -16.0, -16.0, -16.0, -16.0      ' -9.0
+  defaultSteerKi long    -30.0, -30.0, -30.0, -30.0      ' -20
+  defaultSteerKd long     -0.1,  -0.1,  -0.1,  -0.1
+
+  '                        FL,    FR     BL     BR
+  defaultDriveKp long    -16.0, -16.0, -16.0, -16.0      ' -9.0
+  defaultDriveKi long    -30.0, -30.0, -30.0, -30.0      ' -20
+  defaultDriveKd long     -0.1,  -0.1,  -0.1,  -0.1
 
   ' 1 per motor, i.e., 2 motors per NO_SWERVE_MODULES
   ' match how motors are connected to the motor driver boards
@@ -535,6 +585,12 @@ DAT
   '                      FL    FR    BL    BR
   '                     D  S  D  S  D  S  D  S
   invert        word    0, 1, 1, 1, 1, 0, 0, 0
+
+  ' drive motor encoders - speed of drive motors, 7 rises of a pin per motor rotation
+  '  plus 1:3 (planetary) * 1:2 (bevel) * 12:30 (center) = 1:15 -> 105 ticks per wheel rotation
+  '                            FL                FR                 BL                 BR
+  driveencoders long     DRIVEENCODER1A,   DRIVEENCODER2A,    DRIVEENCODER3A,    DRIVEENCODER4A           ' a pin
+                long     DRIVEENCODER1B,   DRIVEENCODER2B,    DRIVEENCODER3B,    DRIVEENCODER4B           ' b pin
 
   ' usfsmax configuration
   Config
