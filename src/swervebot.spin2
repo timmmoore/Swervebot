@@ -6,7 +6,7 @@
                 -> debug serial to PC (tx(62), rx(63))
                 -> 1x radio (sbus_in(7), SPORT(6), sbus_out(5), 5V, Gnd)
                       FrSky R-XSR
-                      SPORT sends telemetry: GPS, yaw, pitch, roll
+                      SPORT sends telemetry: GPS, yaw, pitch, roll, speed/angle of each swerve module
                 -> 2x motor driver (SCL(22), SDA(23), Vio, Gnd)
                       I2C motor drivers with PCA9865 and 2x TN6612
                       https://www.tindie.com/products/cburgess129/quad-motor-servo-shield-for-wireless-dev-board/
@@ -226,7 +226,7 @@ OBJ
   gps           : "gps_pa1010d"
   battery       : "jm_ez_analog"
 
-PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_time, again, temp, temp1
+PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_time, again, temp, temp1, speeds[NO_SWERVE_MODULES], angles[NO_SWERVE_MODULES]
   debug1, debug2, debug3 := INIT_DEBUG, INIT_DEBUG, INIT_DEBUG
   longfill(@lastchannels, -1, NOCHANNELS)
   serial.start(BR_SERIAL)
@@ -290,6 +290,8 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
       ' update swerve modules with updated movements
       if havemotors <> (swerve.NO_MOTOR1|swerve.NO_MOTOR2)
         again := swerve.update(swervechannels[CHANNEL_Y], swervechannels[CHANNEL_X], swervechannels[CHANNEL_R], swervechannels[CHANNEL_OFF])
+      swerve.getactuals(@speeds, @angles)
+      sport.setactuals(@speeds, @angles)
       if debugo
         if debugoutput(UTILITIES.DEBUGOUT3)
           serial.fstr2(string("Swerve period %d %d\r"), temp1 := getms()-acq_time, temp)

@@ -47,6 +47,8 @@ VAR
   long driveencodercount[MAX_SWERVE_MODULES]
   long driveencodervelocity[MAX_SWERVE_MODULES]
   long driveencodertime[MAX_SWERVE_MODULES]
+  long actualangles[MAX_SWERVE_MODULES]
+  long actualspeeds[MAX_SWERVE_MODULES]
 
 OBJ
   serial        : "isp_serial_singleton_tmm"
@@ -97,6 +99,10 @@ PUB setpidconstants(pSKp, pSKi, pSKd, pDKp, pDKi, pDKd, povermax) | ch
     pid[ch].setconstants(ch, long[pSKp][ch], long[pSKi][ch], long[pSKd][ch])
     dpid[ch].setconstants(ch, long[pDKp][ch], long[pDKi][ch], long[pDKd][ch])
 
+PUB getactuals(pspeeds, pangles)
+  longmove(pspeeds, @actualspeeds, MAX_SWERVE_MODULES)
+  longmove(pangles, @actualangles, MAX_SWERVE_MODULES)
+
 PRI setmotorspeeds(pspeeds) | ch, speed
   ' set all motor speeds, drive and angle
   ' swerve modules on 1st and 2nd motor driver
@@ -125,7 +131,7 @@ PRI angletospeed(pspeeds, pangles) : retv | rawangle, requestangle, ch, wrappeda
   ' return false if all swerves are at correct angle
   repeat ch from 0 to MAX_SWERVE_MODULES-1
     ponespeed := @long[pspeeds][ch<<1]                  ' index for this swerve's motor speeds
-    rawangle := encoder.read(ch, false)                 ' current angular position, encoder handles encoder offset
+    actualangles[ch] := rawangle := encoder.read(ch, false) ' current angular position, encoder handles encoder offset
     pid[ch].currentposition(rawangle)                   ' current angle of swerve
     ' if request/current angle > MAXANGLE/2 apart then pid will wrap and invert
     wrappedangle := utilities.wrapangles(rawangle, requestangle := long[pangles][ch], MAXANGLE)
@@ -142,6 +148,7 @@ PRI angletospeed(pspeeds, pangles) : retv | rawangle, requestangle, ch, wrappeda
     retv |= long[ponespeed][1] <> 0                     ' have we reached correct steering angle? i.e. steering motor not moving
     ' slowdown drive speed depending on how far out of alignment the swerve module is
     long[ponespeed] := qcos(long[ponespeed], delta, MAXANGLE)
+    actualspeeds[ch] := long[ponespeed]
     SwerveDebug(3, @@sptr[ch], rawangle, long[ponespeed], long[ponespeed][1], long[pangles][ch], requestangle, wrappedangle)
 
 PRI SwerveDebug(no, p1, p2, p3, p4, p5, p6, p7)
