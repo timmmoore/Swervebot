@@ -28,6 +28,7 @@ CON
   DATA_ID_ACTUALS               = 4                     '        4 used for actual swerve speeds and angles
 '  DATA_ID_RPM                   = 4                     '        4 used for rpm, T1, T2, airspeed
   DATA_ID_ACC                   = 5                     '        5 used for Acc X, Y, Z
+  DATA_ID_FLOW                  = 6
 
   SPORT_MIN_TELEMETRY_DELAY_US = 500
 
@@ -109,6 +110,9 @@ CON
   FSSP_ACTUAL3           = $5102
   FSSP_ACTUAL4           = $5103
 
+  FSSP_DATAID_FLOWX      = $5014
+  FSSP_DATAID_FLOWY      = $5015
+
   MAXNOSENSORS           = 50
 
 VAR
@@ -122,6 +126,7 @@ VAR
   long latitude, longitude, speed, time, date           ' from gps
   long heading, pitch, roll                             ' from imu
   long actualspeeds[4], actualangles[4]                 ' from swerve modules
+  long flow[2]
   long StkAddr[10000]
 
 OBJ
@@ -156,6 +161,9 @@ pub setimu(theading, tpitch, troll)
 pub setactuals(pspeeds, pangles)
   longmove(@actualspeeds, pspeeds, 4)
   longmove(@actualangles, pangles, 4)
+
+pub setflow(pflows)
+  longmove(@flow, pflows, 2)
 
 '' rethink this, the response needs to be called from the poll
 pub setCommand(command)
@@ -235,6 +243,8 @@ pri validid(physicalId) : sensorid
       sensorid := true
     DATA_ID_ACC:                                        '        5 used for Acc X, Y, Z
       sensorid := true
+    DATA_ID_FLOW:
+      sensorid := true
 
 pri rxcheck() : rxbyte | o1
 '' Check for serial input
@@ -282,6 +292,10 @@ pri sensor_getData(applicationIdt, subindex) : valuet | temp
     FSSP_ACTUAL4:                                                               ' +- MAXSPEED in lower word angle in upper word
       valuet := actual(actualspeeds[3])                                         ' sign in word bit 15
       valuet |= (actual(round((float(actualangles[3]) *. 360.0)/.10.24)) << 16) ' 0-360.00 * 100 in upper word
+    FSSP_DATAID_FLOWX:
+      valuet := flow[0]
+    FSSP_DATAID_FLOWY:
+      valuet := flow[1]
 
 pri querysensorsent(Index) : retv
   return lastsensorindex[Index/_sensornoentries] == 0
@@ -409,5 +423,7 @@ _sensors      word      DATA_ID_GPS, FSSP_DATAID_LATLONG,  0, 1000              
               word      DATA_ID_ACC, FSSP_DATAID_HEADING,  0,  500              ' 840
               word      DATA_ID_ACC, FSSP_DATAID_PITCH,    0,  500              ' $5230, given in 10*deg
               word      DATA_ID_ACC, FSSP_DATAID_ROLL,     0,  500              ' $5240, given in 10*deg
+              word      DATA_ID_FLOW, FSSP_DATAID_FLOWX,   0,  500              ' optical flow x
+              word      DATA_ID_FLOW, FSSP_DATAID_FLOWY,   0,  500              ' optical flow y
 _sensorsend
 '

@@ -322,7 +322,7 @@ PRI dopidconstants(init) | tSkp[NO_SWERVE_MODULES], tSki[NO_SWERVE_MODULES], tSk
   omax[0] := omax[1] := swervechannels[CHANNEL_TESTMAX]
   swerve.setpidconstants(@tSkp, @tSki, @tSkd, @tDkp, @tDki, @tDkd, @omax)
 
-PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_time, compute_time1, havepmw, haveusfsmax, havegps, sbusstatus, lsbusstatus, ch, lastx_l, lastx_h, lasty_l, lasty_h, lasto[4], debugo, delaystart, gpsret, gpsrel, xl, xh, yl, yh, oldvoltage, volt, s
+PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_time, compute_time1, havepmw, haveusfsmax, havegps, sbusstatus, lsbusstatus, ch, lastx_l, lastx_h, lasty_l, lasty_h, lasto[4], debugo, delaystart, gpsret, gpsrel, xl, yl, oldvoltage, volt, s
 
   ' init optical flow sensor
   ifnot pmw.begin(PMW_CS, PMW_SCK, PMW_SDO, PMW_SDI) == false
@@ -400,9 +400,10 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
     if havepmw
       'takeprintlock()
       Acq_time := getct()
-      ch, _, _ := pmw.readMotionCountBurstQuick()       ' acquire 24us (4Mhz)
+      ch, xl, yl := pmw.readMotionCountBurstQuick()       ' acquire 24us (4Mhz)
       xsensor_l, xsensor_h, ysensor_l, ysensor_h, tsensor := pmw.readMotionAccum(false)
       Acq_time := getct() - Acq_time - 40
+      sport.setflow(@xl)
       'releaseprintlock()                                ' release lock soon as we have finished printing
       if ch && utilities.longcomp(@lastx_l, @xsensor_l, 4, 0, ch)
         sensorupdate |= PMWCHANGE                       ' pmw changed
