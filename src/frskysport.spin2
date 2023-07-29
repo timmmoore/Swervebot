@@ -21,14 +21,14 @@ CON
 ' remaining 3 bits are crc (according to comments in openTx code)
 ' 0x00,0xA1,0x22,0x83,0xE4,0x45,0xC6,0x67,0x48,0xE9,0x6A,0xCB,0xAC,0x0D,0x8E,0x2F,0xD0,0x71,0xF2,0x53,0x34,0x95,0x16,0xB7,0x98,0x39,0xBA,0x1B
 ' shows up on tx as 224 + ID, i.e., battery monitor is 225, gps is 227, acc is 229
-  DATA_ID_VARIO                 = $00                   ' sensor 0 used for Alt and Vspeed
-  'DATA_ID_FLVSS                 = 1                     '        1 used for Cell values
-  DATA_ID_FAS                   = 2                     '        2 used for vfas , current and fuel
-  DATA_ID_GPS                   = 3                     '        3 used for GPS data
+  DATA_ID_VARIO                 = $00                   ' sensor 0 used for Alt and Vspeed, Vario2 (altimeter high precision)
+  'DATA_ID_FLVSS                 = 1                    '        1 used for Cell values, FLVSS Lipo sensor (can be sent with one or two cell voltages)
+'  DATA_ID_FAS                   = 2                    '        2 used for vfas , current and fuel, FAS-40S current sensor
+  DATA_ID_GPS                   = 3                     '        3 used for GPS data, GPS / altimeter (normal precision)
   DATA_ID_ACTUALS               = 4                     '        4 used for actual swerve speeds and angles
-'  DATA_ID_RPM                   = 4                     '        4 used for rpm, T1, T2, airspeed
-  DATA_ID_ACC                   = 5                     '        5 used for Acc X, Y, Z
-  DATA_ID_FLOW                  = 6
+'  DATA_ID_RPM                   = 4                    '        4 used for rpm, T1, T2, airspeed, RPM
+  DATA_ID_ACC                   = 5                     '        5 used for Acc X, Y, Z, SP2UART(Host)
+  DATA_ID_FLOW                  = 7                     '        7 used for optical flow x and y
 
   SPORT_MIN_TELEMETRY_DELAY_US = 500
 
@@ -110,8 +110,8 @@ CON
   FSSP_ACTUAL3           = $5102
   FSSP_ACTUAL4           = $5103
 
-  FSSP_DATAID_FLOWX      = $5014
-  FSSP_DATAID_FLOWY      = $5015
+  FSSP_DATAID_FLOWX      = $5114
+  FSSP_DATAID_FLOWY      = $5115
 
   MAXNOSENSORS           = 50
 
@@ -330,6 +330,7 @@ PRI SendSensor(physicalId) : retv | Index, applicationIdt, valuet, data
       valuet := sensor_getData(applicationIdt := word[@_sensors][Index+1], word[@_sensors][Index+2]) ' have sensor data to send?
       'serial.fstr6(string("sport Sensor %d %x %x %x %d %d\r"), Index, physicalId, applicationIdt, valuet, word[@_sensors][Index+2], word[@_sensors][Index+3])
       setpintx()                                                                ' switch pin to transmit
+      'waitus(100)
       if sendtime(Index)                                                        ' enough time since last time sent sensor?
         SendData(SPORT_HEADER_DATA, applicationIdt, valuet) '                   ' send the sensor data
       else
@@ -416,14 +417,14 @@ _sensors      word      DATA_ID_GPS, FSSP_DATAID_LATLONG,  0, 1000              
               word      DATA_ID_GPS, FSSP_DATAID_LATLONG,  1, 1000              ' 800, long
               word      DATA_ID_GPS, FSSP_DATAID_SPEED,    0, 1000              ' 830
               word      DATA_ID_GPS, FSSP_DATAID_ALTITUDE, 0, 1000              ' 100
-              word      DATA_ID_ACTUALS, FSSP_ACTUAL1,     0, 1000              ' swerve FL
-              word      DATA_ID_ACTUALS, FSSP_ACTUAL2,     0, 1000              ' swerve FR
-              word      DATA_ID_ACTUALS, FSSP_ACTUAL3,     0, 1000              ' swerve BL
-              word      DATA_ID_ACTUALS, FSSP_ACTUAL4,     0, 1000              ' swerve BR
+              word      DATA_ID_FLOW, FSSP_DATAID_FLOWX,   0,  500              ' optical flow x
+              word      DATA_ID_FLOW, FSSP_DATAID_FLOWY,   0,  500              ' optical flow y
+              word      DATA_ID_ACTUALS, FSSP_ACTUAL1,     0,  500              ' swerve FL
+              word      DATA_ID_ACTUALS, FSSP_ACTUAL2,     0,  500              ' swerve FR
+              word      DATA_ID_ACTUALS, FSSP_ACTUAL3,     0,  500              ' swerve BL
+              word      DATA_ID_ACTUALS, FSSP_ACTUAL4,     0,  500              ' swerve BR
               word      DATA_ID_ACC, FSSP_DATAID_HEADING,  0,  500              ' 840
               word      DATA_ID_ACC, FSSP_DATAID_PITCH,    0,  500              ' $5230, given in 10*deg
               word      DATA_ID_ACC, FSSP_DATAID_ROLL,     0,  500              ' $5240, given in 10*deg
-              word      DATA_ID_FLOW, FSSP_DATAID_FLOWX,   0,  500              ' optical flow x
-              word      DATA_ID_FLOW, FSSP_DATAID_FLOWY,   0,  500              ' optical flow y
 _sensorsend
 '
