@@ -5,8 +5,8 @@ CON
   MAXSPEED      = 1<<MAXSPEEDSHIFT                           ' -4096 < 0 < 4096
   MAXANGLE      = 1024                                       ' 0-1024 is 0-360deg, +ve is clockwise, -ve anticlockwise
 
-  MINDRIVESPEED = 10
-  MINSTEERINGSPEED = 10
+  MINDRIVESPEED = 30
+  MINSTEERINGSPEED = 40
 
   MAX_SWERVE_MODULES = 4
   MAX_ENCODERS  = MAX_SWERVE_MODULES                         ' 1 per swerve module
@@ -32,6 +32,11 @@ CON
   D_BACK_RIGHT                  = 6
   S_BACK_RIGHT                  = 7
   A_BACK_RIGHT                  = 3
+
+  MINTHROTTLE                   = 50
+  MINSPEEDX                     = 50
+  MINSPEEDY                     = 50
+  MINSPEEDR                     = 50
 
 VAR
   long speeders[MAX_SWERVE_MODULES*2]   ' 0: drive motor speeds, 1: steering speed for 4 swerve modules
@@ -243,6 +248,10 @@ PRI Swerve2Debug(type, last, in, out)
   if debugoutput(UTILITIES.DEBUGOUT3)
     serial.fstr4(string("Swerve %c limit l:%d i:%d n:%d\r"), type, last, in, out)
 
+PRI minspeeds(x, y, r) : retv
+  if (abs(x) < MINSPEEDX) and (abs(y) < MINSPEEDY) and (abs(r) < MINSPEEDR)
+    return true
+
 PUB update(x, y, r, off) : notcomplete | changed, newoffstate, previousoffstate, ch, temp
 '' return true if needs calling again, either not fully update to speed or swerve angle not in position
 
@@ -260,7 +269,8 @@ PUB update(x, y, r, off) : notcomplete | changed, newoffstate, previousoffstate,
 
       scalemaxspeed(@speeders)                          ' scale max drive speeds, so speed not larger than +-MAXSPEED
 
-      notcomplete |= angletospeed(@speeders, @angles)   ' convert steering angle to steering motor speed
+      if !minspeeds(x, y, r)                            ' if we are not really moving dont hunt the steering
+        notcomplete |= angletospeed(@speeders, @angles) ' convert steering angle to steering motor speed
 
       notcomplete |= drivespeeds(@speeders)             ' match drive speeds tp motor encoders
 
@@ -276,7 +286,7 @@ PUB update(x, y, r, off) : notcomplete | changed, newoffstate, previousoffstate,
 
 PRI motorsoff(off) : retv, previous
 ' return true if motors should be off, was off
-  previous := motorsareoff\retv := off < 500
+  previous := motorsareoff\retv := off < MINTHROTTLE
 
 var
   long olddebug3
