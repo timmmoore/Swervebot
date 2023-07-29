@@ -364,7 +364,7 @@ local function drawEssentials (x,y,font)
 			elseif dp1 == dp2 then
 				st = st .. '0'
 			end
-			st = st .. "\x40"
+			-- st = st .. "\64"
 		end
 		return st
 	end
@@ -431,6 +431,7 @@ local function drawEssentials (x,y,font)
 
 	local v1
 	local v2
+	local dx
 	val = getValue("Swe1")
 	if (val == nil or val == '' or not val) then
 		val = 0
@@ -443,6 +444,8 @@ local function drawEssentials (x,y,font)
 	lcd.drawText (x, y, "FL:", font + colorFlags)
 	lcd.drawText (x + xOffset+5, y, (v1 and v1 ~= 0) and (math.floor(v1 + 0.5)) or "---", font  + colorFlags)
 	lcd.drawText (x + xOffset+50, y, v2, font  + colorFlags)
+	dx = lcd.sizeText(v2, font + colorFlags)
+	lcd.drawCircle(x + xOffset+50+dx+2, y+lineht/4, 2, colorFlags)
 	y = y + lineht
 	val = getValue("Swe2")
 	if (val == nil or val == '' or not val) then
@@ -455,6 +458,8 @@ local function drawEssentials (x,y,font)
 	lcd.drawText (x, y, "FB:", font + colorFlags)
 	lcd.drawText (x + xOffset+5, y, (v1 and v1 ~= 0) and (math.floor(v1 + 0.5)) or "---", font  + colorFlags)
 	lcd.drawText (x + xOffset+50, y, v2, font  + colorFlags)
+	dx = lcd.sizeText(v2, font + colorFlags)
+	lcd.drawCircle(x + xOffset+50+dx+2, y+lineht/4, 2, colorFlags)
 	y = y + lineht
 	val = getValue("Swe3")
 	if (val == nil or val == '' or not val) then
@@ -467,6 +472,8 @@ local function drawEssentials (x,y,font)
 	lcd.drawText (x, y, "BL:", font + colorFlags)
 	lcd.drawText (x + xOffset+5, y, (v1 and v1 ~= 0) and (math.floor(v1 + 0.5)) or "---", font  + colorFlags)
 	lcd.drawText (x + xOffset+50, y, v2, font  + colorFlags)
+	dx = lcd.sizeText(v2, font + colorFlags)
+	lcd.drawCircle(x + xOffset+50+dx+2, y+lineht/4, 2, colorFlags)
 	y = y + lineht
 	val = getValue("Swe4")
 	if (val == nil or val == '' or not val) then
@@ -478,6 +485,21 @@ local function drawEssentials (x,y,font)
 	v2 = fmta(v2)
 	lcd.drawText (x, y, "BR:", font + colorFlags)
 	lcd.drawText (x + xOffset+5, y, (v1 and v1 ~= 0) and (math.floor(v1 + 0.5)) or "---", font  + colorFlags)
+	lcd.drawText (x + xOffset+50, y, v2, font  + colorFlags)
+	dx = lcd.sizeText(v2, font + colorFlags)
+	lcd.drawCircle(x + xOffset+50+dx+2, y+lineht/4, 2, colorFlags)
+
+	y = y + lineht
+	v1 = getValue("FloX")
+	if (v1 == nil or v1 == '' or not v1) then
+		v1 = 0
+	end
+	v2 = getValue("FloY")
+	if (v2 == nil or v2 == '' or not v2) then
+		v2 = 0
+	end
+	lcd.drawText (x, y, "Flow:", font + colorFlags)
+	lcd.drawText (x + xOffset+5, y, v1, font  + colorFlags)
 	lcd.drawText (x + xOffset+50, y, v2, font  + colorFlags)
 end
 
