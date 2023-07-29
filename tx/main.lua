@@ -310,42 +310,6 @@ local function drawModelName (x,y, font, nchars)
 	lcd.drawText (x, y, strname, font + colorFlags)
 end
 
---[[
-FUNCTION: drawEssentials
---]]
-local function drawEssentials (x,y,font)
-	local xOffset = 60
-	local lineht = fontht[font]
-	local val
-
-	--  function for formating sensor values
-	-- returns a number in the format [-]n.d
-	-- zero and nil return '---'
-	-- workaround for string.format() crashing https://github.com/opentx/opentx/issues/6201
-
-	local function fmt (val)
-		local st
-		if not val or val==0 then
-			st = '---'
-		else
-			-- round to nearest integer
-			local dp0 = math.floor (val + 0.5)
-			if math.abs(dp0) < 100 then
-				-- integer part has one or two digits
-				-- round to 1 decimal place
-				local dp1 = (math.floor (val*10 + 0.5))/10
-				st = tostring(dp1)
-				-- if decimal part is zero, then need to append '.0'
-				if dp0 == dp1 then
-					st = st .. '.0'
-				end
-			else
-				-- integral part has more than 2 digits. Just use nearest integer
-				st = tostring(dp0)
-			end
-		end
-		return st
-	end
 	local function fmta (val)
 		local st
 		if not val then
@@ -392,6 +356,43 @@ local function drawEssentials (x,y,font)
 		return v1
 	end
 	
+
+--[[
+FUNCTION: drawEssentials
+--]]
+local function drawEssentials (x,y,font)
+	local xOffset = 60
+	local lineht = fontht[font]
+	local val
+
+	--  function for formating sensor values
+	-- returns a number in the format [-]n.d
+	-- zero and nil return '---'
+	-- workaround for string.format() crashing https://github.com/opentx/opentx/issues/6201
+
+	local function fmt (val)
+		local st
+		if not val or val==0 then
+			st = '---'
+		else
+			-- round to nearest integer
+			local dp0 = math.floor (val + 0.5)
+			if math.abs(dp0) < 100 then
+				-- integer part has one or two digits
+				-- round to 1 decimal place
+				local dp1 = (math.floor (val*10 + 0.5))/10
+				st = tostring(dp1)
+				-- if decimal part is zero, then need to append '.0'
+				if dp0 == dp1 then
+					st = st .. '.0'
+				end
+			else
+				-- integral part has more than 2 digits. Just use nearest integer
+				st = tostring(dp0)
+			end
+		end
+		return st
+	end
 	-- Draw Tx voltage
 	val = getValue(idTxV)
 	lcd.drawText (x, y, "TxBatt", font + colorFlags)
@@ -501,6 +502,68 @@ local function drawEssentials (x,y,font)
 	lcd.drawText (x, y, "Flow:", font + colorFlags)
 	lcd.drawText (x + xOffset+5, y, v1, font  + colorFlags)
 	lcd.drawText (x + xOffset+50, y, v2, font  + colorFlags)
+
+end
+
+local function drawWheel(x, y, a)
+	local ar = a/57.2957795
+	local c = 7*math.cos(ar)
+	local s = 7*math.sin(ar)
+	if a > 270 then
+		lcd.drawLine(x-s, y-c, x+s, y+c, SOLID, colorFlags)
+	elseif a > 180 then
+		lcd.drawLine(x-s, y+c, x+s, y-c, SOLID, colorFlags)
+	elseif a > 90 then
+		lcd.drawLine(x-s, y-c, x+s, y+c, SOLID, colorFlags)
+	else
+		lcd.drawLine(x-s, y+c, x+s, y-c, SOLID, colorFlags)
+	end
+end
+
+--[[
+FUNCTION: drawSwerve
+--]]
+local function drawSwerve(x, y, font, linespacing)
+	lcd.drawRectangle(x+15, y+15, 120, 150, colorFlags, 2)
+	local v1
+	local v2
+	local dx
+	val = getValue("Swe1")
+	if (val == nil or val == '' or not val) then
+		val = 0
+	end
+	-- speed lower word, angle upper word
+	v1 = getword(val)
+	v2 = rshift(val, 16)
+	v2 = getword(v2)/100.0
+	drawWheel(x+7, y+7, v2)						-- tl
+	val = getValue("Swe2")
+	if (val == nil or val == '' or not val) then
+		val = 0
+	end
+	-- speed lower word, angle upper word
+	v1 = getword(val)
+	v2 = rshift(val, 16)
+	v2 = getword(v2)/100.0
+	drawWheel(x+120+23, y+7, v2)					-- tr
+	val = getValue("Swe3")
+	if (val == nil or val == '' or not val) then
+		val = 0
+	end
+	-- speed lower word, angle upper word
+	v1 = getword(val)
+	v2 = rshift(val, 16)
+	v2 = getword(v2)/100.0
+	drawWheel(x+7, y+150+23, v2)					-- bl
+	val = getValue("Swe4")
+	if (val == nil or val == '' or not val) then
+		val = 0
+	end
+	-- speed lower word, angle upper word
+	v1 = getword(val)
+	v2 = rshift(val, 16)
+	v2 = getword(v2)/100.0
+	drawWheel(x+120+23, y+150+23, v2)				-- br
 end
 
 --[[
@@ -644,6 +707,7 @@ local function refresh(wgt)
 		drawEssentials (wgt.zone.x + 140, wgt.zone.y + 34, 0)
 		-- drawTimers (wgt.zone.x + 308, wgt.zone.y + 100, 0, 2)
 		drawLS (wgt.zone.x+308, wgt.zone.y+39)
+		drawSwerve(wgt.zone.x+308, wgt.zone.y+69, 0, 2)
 		-- drawAlerts (wgt.zone.x + wgt.zone.w - 2, wgt.zone.y, MIDSIZE)
 		drawAlerts (wgt.zone.x + 307, wgt.zone.y, MIDSIZE)
 
