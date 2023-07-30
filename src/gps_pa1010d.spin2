@@ -25,7 +25,7 @@ VAR
   long Hours, Minutes, Seconds_F
   long NorthDeg_F, WestDeg_F
   long Speed_F, Altitude_F
-  long Fix, SatNo
+  long Fix, SatNo, Hdop
   byte Release[RELEASEMAX]
   long lastreadtime
 
@@ -42,7 +42,7 @@ PUB start(scl, sda) : retv
   lastreadtime := getms()
   currentline := @line1
   lastline := @line2
-  ifnot i2c.setup(scl, sda, GPS_I2C_SPEED, i2c.PU_15K, -1) ' i2c @ 3400kHz, 15K pull-ups
+  ifnot i2c.setup(scl, sda, GPS_I2C_SPEED, i2c.PU_15K, -1) ' i2c @ 1000kHz, 15K pull-ups
     retv |= $01
 
   ifnot i2c.present(GPS_I2C_ADDR<<1) == true
@@ -70,19 +70,19 @@ PUB input() : retv | ptr, valid
   if readchar()
     retv := Parse(lastline)
 
-PUB gps() : hour, min, sec, northdeg, westdeg, speed, alt, prelease, Fixret, SatNoret
+PUB gps() : hour, min, sec, northdeg, westdeg, speed, alt, prelease, Fixret, SatNoret, Hdopret
 
   hour, min, sec := Hours, Minutes, Seconds_F
   northdeg, westdeg := NorthDeg_F, WestDeg_F
   speed, alt := Speed_F, Altitude_F
-  Fixret, SatNoret := Fix, SatNo
+  Fixret, SatNoret, Hdopret := Fix, SatNo, Hdop
   prelease := @Release
 
-PUB Print() | hour, min, sec, pmr, northdeg, westdeg, speed, alt, prelease, Fixval, SatNoval
-  hour, min, sec, northdeg, westdeg, speed, alt, prelease, Fixval, SatNoval := gps()
+PUB Print() | hour, min, sec, pmr, northdeg, westdeg, speed, alt, prelease, Fixval, SatNoval, Hdopval
+  hour, min, sec, northdeg, westdeg, speed, alt, prelease, Fixval, SatNoval, Hdopval := gps()
   serial.fstr4(string("GPS (%s) %2.2d:%2.2d:%+4.8g "), prelease, hour, min, sec)
   serial.fstr2(string("%8.5g %10.5g "), northdeg, westdeg)
-  serial.fstr4(string("%.4g %.4g %d %d\r"), speed, alt, Fixval, SatNoval)
+  serial.fstr5(string("%.4g %.4g %d %d %.2g\r"), speed, alt, Fixval, SatNoval, Hdopval)
 
 PRI sendCommand(str) : retv | startt
 ' max string length is 255 chars
@@ -188,7 +188,7 @@ PRI parse(ptr) : retv | char, temp, p1
         Fix := trunc(Fix)
         SatNo, ptr := buildcommaconvert(ptr, 0)
         SatNo := trunc(SatNo)
-        ptr := skipcomma(ptr, 1)                        ' skip 1 comma, HDOP
+        Hdop, ptr := buildcommaconvert(ptr, 0)
         Altitude_F, ptr := buildcommaconvert(ptr, 0)
         Altitude_F := Altitude_F *. 3.2808399           ' Altitude in Feet, Rounded
         retv := $02

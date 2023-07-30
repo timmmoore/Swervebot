@@ -1,5 +1,10 @@
-{FrSky S.Port}
+{
+  FrSky S.Port
+        57600 baud/ 8N
+        inverted rx/tx - bidirectional
 
+        Receiver polls every 12ms for telemetry.
+}
 
 CON
   SPORT_START                   = $7E
@@ -103,7 +108,7 @@ CON
 
   VOLTS_AP_ID            = $003B
   VOLTS_BP_ID            = $003A
-  DIY_STREAM_FIRST_ID    = $5000
+  DIY_STREAM_FIRST_ID    = $5000                        ' 5000-50ff, edgetx uses it for lua passthrough
 
   FSSP_ACTUAL1           = $5100
   FSSP_ACTUAL2           = $5101
@@ -112,6 +117,9 @@ CON
 
   FSSP_DATAID_FLOWX      = $5114
   FSSP_DATAID_FLOWY      = $5115
+
+  SENSOR_APPL_ID_GSATS   = $5111
+  SENSOR_APPL_ID_GHDOP   = $5112
 
   MAXNOSENSORS           = 50
 
@@ -123,9 +131,9 @@ VAR
   long _sensorIndex
   long lastsensortime[MAXNOSENSORS]                     ' last time this sensor has been sent, dont send more often
   long lastsensorindex[MAXNOSENSORS]                    ' has sensor been sent, make sure all sensors for physicalid have been sent
-  long latitude, longitude, speed, time, date           ' from gps
+  long latitude, longitude, speed, alt, fix, satno, hdop ' from gps
   long heading, pitch, roll                             ' from imu
-  long actualspeeds[4], actualangles[4]                 ' from swerve modules
+  long actualspeeds[4], actualaspeeds[4], actualangles[4] ' from swerve modules
   long flow[2]
   long StkAddr[10000]
 
@@ -152,14 +160,15 @@ PUB stop()
     cognum := 0                                                                 '  mark stopped
   pinclear(rxp)                                                                 ' remove old settings
 
-pub setgps(tlatitude, tlongitude, tspeed, ttime, tdate)
-  longmove(@latitude, @tlatitude, 5)
+pub setgps(tlatitude, tlongitude, tspeed, talt, tfix, tsatno, thdop)
+  longmove(@latitude, @tlatitude, 7)
 
 pub setimu(theading, tpitch, troll)
   longmove(@heading, @theading, 3)
 
-pub setactuals(pspeeds, pangles)
+pub setactuals(pspeeds, paspeeds, pangles)
   longmove(@actualspeeds, pspeeds, 4)
+  longmove(@actualaspeeds, paspeeds, 4)
   longmove(@actualangles, pangles, 4)
 
 pub setflow(pflows)
@@ -272,8 +281,12 @@ pri sensor_getData(applicationIdt, subindex) : valuet | temp
       valuet |= (subindex==0)?DECOD(31):0                                       ' lat/long
     FSSP_DATAID_SPEED:                                                          ' Speed in km/h (should be sent in knots/1000)
       valuet := round(speed *. 1609.344)
-    FSSP_DATAID_ALTITUDE:
-      valuet := 10000
+    FSSP_DATAID_GPS_ALT:                                                        ' in cm
+      valuet := round(alt *. 30.48)
+    SENSOR_APPL_ID_GSATS:
+      temp := (round(hdop *. 100) - 51)/50
+      temp := 0 #> temp <# 9
+      valuet := (fix * 1000) | (temp * 100) | (satno <# 99)
     FSSP_DATAID_HEADING:                                                        ' in degrees * 100 according to SmartPort spec
       valuet := round(heading *. 100.0)
     FSSP_DATAID_PITCH:                                                          ' given in 10*deg
@@ -301,6 +314,9 @@ pri querysensorsent(Index) : retv
   return lastsensorindex[Index/_sensornoentries] == 0
 
 pri updatesensorsent(Index, physicalId) | i, clear
+' make sure we cycle through all the sensors for a physicalId
+' should we allow for the time delays for each sensor? i.e., if we have 500ms sensors and 1000ms sensors on same physicalId
+' we cant send the 500ms sensor twice while waiting for the 1000ms sensors to be sent.
   lastsensorindex[Index/_sensornoentries] := 1
   clear := true
   repeat i from 0 to _sensorCount-1
@@ -413,17 +429,18 @@ dat
 _sensorCountEntries  long      (@_sensorsend - @_sensors)/2                     ' count of info, not count of sensors
 _sensorCount  long      (@_sensorsend - @_sensors)/(2*_sensornoentries)         ' count of info, not count of sensors
 '                       physical id   sensor id     subindex  delay
-_sensors      word      DATA_ID_GPS, FSSP_DATAID_LATLONG,  0, 1000              ' 800, lat
-              word      DATA_ID_GPS, FSSP_DATAID_LATLONG,  1, 1000              ' 800, long
-              word      DATA_ID_GPS, FSSP_DATAID_SPEED,    0, 1000              ' 830
-              word      DATA_ID_GPS, FSSP_DATAID_ALTITUDE, 0, 1000              ' 100
+_sensors      word      DATA_ID_GPS, FSSP_DATAID_LATLONG,  0, 1000              ' $0800, lat
+              word      DATA_ID_GPS, FSSP_DATAID_LATLONG,  1, 1000              ' $0800, long
+              word      DATA_ID_GPS, FSSP_DATAID_SPEED,    0, 1000              ' $0830
+              word      DATA_ID_GPS, SENSOR_APPL_ID_GSATS, 0, 1000              ' $5111, no satellites
+              word      DATA_ID_GPS, FSSP_DATAID_GPS_ALT,  0, 1000              ' $0820. altitude
               word      DATA_ID_FLOW, FSSP_DATAID_FLOWX,   0,  500              ' optical flow x
               word      DATA_ID_FLOW, FSSP_DATAID_FLOWY,   0,  500              ' optical flow y
-              word      DATA_ID_ACTUALS, FSSP_ACTUAL1,     0,  500              ' swerve FL
+              word      DATA_ID_ACTUALS, FSSP_ACTUAL1,     0,  500              ' swerve FL, speed/angle
               word      DATA_ID_ACTUALS, FSSP_ACTUAL2,     0,  500              ' swerve FR
               word      DATA_ID_ACTUALS, FSSP_ACTUAL3,     0,  500              ' swerve BL
               word      DATA_ID_ACTUALS, FSSP_ACTUAL4,     0,  500              ' swerve BR
-              word      DATA_ID_ACC, FSSP_DATAID_HEADING,  0,  500              ' 840
+              word      DATA_ID_ACC, FSSP_DATAID_HEADING,  0,  500              ' $0840, in 100*deg
               word      DATA_ID_ACC, FSSP_DATAID_PITCH,    0,  500              ' $5230, given in 10*deg
               word      DATA_ID_ACC, FSSP_DATAID_ROLL,     0,  500              ' $5240, given in 10*deg
 _sensorsend
