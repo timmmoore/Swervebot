@@ -8,29 +8,24 @@
 ''   E-mail..... jon.mcphalen@gmail.com
 ''   Started....
 ''   Updated.... 29 JUN 2020
+''                              -- track count and velocity (timmoore)
 ''
 '' =================================================================================================
 
 {
-
   A/B quadrature encoder using P2 smart pin. B pin must be within +/-3 of A pin
-
-  Note that some detented encoders will return 4 counts per detent.
-  -- set det4x to true
-
 }
 
 var
 
-  long  apin, bpin                                                    ' A input
+  long  apin, bpin                                              ' A input
   long  setup                                                   ' true when pin setup
-
 
 pub null()
 
 '' This is not a top-level object
 
-pub start(a, b) : result | dif, difb
+pub start(a, b, velotime) : result | dif, difb
 
 '' Start the encoder object
 '' -- a: continuous count mode
@@ -46,12 +41,11 @@ pub start(a, b) : result | dif, difb
   else
     apin, bpin := a, b                                          ' save pins & limits
     pinstart(apin, P_QUADRATURE | dif.[2..0] << 24, 0, 0)       ' start a/b quadrature mode
-    pinstart(bpin, P_QUADRATURE | difb.[2..0] << 28, clkfreq/10, 0) ' clocks per 100ms
+    pinstart(bpin, P_QUADRATURE | difb.[2..0] << 28, velotime, 0) ' clocks per velotime
     reset()                                                     ' reset encoder value
     result := setup := true
 
 pub stop()
-
 '' Disable encoder smart pin if previously configured
 
   if (setup)
@@ -60,7 +54,6 @@ pub stop()
     longfill(@apin, 0, 7)                                       ' mark disabled
 
 pub reset()
-
 '' Set encoder to reset value
 
   pinfloat(apin)                                                ' reset & clear
@@ -69,7 +62,6 @@ pub reset()
   pinlow(bpin)                                                  ' re-enable
 
 pub read() : resultc, resultv
-
 '' Returns encoder values
 
   resultc := rdpin(apin)
