@@ -86,7 +86,7 @@ PUB start(scl, sda, epin, pbot, ppinoffsets, pangleoffsets, pminencoder, pmaxenc
   repeat ch from 0 to MAX_SWERVE_MODULES-1
     pid[ch].init(ch, MAXANGLE, MAXSPEED)                   ' 0-MAXANGLE input, +- MAXSPEED output
     pid[ch].setposition(0)                                 ' start angle
-    driveencoders[ch].start(long[pdencoders][ch], long[pdencoders][ch+4])
+    driveencoders[ch].start(long[pdencoders][ch], long[pdencoders][ch+4], clkfreq/10)
     driveencodercount[ch], driveencodervelocity[ch] := driveencoders[ch].read() ' current quadrature count
     driveencodertime[ch] := getms()
     dpid[ch].init(ch, 0, MAXSPEED)                          ' no wrapping of input, +- MAXSPEED output
@@ -104,8 +104,9 @@ PUB setpidconstants(pSKp, pSKi, pSKd, pDKp, pDKi, pDKd, povermax) | ch
     pid[ch].setconstants(ch, long[pSKp][ch], long[pSKi][ch], long[pSKd][ch])
     dpid[ch].setconstants(ch, long[pDKp][ch], long[pDKi][ch], long[pDKd][ch])
 
-PUB getactuals(pspeeds, pangles)
+PUB getactuals(pspeeds, paspeeds, pangles)
   longmove(pspeeds, @actualspeeds, MAX_SWERVE_MODULES)
+  longmove(paspeeds, @driveencodervelocity, MAX_SWERVE_MODULES)
   longmove(pangles, @actualangles, MAX_SWERVE_MODULES)
 
 PRI setmotorspeeds(pspeeds) | ch, speed
@@ -269,7 +270,7 @@ PUB update(x, y, r, off) : notcomplete | changed, newoffstate, previousoffstate,
 
       scalemaxspeed(@speeders)                          ' scale max drive speeds, so speed not larger than +-MAXSPEED
 
-      if !minspeeds(x, y, r)                            ' if we are not really moving dont hunt the steering
+      if !minspeeds(x, y, r)                            ' if we are not really moving dont hunt the steering motor
         notcomplete |= angletospeed(@speeders, @angles) ' convert steering angle to steering motor speed
 
       notcomplete |= drivespeeds(@speeders)             ' match drive speeds tp motor encoders
