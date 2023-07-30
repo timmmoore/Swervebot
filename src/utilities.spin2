@@ -67,7 +67,7 @@ CON
   FGTE          = $ac
 
 PUB frel(t1, t2, p): r | x, w, y, _FFFFFFFF, paa
-
+' floating point comparision, without spin interpreter bug
   w := t1
   x := t2
   paa := p
@@ -114,9 +114,11 @@ dat
   debugtypes long  DEBUG1_OUTPUT, DEBUG2_OUTPUT, DEBUG3_OUTPUT, DEBUG4_OUTPUT
 
 PUB add64(xl, xh, x) : rxl, rxh
+' 64bit signed add
   longmove(@rxl, @xl, 2)
 
   org
     add   rxl, x                  wc
     addsx rxh, #0
   end
+'

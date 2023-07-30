@@ -36,7 +36,7 @@ PUB null()
 PUB start(scl, sda, ppinvert) : retv | ch
   pinvert := ppinvert
   uscount := clkfreq /1_000_000
-  ifnot i2c.setup(scl, sda, PCA9685_I2C_SPEED, i2c.PU_3K3, -1) ' i2c @ 800kHz, 1K5 pull-ups
+  ifnot i2c.setup(scl, sda, PCA9685_I2C_SPEED, i2c.PU_3K3, -1) ' i2c @ 800kHz, 3K3 pull-ups
     return $01|NO_MOTOR1|NO_MOTOR2
 
   if(i2c.present(MOTOR1<<1) == true)

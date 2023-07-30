@@ -11,6 +11,8 @@
 ''   Started....
 ''   Updated.... 21 May 2021  by Stephen M. Moraco
 ''               -- modified to print floats - timmoore
+''               -- option to pad with 0 - timmoore
+''               -- option for unsigned decimal - timmoore
 ''
 '' =================================================================================================
 
@@ -220,6 +222,7 @@ con { formatted strings }
       %w.pf       print argument as decimal width decimal point
       %w.pg       print argument as float
       %[w[.p]]d   print argument as decimal
+      %[w[.p]]u   print argument as unsigned decimal
       %[w[.p]]x   print argument as hex
       %[w[.p]]o   print argument as octal
       %[w[.p]]q   print argument as quarternary

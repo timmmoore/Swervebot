@@ -193,7 +193,7 @@ PUB startx(scl, sda, reset, pconfig, offset) : retv | id, stat, Begin
   'serial.fstr0(string("USFSMAX3 \r"))
 
   waitms(10)
-  ifnot i2c.setup(scl, sda, I2C_CONFIG_SPEED, i2c.PU_3K3, -1) '1K5) ' i2c @ 100kHz, 1K5 pull-ups
+  ifnot i2c.setup(scl, sda, I2C_CONFIG_SPEED, i2c.PU_3K3, -1) '1K5) ' i2c @ 100kHz, 3K3 pull-ups
     return $01
   waitms(10)
   'serial.fstr0(string("USFSMAX4 \r"))
@@ -220,7 +220,7 @@ PUB startx(scl, sda, reset, pconfig, offset) : retv | id, stat, Begin
   'serial.fstr2(string("USFSMAX1 %x %d\r"), id, stat)
   UploadCfg()
 
-  i2c.setup(scl, sda, I2C_FAST_SPEED, i2c.PU_3K3, -1)       ' i2c @ 3Mhz, 1K5 pull-ups
+  i2c.setup(scl, sda, I2C_FAST_SPEED, i2c.PU_3K3, -1)       ' i2c @ 3Mhz, 3K3 pull-ups
   waitms(10)
   'serial.str(string("USFSMAX fast I2C", 13))
                                        ' start   Quaternions   SCALED_SENSOR

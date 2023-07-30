@@ -1,12 +1,11 @@
-{Object_Title_and_Purpose}
-
 {
-SRX encoder:
+  PWM - SRX encoder:
         pin 2         5V
         pin 10        Gnd
         pin 9         pwm, 3.3V
-PROP2
-        pin: 8, 9, 10, 11
+
+  Uses contigous pins
+  Can set offset for each encoder
 }
 CON
   NOPWMIN       = 1
@@ -32,14 +31,14 @@ PUB null()
 
 PUB start(pin, minvalue, maxvalue, ppinoffsets, poffsets, pminencoder, pmaxencoder) | i
   stop()
-  longmove(@pp, @pin, 3)
+  longmove(@pp, @pin, 3)                                ' start pin and max/min output values
   longmove(@angleoffsets, poffsets, NOPWMIN)            ' angle offset of each encoder
-  longmove(@pinoffsets, ppinoffsets, NOPWMIN)           ' actual pin of each encoder
+  longmove(@pinoffsets, ppinoffsets, NOPWMIN)           ' pin offset of each encoder
   '        0.9us @ 200000000/sec -> 90*2 -> 180
   '        4506us @ 200000000/sec -> 450600*2 -> 901200
-  longmove(@minclk, pminencoder, NOPWMIN)
-  longmove(@maxclk, pmaxencoder, NOPWMIN)
-  longfill(@minencoder, $FFFFFFFF, NOPWMIN)
+  longmove(@minclk, pminencoder, NOPWMIN)               ' min pwm value per encoder
+  longmove(@maxclk, pmaxencoder, NOPWMIN)               ' max pwm value per encoder
+  longfill(@minencoder, $FFFFFFFF, NOPWMIN)             ' track max pwm value per encoder
   pinstart(pp ADDPINS NOPWMIN-1, P_HIGH_TICKS, 0, 0)    ' start for NOPWMIN pins, clock ticks for pin high
   setup~~                                               ' mark setup
 
@@ -60,9 +59,8 @@ PUB read(ch, display) : out | raw, map, dout
     maxencoder[ch] := raw                               ' keep max encoder value
   out := (map + angleoffsets[ch]) // maxv               ' add the angular offset for the encoder and wrap to maxv
   if (out <> lastvalues[ch]\out)
-    dout := debugoutput(UTILITIES.DEBUGOUT2)
-  if display or dout
-    ' output offset value assuming current position is 0
+    dout := debugoutput(UTILITIES.DEBUGOUT2)            ' if changed see if we want debug output
+  if display or dout                                    ' output offset value assuming current position is 0
     serial.fstr7(string("encoder%d raw:%u map:%d out:%d offset:%.2g min:%u max:%u\r"), ch, raw>>1, map, out, (float((maxv - map)//maxv)*.360.0)/.1024.0, minencoder[ch]>>1, maxencoder[ch]>>1)
 
 PUB updatedebug(tdebug)

@@ -75,7 +75,6 @@ con { fixed io pins }
   CHANNEL_DEBUG1                = 7                                             ' 8 - debug values sa
   CHANNEL_DEBUG2                = 8                                             ' 9                sb
   CHANNEL_DEBUG3                = 9                                             ' 10               sc
-  CHANNEL_TESTMAX               = 10                                            ' 11 max output speed s2
 
   MINDELTA                      = 5                                             ' minimum channel change
 
@@ -115,9 +114,9 @@ con { fixed io pins }
   PMW_SDO                       = 17  { O, 3.3V level }
   PMW_SDI                       = 16  { I, 3.3V level }
 
-  PMW_X_INVERT                  = true                                          ' default init orientation
-  PMW_Y_INVERT                  = false
-  PMW_XY_SWAP                   = false                                          ' swap x and y axis
+  PMW_X_INVERT                  = false                                         ' default init orientation
+  PMW_Y_INVERT                  = true
+  PMW_XY_SWAP                   = true                                          ' swap x and y axis
   PMW_LED                       = false
 
   ' USFSMAX_VCC = 3.3V
@@ -176,15 +175,12 @@ con { fixed io pins }
   MAXDEBUG                      = 2000
   INIT_DEBUG                    = 500
 
-  MINTEST                       = 0
-  MAXTEST                       = 2000
-
   MINDEFAULT                    = 0
   MAXDEFAULT                    = 1000
 
   SHAREDPMW                     = 5                     ' xsensor_l, xsensor_h, ysensor_l, ysensor_h, tsensor                     '
   SHAREDIMU                     = 4                     ' osensor
-  SHAREDGPS                     = 10                    ' ogpst, ohour, omin, osec, onorthdeg, owestdeg, ospeed, oalt, ofix, osatno
+  SHAREDGPS                     = 11                    ' ogpst, ohour, omin, osec, onorthdeg, owestdeg, ospeed, oalt, ofix, osatno, ohdop
   SHAREVOLTAGE                  = 1
   SHAREDVARIABLES               = 1+NOCHANNELS+SHAREDIMU+SHAREDPMW+SHAREDGPS+1
 
@@ -195,18 +191,18 @@ VAR
   long synclock, printlock
 
   long sharedupdate, channels[NOCHANNELS], output[4], deltax_l, deltax_h, deltay_l, deltay_h, deltat
-  long gpst, hour, min, sec, northdeg, westdeg, speed, alt, fix, satno, voltage
+  long gpst, hour, min, sec, northdeg, westdeg, speed, alt, fix, satno, hdop, voltage
 
   ' swerve cog
   long swerveupdate, swervechannels[NOCHANNELS], oswerve[4], xswerve_l, xswerve_h, yswerve_l, yswerve_h, tswerve   ' swerve cog locals
-  long sgpst, shour, smin, ssec, snorthdeg, swestdeg, sspeed, salt, sfix, ssatno, svoltage
+  long sgpst, shour, smin, ssec, snorthdeg, swestdeg, sspeed, salt, sfix, ssatno, shdop, svoltage
 
   long lastchannels[NOCHANNELS]
   long debug1
 
   ' sensor cog
   long sensorupdate, sbuschannels[NOCHANNELS], osensor[4], xsensor_l, xsensor_h, ysensor_l, ysensor_h, tsensor     ' sensor cog locals
-  long ogpst, ohour, omin, osec, onorthdeg, owestdeg, ospeed, oalt, ofix, osatno, ovoltage
+  long ogpst, ohour, omin, osec, onorthdeg, owestdeg, ospeed, oalt, ofix, osatno, ohdop, ovoltage
 
   long osensor1[4]
   long qt[4]
@@ -218,15 +214,15 @@ OBJ
                                                                 '  2nd cog - query sensors
   serial        : "isp_serial_singleton_tmm"
   sbus          : "jm_sbus_rx"                                  ' 1 cog - read sbus from receiver
-  sport         : "frskysport"                                  ' 1 cig - handling polling from receiver
+  sport         : "frskysport"                                  ' 1 cog - handling polling from receiver for telemetry
   swerve        : "swervemotor" | MAX_SWERVE_MODULES=NO_SWERVE_MODULES
   utilities     : "utilities"
-  pmw           : "pmw3901"
-  usfsmax       : "usfsmax"
-  gps           : "gps_pa1010d"
-  battery       : "jm_ez_analog"
+  pmw           : "pmw3901"                                     ' Optical flow
+  usfsmax       : "usfsmax"                                     ' IMU
+  gps           : "gps_pa1010d"                                 ' GPS
+  battery       : "jm_ez_analog"                                ' A2D to read battery voltage
 
-PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_time, again, temp, temp1, speeds[NO_SWERVE_MODULES], angles[NO_SWERVE_MODULES]
+PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_time, again, temp, temp1, speeds[NO_SWERVE_MODULES], aspeeds[NO_SWERVE_MODULES], angles[NO_SWERVE_MODULES]
   debug1, debug2, debug3 := INIT_DEBUG, INIT_DEBUG, INIT_DEBUG
   longfill(@lastchannels, -1, NOCHANNELS)
   serial.start(BR_SERIAL)
@@ -290,8 +286,8 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
       ' update swerve modules with updated movements
       if havemotors <> (swerve.NO_MOTOR1|swerve.NO_MOTOR2)
         again := swerve.update(swervechannels[CHANNEL_Y], swervechannels[CHANNEL_X], swervechannels[CHANNEL_R], swervechannels[CHANNEL_OFF])
-      swerve.getactuals(@speeds, @angles)
-      sport.setactuals(@speeds, @angles)
+      swerve.getactuals(@speeds, @aspeeds, @angles)
+      sport.setactuals(@speeds, @aspeeds, @angles)
       if debugo
         if debugoutput(UTILITIES.DEBUGOUT3)
           serial.fstr2(string("Swerve period %d %d\r"), temp1 := getms()-acq_time, temp)
@@ -319,7 +315,7 @@ PRI dopidconstants(init) | tSkp[NO_SWERVE_MODULES], tSki[NO_SWERVE_MODULES], tSk
     serial.fstr4(string("radio %d steer pid:%.2g %.2g %.2g\r"), init, tSkp[0], tSki[0], tSkd[0])
     serial.fstr4(string("radio %d drive pid:%.2g %.2g %.2g\r"), init, tDkp[0], tDki[0], tDkd[0])
   ' set override max output speed
-  omax[0] := omax[1] := swervechannels[CHANNEL_OFF] 'CHANNEL_TESTMAX]
+  omax[0] := omax[1] := swervechannels[CHANNEL_OFF]
   swerve.setpidconstants(@tSkp, @tSki, @tSkd, @tDkp, @tDki, @tDkd, @omax)
 
 PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_time, compute_time1, havepmw, haveusfsmax, havegps, sbusstatus, lsbusstatus, ch, lastx_l, lastx_h, lasty_l, lasty_h, lasto[4], debugo, delaystart, gpsret, gpsrel, xl, yl, oldvoltage, volt, s
@@ -354,7 +350,6 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
   waitms(100)
   sbus.reset_count()                                    ' reset frames received count
   sport.start(SBUS_SPORT, SPORT_PHYSICAL_ID)
-  'sport.setCommand(SPORT_COMMAND_ID)
 
   if (Acq_time := gps.start(GPS_SCL, GPS_SDA)) == 0
     havegps := true
@@ -431,8 +426,8 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
       'takeprintlock()
       'serial.fstr0(string("gps input\r"))
       if (gpsret := gps.input()) <> 0
-        ohour, omin, osec, onorthdeg, owestdeg, ospeed, oalt, gpsrel, ofix, osatno := gps.gps()
-        sport.setgps(onorthdeg, owestdeg, ospeed, 0, 0)
+        ohour, omin, osec, onorthdeg, owestdeg, ospeed, oalt, gpsrel, ofix, osatno, ohdop := gps.gps()
+        sport.setgps(onorthdeg, owestdeg, ospeed, oalt, ofix, osatno, ohdop)
         ogpst |= gpsret
         sensorupdate |= GPSCHANGE                       ' GPS changed
         'serial.fstr0(string("gps input changed\r"))
@@ -526,20 +521,20 @@ DAT
   '                        D1        D2        D3
   '                         8         9        10
                 word    MINDEBUG, MINDEBUG, MINDEBUG
-  '                      11       12    13    14    15    16    17    18
-                word   MAXTEST,    0,    0,    0,    0,    0,    0,    0
+  '                      11    12    13    14    15    16    17    18
+                word      0,    0,    0,    0,    0,    0,    0,    0
   ' minimum sbus mapping
   '                            Y                 X                T                R
   minmap        long    -swerve.MAXSPEED, -swerve.MAXSPEED,       0,        -swerve.MAXSPEED
                 long    MINPIDCONSTANT, MINPIDCONSTANT, MINPIDCONSTANT
                 long    MINDEBUG, MINDEBUG, MINDEBUG
-                long    MINTEST, MINDEFAULT, MINDEFAULT, MINDEFAULT, MINDEFAULT, MINDEFAULT, MINDEFAULT, MINDEFAULT
+                long    MINDEFAULT, MINDEFAULT, MINDEFAULT, MINDEFAULT, MINDEFAULT, MINDEFAULT, MINDEFAULT, MINDEFAULT
   ' maximum sbus mapping
   '                            Y                 X                T                R
   maxmap        long     swerve.MAXSPEED,  swerve.MAXSPEED, swerve.MAXSPEED, swerve.MAXSPEED
                 long    MAXPIDCONSTANT, MAXPIDCONSTANT, MAXPIDCONSTANT
                 long    MAXDEBUG, MAXDEBUG, MAXDEBUG
-                long    MAXTEST, MAXDEFAULT, MAXDEFAULT, MAXDEFAULT, MAXDEFAULT, MAXDEFAULT, MAXDEFAULT, MAXDEFAULT
+                long    MAXDEFAULT, MAXDEFAULT, MAXDEFAULT, MAXDEFAULT, MAXDEFAULT, MAXDEFAULT, MAXDEFAULT, MAXDEFAULT
 
   ' size of bot:        width  length
   bot           long    12.0,  15.0
@@ -555,9 +550,10 @@ DAT
   ' setup so gear on drive wheel are inside on both left and right, so right steering is 180 degree more than encoder
   angleoffsets  long    round((37.96*.float(swerve.MAXANGLE))/.360.0), round((343.82*.float(swerve.MAXANGLE))/.360.0)
                 long    round((240.11*.float(swerve.MAXANGLE))/.360.0), round((286.38*.float(swerve.MAXANGLE))/.360.0)
-  ' encoder min/max encoder values FL, FR, BL, BR
-'                           spec:   0.9-1.1us       3686-4506us
-'                         actual: 0.98-1.01us 4020.35-4156.13us
+
+  '   encoder min/max encoder values FL, FR, BL, BR
+  '                           spec:   0.9-1.1us       3686-4506us
+  '                         actual: 0.98-1.01us 4020.35-4156.13us
   minencoder    long   MININCLK * (CLK_FREQ / 100_000_000), MININCLK * (CLK_FREQ / 100_000_000)
                 long   MININCLK * (CLK_FREQ / 100_000_000), MININCLK * (CLK_FREQ / 100_000_000)
   maxencoder    long   MAXINCLK * (CLK_FREQ / 100_000_000), MAXINCLK * (CLK_FREQ / 100_000_000)
@@ -567,13 +563,13 @@ DAT
   pinoffsets    long    3, 1, 2, 0
 
   '                        FL,    FR     BL     BR
-  defaultSteerKp long    -16.0, -16.0, -16.0, -16.0      ' -9.0
-  defaultSteerKi long    -30.0, -30.0, -30.0, -30.0      ' -20
+  defaultSteerKp long    -16.0, -16.0, -16.0, -16.0
+  defaultSteerKi long    -30.0, -30.0, -30.0, -30.0
   defaultSteerKd long     -0.1,  -0.1,  -0.1,  -0.1
 
   '                        FL,    FR     BL     BR
-  defaultDriveKp long    -16.0, -16.0, -16.0, -16.0      ' -9.0
-  defaultDriveKi long    -30.0, -30.0, -30.0, -30.0      ' -20
+  defaultDriveKp long    -16.0, -16.0, -16.0, -16.0
+  defaultDriveKi long    -30.0, -30.0, -30.0, -30.0
   defaultDriveKd long     -0.1,  -0.1,  -0.1,  -0.1
 
   ' 1 per motor, i.e., 2 motors per NO_SWERVE_MODULES

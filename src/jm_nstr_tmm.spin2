@@ -11,6 +11,7 @@
 ''               -- floating point %g implemented (timmoore)
 ''               -- use in serial port singleton (timmoore)
 ''               -- modifed format to use if rather than case_fast, size reduction (timmoore)
+''               -- support unsigned decimal (timmoore)
 ''
 '' =================================================================================================
 
