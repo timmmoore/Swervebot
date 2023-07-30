@@ -505,19 +505,11 @@ local function drawEssentials (x,y,font)
 
 end
 
-local function drawWheel(x, y, a)
+local function drawWheel(w, x, y, a)
 	local ar = a/57.2957795
 	local c = 7*math.cos(ar)
 	local s = 7*math.sin(ar)
-	if a > 270 then
-		lcd.drawLine(x-s, y-c, x+s, y+c, SOLID, colorFlags)
-	elseif a > 180 then
-		lcd.drawLine(x-s, y+c, x+s, y-c, SOLID, colorFlags)
-	elseif a > 90 then
-		lcd.drawLine(x-s, y-c, x+s, y+c, SOLID, colorFlags)
-	else
-		lcd.drawLine(x-s, y+c, x+s, y-c, SOLID, colorFlags)
-	end
+	lcd.drawLine(x+s, y+c, x-s, y-c, SOLID, colorFlags)
 end
 
 --[[
@@ -536,7 +528,7 @@ local function drawSwerve(x, y, font, linespacing)
 	v1 = getword(val)
 	v2 = rshift(val, 16)
 	v2 = getword(v2)/100.0
-	drawWheel(x+7, y+7, v2)						-- tl
+	drawWheel(1, x+7, y+7, v2)					-- tl
 	val = getValue("Swe2")
 	if (val == nil or val == '' or not val) then
 		val = 0
@@ -545,7 +537,7 @@ local function drawSwerve(x, y, font, linespacing)
 	v1 = getword(val)
 	v2 = rshift(val, 16)
 	v2 = getword(v2)/100.0
-	drawWheel(x+120+23, y+7, v2)					-- tr
+	drawWheel(2, x+120+23, y+7, v2)					-- tr
 	val = getValue("Swe3")
 	if (val == nil or val == '' or not val) then
 		val = 0
@@ -554,7 +546,7 @@ local function drawSwerve(x, y, font, linespacing)
 	v1 = getword(val)
 	v2 = rshift(val, 16)
 	v2 = getword(v2)/100.0
-	drawWheel(x+7, y+150+23, v2)					-- bl
+	drawWheel(3, x+7, y+150+23, v2)					-- bl
 	val = getValue("Swe4")
 	if (val == nil or val == '' or not val) then
 		val = 0
@@ -563,7 +555,7 @@ local function drawSwerve(x, y, font, linespacing)
 	v1 = getword(val)
 	v2 = rshift(val, 16)
 	v2 = getword(v2)/100.0
-	drawWheel(x+120+23, y+150+23, v2)				-- br
+	drawWheel(4, x+120+23, y+150+23, v2)				-- br
 end
 
 --[[
