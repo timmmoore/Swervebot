@@ -287,7 +287,7 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
       if havemotors <> (swerve.NO_MOTOR1|swerve.NO_MOTOR2)
         again := swerve.update(swervechannels[CHANNEL_Y], swervechannels[CHANNEL_X], swervechannels[CHANNEL_R], swervechannels[CHANNEL_OFF])
       swerve.getactuals(@speeds, @aspeeds, @angles)
-      sport.setactuals(@speeds, @aspeeds, @angles)
+      sport.setactuals(@speeds, @aspeeds, @angles)      ' swerve speeds/angles telemetry
       if debugo
         if debugoutput(UTILITIES.DEBUGOUT3)
           serial.fstr2(string("Swerve period %d %d\r"), temp1 := getms()-acq_time, temp)
@@ -349,7 +349,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
   sbus.start(SBUS_RX, @Defaults)                        ' start s.bus rx
   waitms(100)
   sbus.reset_count()                                    ' reset frames received count
-  sport.start(SBUS_SPORT, SPORT_PHYSICAL_ID)
+  sport.start(SBUS_SPORT, SPORT_PHYSICAL_ID)            ' start telemetry channel to transmitter
 
   if (Acq_time := gps.start(GPS_SCL, GPS_SDA)) == 0
     havegps := true
@@ -398,7 +398,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
       ch, xl, yl := pmw.readMotionCountBurstQuick()       ' acquire 24us (4Mhz)
       xsensor_l, xsensor_h, ysensor_l, ysensor_h, tsensor := pmw.readMotionAccum(false)
       Acq_time := getct() - Acq_time - 40
-      sport.setflow(@xl)
+      sport.setflow(@xl)                                 ' optical flow telemetry
       'releaseprintlock()                                ' release lock soon as we have finished printing
       if ch && utilities.longcomp(@lastx_l, @xsensor_l, 4, 0, ch)
         sensorupdate |= PMWCHANGE                       ' pmw changed
@@ -418,7 +418,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
       osensor[YAW], osensor[PITCH], osensor[ROLL], osensor[PRESSURE] := usfsmax.computeIMUFixed(qt[0], qt[1], qt[2], qt[3])
       compute_time := getct() - compute_time - 40
       'releaseprintlock()                                ' release lock soon as we have finished printing
-      sport.setimu(osensor[YAW], osensor[PITCH], osensor[ROLL])
+      sport.setimu(osensor[YAW], osensor[PITCH], osensor[ROLL], osensor[PRESSURE]) ' imu telemetry
       if utilities.longcompf(@lasto, @osensor, 4, true)
         sensorupdate |= IMUCHANGE                       ' imu changed
 
@@ -434,6 +434,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
       'releaseprintlock()                                ' release lock soon as we have finished printing
 
     ovoltage := float((BATTERY_TEST == true)?27000 + (++volt // (BATTERY_HIGH-27000)):battery.read())/.BATTERY_DIVIDER
+    sport.setvoltage(ovoltage)                          ' battery voltage telemetry
     if utilities.frel(fabs(ovoltage -. oldvoltage), 0.2, UTILITIES.FGT)
       oldvoltage := ovoltage
       sensorupdate |= VOLTAGECHANGE

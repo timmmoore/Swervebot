@@ -28,7 +28,7 @@ CON
 ' shows up on tx as 224 + ID, i.e., battery monitor is 225, gps is 227, acc is 229
   DATA_ID_VARIO                 = $00                   ' sensor 0 used for Alt and Vspeed, Vario2 (altimeter high precision)
   'DATA_ID_FLVSS                 = 1                    '        1 used for Cell values, FLVSS Lipo sensor (can be sent with one or two cell voltages)
-'  DATA_ID_FAS                   = 2                    '        2 used for vfas , current and fuel, FAS-40S current sensor
+  DATA_ID_FAS                   = 2                     '        2 used for vfas , current and fuel, FAS-40S current sensor
   DATA_ID_GPS                   = 3                     '        3 used for GPS data, GPS / altimeter (normal precision)
   DATA_ID_ACTUALS               = 4                     '        4 used for actual swerve speeds and angles
 '  DATA_ID_RPM                   = 4                    '        4 used for rpm, T1, T2, airspeed, RPM
@@ -73,8 +73,8 @@ CON
   FSSP_DATAID_FUEL       = $0600
   FSSP_DATAID_ADC1       = $F102
   FSSP_DATAID_ADC2       = $F103
-  FSSP_DATAID_VARIO      = $0110
-  FSSP_DATAID_CELLS      = $0300
+  FSSP_DATAID_VARIO      = $0110                        ' height cm from baro sensor
+  FSSP_DATAID_CELLS      = $0300                        ' voltage cells from frsky battery sensor
   FSSP_DATAID_CELLS_LAST = $030F
   ' DIY range $5100 to $52FF
   FSSP_DATAID_CAP_USED   = $5250                        ' given in mAh, should be in percent according to SmartPort spec
@@ -115,6 +115,8 @@ CON
   FSSP_ACTUAL3           = $5102
   FSSP_ACTUAL4           = $5103
 
+  SENSOR_APPL_ID_PRESSURE = $5113
+
   FSSP_DATAID_FLOWX      = $5114
   FSSP_DATAID_FLOWY      = $5115
 
@@ -132,9 +134,10 @@ VAR
   long lastsensortime[MAXNOSENSORS]                     ' last time this sensor has been sent, dont send more often
   long lastsensorindex[MAXNOSENSORS]                    ' has sensor been sent, make sure all sensors for physicalid have been sent
   long latitude, longitude, speed, alt, fix, satno, hdop ' from gps
-  long heading, pitch, roll                             ' from imu
+  long heading, pitch, roll, pressure                   ' from imu
   long actualspeeds[4], actualaspeeds[4], actualangles[4] ' from swerve modules
   long flow[2]
+  long voltage
   long StkAddr[10000]
 
 OBJ
@@ -163,8 +166,8 @@ PUB stop()
 pub setgps(tlatitude, tlongitude, tspeed, talt, tfix, tsatno, thdop)
   longmove(@latitude, @tlatitude, 7)
 
-pub setimu(theading, tpitch, troll)
-  longmove(@heading, @theading, 3)
+pub setimu(theading, tpitch, troll, tpressure)
+  longmove(@heading, @theading, 4)
 
 pub setactuals(pspeeds, paspeeds, pangles)
   longmove(@actualspeeds, pspeeds, 4)
@@ -173,6 +176,9 @@ pub setactuals(pspeeds, paspeeds, pangles)
 
 pub setflow(pflows)
   longmove(@flow, pflows, 2)
+
+pub setvoltage(tvoltage)
+  voltage := tvoltage
 
 '' rethink this, the response needs to be called from the poll
 pub setCommand(command)
@@ -244,8 +250,8 @@ pri validid(physicalId) : sensorid
 '      sensorid := true
 '    DATA_ID_FLVSS:                                     '        1 used for Cell values
 '      sensorid := true
-'   DATA_ID_FAS:                                        '        2 used for vfas , current and fuel
-'      sensorid := true
+    DATA_ID_FAS:                                        '        2 used for vfas , current and fuel
+      sensorid := true
     DATA_ID_GPS:                                        '        3 used for GPS data
       sensorid := true
     DATA_ID_ACTUALS:                                    '        4 used for swerve speeds/angles
@@ -309,6 +315,10 @@ pri sensor_getData(applicationIdt, subindex) : valuet | temp
       valuet := flow[0]
     FSSP_DATAID_FLOWY:
       valuet := flow[1]
+    FSSP_DATAID_VFAS:
+      valuet := round(voltage*.100.0)                                           ' in 0.01
+    SENSOR_APPL_ID_PRESSURE:
+      valuet := round(pressure *. 100.0)                                        ' 0.01hPa
 
 pri querysensorsent(Index) : retv
   return lastsensorindex[Index/_sensornoentries] == 0
@@ -434,14 +444,16 @@ _sensors      word      DATA_ID_GPS, FSSP_DATAID_LATLONG,  0, 1000              
               word      DATA_ID_GPS, FSSP_DATAID_SPEED,    0, 1000              ' $0830
               word      DATA_ID_GPS, SENSOR_APPL_ID_GSATS, 0, 1000              ' $5111, no satellites
               word      DATA_ID_GPS, FSSP_DATAID_GPS_ALT,  0, 1000              ' $0820. altitude
-              word      DATA_ID_FLOW, FSSP_DATAID_FLOWX,   0,  500              ' optical flow x
-              word      DATA_ID_FLOW, FSSP_DATAID_FLOWY,   0,  500              ' optical flow y
-              word      DATA_ID_ACTUALS, FSSP_ACTUAL1,     0,  500              ' swerve FL, speed/angle
-              word      DATA_ID_ACTUALS, FSSP_ACTUAL2,     0,  500              ' swerve FR
-              word      DATA_ID_ACTUALS, FSSP_ACTUAL3,     0,  500              ' swerve BL
-              word      DATA_ID_ACTUALS, FSSP_ACTUAL4,     0,  500              ' swerve BR
-              word      DATA_ID_ACC, FSSP_DATAID_HEADING,  0,  500              ' $0840, in 100*deg
-              word      DATA_ID_ACC, FSSP_DATAID_PITCH,    0,  500              ' $5230, given in 10*deg
-              word      DATA_ID_ACC, FSSP_DATAID_ROLL,     0,  500              ' $5240, given in 10*deg
+              word      DATA_ID_FLOW, FSSP_DATAID_FLOWX,   0,  500              ' $5114, optical flow x
+              word      DATA_ID_FLOW, FSSP_DATAID_FLOWY,   0,  500              ' $5115, optical flow y
+              word      DATA_ID_ACTUALS, FSSP_ACTUAL1,     0,  500              ' $5100, swerve FL, speed/angle
+              word      DATA_ID_ACTUALS, FSSP_ACTUAL2,     0,  500              ' $5101, swerve FR
+              word      DATA_ID_ACTUALS, FSSP_ACTUAL3,     0,  500              ' $5102, swerve BL
+              word      DATA_ID_ACTUALS, FSSP_ACTUAL4,     0,  500              ' $5103, swerve BR
+              word      DATA_ID_ACC, FSSP_DATAID_HEADING,  0, 1000              ' $0840, in 100*deg
+              word      DATA_ID_ACC, FSSP_DATAID_PITCH,    0, 1000              ' $5230, given in 10*deg
+              word      DATA_ID_ACC, FSSP_DATAID_ROLL,     0, 1000              ' $5240, given in 10*deg
+              word      DATA_ID_ACC, SENSOR_APPL_ID_PRESSURE, 0, 1000           ' $5113
+              word      DATA_ID_FAS, FSSP_DATAID_VFAS,     0, 1000              ' $0210, given in 0.01V
 _sensorsend
 '
