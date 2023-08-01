@@ -92,7 +92,7 @@ CON
   FSSP_DATAID_SPEED      = $0830                        ' Speed should be sent in knots/1000 (GPS speed is in cm/s)
   FSSP_DATAID_HEADING    = $0840
   FSSP_DATAID_TIMEDATE   = $0850
-  FSSP_DATAID_ALTITUDE   = $0100                        '  in cm according to SmartPort spec
+  FSSP_DATAID_ALTITUDE   = $0100                        ' in cm according to SmartPort spec
   FSSP_DATAID_ASPD       = $0A00
   FSSP_DATAID_TEMP       = $0B70
   FSSP_DATAID_TEMP1      = $0B71
@@ -110,18 +110,18 @@ CON
   VOLTS_BP_ID            = $003A
   DIY_STREAM_FIRST_ID    = $5000                        ' 5000-50ff, edgetx uses it for lua passthrough
 
-  FSSP_ACTUAL1           = $5100
+  FSSP_ACTUAL1           = $5100                        ' Swerve speed/angle
   FSSP_ACTUAL2           = $5101
   FSSP_ACTUAL3           = $5102
   FSSP_ACTUAL4           = $5103
 
-  SENSOR_APPL_ID_PRESSURE = $5113
+  SENSOR_APPL_ID_PRESSURE = $5113                       ' barometric pressure hPa
 
-  FSSP_DATAID_FLOWX      = $5114
+  FSSP_DATAID_FLOWX      = $5114                        ' optical flow
   FSSP_DATAID_FLOWY      = $5115
 
-  SENSOR_APPL_ID_GSATS   = $5111
-  SENSOR_APPL_ID_GHDOP   = $5112
+  SENSOR_APPL_ID_GSATS   = $5111                        ' GPS no satellites
+  SENSOR_APPL_ID_GHDOP   = $5112                        ' GPS HDOP
 
   MAXNOSENSORS           = 50
 
