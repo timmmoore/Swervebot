@@ -64,7 +64,7 @@ PUB start(scl, sda, ppinvert) : retv | ch
 PUB stop()
   stopmotors()
 
-PRI stopmotors() | ch
+PUB stopmotors() | ch
   repeat ch from 0 to 15                                ' all pins off
     setPWM(MOTOR1<<1, ch+LED0_ON_L, 0)
     setPWM(MOTOR2<<1, ch+LED0_ON_L, 0)

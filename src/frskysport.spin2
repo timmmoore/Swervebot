@@ -34,6 +34,7 @@ CON
 '  DATA_ID_RPM                   = 4                    '        4 used for rpm, T1, T2, airspeed, RPM
   DATA_ID_ACC                   = 5                     '        5 used for Acc X, Y, Z, SP2UART(Host)
   DATA_ID_FLOW                  = 7                     '        7 used for optical flow x and y
+  DATA_ID_TEMP                  = 8                     '        8 used for motor driver temperatures
 
   SPORT_MIN_TELEMETRY_DELAY_US = 500
 
@@ -136,7 +137,7 @@ VAR
   long latitude, longitude, speed, alt, fix, satno, hdop ' from gps
   long heading, pitch, roll, pressure                   ' from imu
   long actualspeeds[4], actualaspeeds[4], actualangles[4] ' from swerve modules
-  long flow[2]
+  long flow[2], temps[4]
   long voltage
   long StkAddr[10000]
 
@@ -179,6 +180,9 @@ pub setflow(pflows)
 
 pub setvoltage(tvoltage)
   voltage := tvoltage
+
+pub settemperature(ptemps)                        ' temperature telemetry
+  longmove(@temps, ptemps, 4)
 
 '' rethink this, the response needs to be called from the poll
 pub setCommand(command)
@@ -260,6 +264,8 @@ pri validid(physicalId) : sensorid
       sensorid := true
     DATA_ID_FLOW:
       sensorid := true
+    DATA_ID_TEMP:
+      sensorid := true
 
 pri rxcheck() : rxbyte | o1
 '' Check for serial input
@@ -319,6 +325,14 @@ pri sensor_getData(applicationIdt, subindex) : valuet | temp
       valuet := round(voltage*.100.0)                                           ' in 0.01
     SENSOR_APPL_ID_PRESSURE:
       valuet := round(pressure *. 100.0)                                        ' 0.01hPa
+    FSSP_DATAID_TEMP1:
+      valuet := temps[0]                                                        ' 0.01C
+    FSSP_DATAID_TEMP2:
+      valuet := temps[1]
+    FSSP_DATAID_TEMP3:
+      valuet := temps[2]
+    FSSP_DATAID_TEMP4:
+      valuet := temps[3]
 
 pri querysensorsent(Index) : retv
   return lastsensorindex[Index/_sensornoentries] == 0
@@ -438,22 +452,26 @@ dat
 ' maximum of 50 sensors
 _sensorCountEntries  long      (@_sensorsend - @_sensors)/2                     ' count of info, not count of sensors
 _sensorCount  long      (@_sensorsend - @_sensors)/(2*_sensornoentries)         ' count of info, not count of sensors
-'                       physical id   sensor id     subindex  delay
-_sensors      word      DATA_ID_GPS, FSSP_DATAID_LATLONG,  0, 1000              ' $0800, lat
-              word      DATA_ID_GPS, FSSP_DATAID_LATLONG,  1, 1000              ' $0800, long
-              word      DATA_ID_GPS, FSSP_DATAID_SPEED,    0, 1000              ' $0830
-              word      DATA_ID_GPS, SENSOR_APPL_ID_GSATS, 0, 1000              ' $5111, no satellites
-              word      DATA_ID_GPS, FSSP_DATAID_GPS_ALT,  0, 1000              ' $0820. altitude
-              word      DATA_ID_FLOW, FSSP_DATAID_FLOWX,   0,  500              ' $5114, optical flow x
-              word      DATA_ID_FLOW, FSSP_DATAID_FLOWY,   0,  500              ' $5115, optical flow y
-              word      DATA_ID_ACTUALS, FSSP_ACTUAL1,     0,  500              ' $5100, swerve FL, speed/angle
-              word      DATA_ID_ACTUALS, FSSP_ACTUAL2,     0,  500              ' $5101, swerve FR
-              word      DATA_ID_ACTUALS, FSSP_ACTUAL3,     0,  500              ' $5102, swerve BL
-              word      DATA_ID_ACTUALS, FSSP_ACTUAL4,     0,  500              ' $5103, swerve BR
-              word      DATA_ID_ACC, FSSP_DATAID_HEADING,  0, 1000              ' $0840, in 100*deg
-              word      DATA_ID_ACC, FSSP_DATAID_PITCH,    0, 1000              ' $5230, given in 10*deg
-              word      DATA_ID_ACC, FSSP_DATAID_ROLL,     0, 1000              ' $5240, given in 10*deg
-              word      DATA_ID_ACC, SENSOR_APPL_ID_PRESSURE, 0, 1000           ' $5113
-              word      DATA_ID_FAS, FSSP_DATAID_VFAS,     0, 1000              ' $0210, given in 0.01V
+'                       physical id            sensor id     subindex  delay(ms)
+_sensors      word      DATA_ID_GPS,     FSSP_DATAID_LATLONG,     0,   1000     ' $0800, lat
+              word      DATA_ID_GPS,     FSSP_DATAID_LATLONG,     1,   1000     ' $0800, long
+              word      DATA_ID_GPS,     FSSP_DATAID_SPEED,       0,   1000     ' $0830
+              word      DATA_ID_GPS,     SENSOR_APPL_ID_GSATS,    0,   1000     ' $5111, no satellites
+              word      DATA_ID_GPS,     FSSP_DATAID_GPS_ALT,     0,   1000     ' $0820. altitude, cm
+              word      DATA_ID_FLOW,    FSSP_DATAID_FLOWX,       0,    500     ' $5114, optical flow x
+              word      DATA_ID_FLOW,    FSSP_DATAID_FLOWY,       0,    500     ' $5115, optical flow y
+              word      DATA_ID_ACTUALS, FSSP_ACTUAL1,            0,    500     ' $5100, swerve FL, speed/angle (deg *100)
+              word      DATA_ID_ACTUALS, FSSP_ACTUAL2,            0,    500     ' $5101, swerve FR
+              word      DATA_ID_ACTUALS, FSSP_ACTUAL3,            0,    500     ' $5102, swerve BL
+              word      DATA_ID_ACTUALS, FSSP_ACTUAL4,            0,    500     ' $5103, swerve BR
+              word      DATA_ID_ACC,     FSSP_DATAID_HEADING,     0,   1000     ' $0840, in deg *100
+              word      DATA_ID_ACC,     FSSP_DATAID_PITCH,       0,   1000     ' $5230, given in deg *10
+              word      DATA_ID_ACC,     FSSP_DATAID_ROLL,        0,   1000     ' $5240, given in deg *10
+              word      DATA_ID_ACC,     SENSOR_APPL_ID_PRESSURE, 0,   1000     ' $5113, hPa *100
+              word      DATA_ID_FAS,     FSSP_DATAID_VFAS,        0,   1000     ' $0210, given in 0.01V *100
+              word      DATA_ID_TEMP,    FSSP_DATAID_TEMP1,       0,   1000     ' $0B71, motor driver temps, 0,01C *100
+              word      DATA_ID_TEMP,    FSSP_DATAID_TEMP2,       0,   1000     ' $0B72, motor driver temps, 0,01C *100
+              word      DATA_ID_TEMP,    FSSP_DATAID_TEMP3,       0,   1000     ' $0B73, motor driver temps, 0,01C *100
+              word      DATA_ID_TEMP,    FSSP_DATAID_TEMP4,       0,   1000     ' $0B74, motor driver temps, 0,01C *100
 _sensorsend
 '

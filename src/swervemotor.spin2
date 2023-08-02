@@ -109,6 +109,11 @@ PUB getactuals(pspeeds, paspeeds, pangles)
   longmove(paspeeds, @driveencodervelocity, MAX_SWERVE_MODULES)
   longmove(pangles, @actualangles, MAX_SWERVE_MODULES)
 
+pub stopmotors()
+  longfill(@actualspeeds, 0, MAX_SWERVE_MODULES)
+  longfill(@driveencodervelocity, 0, MAX_SWERVE_MODULES)
+  motor.stopmotors()
+
 PRI setmotorspeeds(pspeeds) | ch, speed
   ' set all motor speeds, drive and angle
   ' swerve modules on 1st and 2nd motor driver
