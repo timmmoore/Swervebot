@@ -81,8 +81,6 @@ con { fixed io pins }
   SBUS_RX                       = 7                                             ' rx channels from transmitter
   SBUS_SPORT                    = 6                                             ' bi-directional: poll from receiver, send sensor values
   SBUS_TX                       = 5                                             ' not used
-  SPORT_PHYSICAL_ID             = $22 '1B                                           ' id that R-XSR polls for sensor telemetry
-  SPORT_COMMAND_ID              = $1B
 
   MOTOR_SDA                     = 23                                            ' i2c pins for motor controllers
   MOTOR_SCL                     = 22                                            ' SCK speed of 800KHz
@@ -126,9 +124,7 @@ con { fixed io pins }
                                                                                 ' SLK speed of 3Mhz
   USFSMAX_RESET                 = -1                                            ' reset pin is optional
 
-  SPARE_ANALOG                  = 30
-  BATTERY_ANALOG                = 31                                            ' battery via resistor divider
-                                                                                ' 8K2 + 3K3
+  BATTERY_ANALOG                = 31                                            ' battery via resistor divider, 8K2 + 3K3
   BATTERY_LOW                   = 0
   BATTERY_HIGH                  = 33482                                         ' 8K2 + 3K resistor divider, max voltage is 12.5V * 3000/11200 -> 3.3482
   BATTERY_DIVIDER               = 2678.56                                       ' 33482/2678.56 -> 12.5
@@ -194,6 +190,9 @@ con { fixed io pins }
   SHAREDVARIABLES               = 1+NOCHANNELS+SHAREDIMU+SHAREDPMW+SHAREDGPS+SHAREVOLTAGE+SHARETEMP
 
   NO_SWERVE_MODULES             = 4
+
+  SPARE1_PIN                    = 30                                            ' unused pin
+  SPARE2_PIN                    = 4
 
 VAR
   ' shared variables
@@ -366,7 +365,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
   sbus.start(SBUS_RX, @Defaults)                        ' start s.bus rx
   waitms(100)
   sbus.reset_count()                                    ' reset frames received count
-  sport.start(SBUS_SPORT, SPORT_PHYSICAL_ID)            ' start telemetry channel to transmitter
+  sport.start(SBUS_SPORT)                               ' start telemetry channel to transmitter
 
   if (Acq_time := gps.start(GPS_SCL, GPS_SDA)) == 0
     havegps := true
@@ -415,7 +414,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
     if havepmw
       'takeprintlock()
       Acq_time := getct()
-      ch, xl, yl := pmw.readMotionCountBurstQuick()       ' acquire 24us (4Mhz)
+      ch, xl, yl := pmw.readMotionCountBurstQuick()      ' acquire 24us (4Mhz)
       xsensor_l, xsensor_h, ysensor_l, ysensor_h, tsensor := pmw.readMotionAccum(false)
       Acq_time := getct() - Acq_time - 40
       sport.setflow(@xl)                                 ' optical flow telemetry

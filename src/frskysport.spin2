@@ -22,8 +22,8 @@ CON
   FSSP_MSPC_FRAME_FPORT         = $31                   ' MSP client frame
   FSSP_MSPS_FRAME               = $32                   ' MSP server frame
 
-' ID of sensor. Must be something that is polled by FrSky RX, there are 32 ID's polled by smartport master
-' remaining 3 bits are crc (according to comments in openTx code)
+' Physical ID of sensor. Must be something that is polled by FrSky RX, there are 32 ID's polled by smartport master
+' top 3 bits are crc (according to comments in openTx code)
 ' 0x00,0xA1,0x22,0x83,0xE4,0x45,0xC6,0x67,0x48,0xE9,0x6A,0xCB,0xAC,0x0D,0x8E,0x2F,0xD0,0x71,0xF2,0x53,0x34,0x95,0x16,0xB7,0x98,0x39,0xBA,0x1B
 ' shows up on tx as 224 + ID, i.e., battery monitor is 225, gps is 227, acc is 229
   DATA_ID_VARIO                 = $00                   ' sensor 0 used for Alt and Vspeed, Vario2 (altimeter high precision)
@@ -127,7 +127,7 @@ CON
   MAXNOSENSORS           = 50
 
 VAR
-  long rxp, _physicalId
+  long rxp
   long cognum, clkx
   long s_commandPrim, s_applicationId, s_value
   long r_commandId, r_commandPrim, r_applicationId, r_value
@@ -145,10 +145,9 @@ OBJ
   serial        : "isp_serial_singleton_tmm"
   utilities     : "utilities"
 
-PUB start(pin, physicalId) : retv | x
+PUB start(pin) : retv | x
   rxp := pin
 
-  _physicalId := physicalId
   pinclear(rxp)                                                                 ' remove old settings
 
   clkx := muldiv64(clkfreq, $1_0000, SPORT_BAUD) & $FFFFFC00                    ' set bit timing
@@ -181,7 +180,7 @@ pub setflow(pflows)
 pub setvoltage(tvoltage)
   voltage := tvoltage
 
-pub settemperature(ptemps)                        ' temperature telemetry
+pub settemperature(ptemps)                                                      ' temperature telemetry
   longmove(@temps, ptemps, 4)
 
 '' rethink this, the response needs to be called from the poll
@@ -247,7 +246,7 @@ PRI runsport() | rx, byte buffer[10], valid, index, physicalId
           'commandReceived(buffer[2], word[@buffer+3], long[@buffer+5])
 
 pri validid(physicalId) : sensorid
-' which physical sensors are enabled
+' is it one of our physical sensors?
   sensorid := false
   case physicalId
 '    DATA_ID_VARIO:                                     ' sensor 0 used for Alt and Vspeed
@@ -262,9 +261,9 @@ pri validid(physicalId) : sensorid
       sensorid := true
     DATA_ID_ACC:                                        '        5 used for Acc X, Y, Z
       sensorid := true
-    DATA_ID_FLOW:
+    DATA_ID_FLOW:                                       ' optical flow sensor
       sensorid := true
-    DATA_ID_TEMP:
+    DATA_ID_TEMP:                                       ' temperature sensors, 1 per motor driver
       sensorid := true
 
 pri rxcheck() : rxbyte | o1
@@ -277,6 +276,7 @@ pri rxcheck() : rxbyte | o1
     return -1
 
 pri actual(value) : valuet
+' make 16bit signed value
   valuet := value
   if valuet < 0
     valuet := abs(valuet)
@@ -288,14 +288,14 @@ pri sensor_getData(applicationIdt, subindex) : valuet | temp
       temp := (subindex==0)?latitude:longitude
       valuet := round(temp *. 600000.0)
       if valuet < 0
-        valuet := abs(valuet)
+        valuet := abs(valuet)                                                   ' long/lat encoding
         valuet |= DECOD (30)                                                    ' West/South
       valuet |= (subindex==0)?DECOD(31):0                                       ' lat/long
-    FSSP_DATAID_SPEED:                                                          ' Speed in km/h (should be sent in knots/1000)
+    FSSP_DATAID_SPEED:                                                          ' Speed in km/h (should be sent in knots *1000)
       valuet := round(speed *. 1609.344)
     FSSP_DATAID_GPS_ALT:                                                        ' in cm
       valuet := round(alt *. 30.48)
-    SENSOR_APPL_ID_GSATS:
+    SENSOR_APPL_ID_GSATS:                                                       ' satellite fix, quality and number
       temp := (round(hdop *. 100) - 51)/50
       temp := 0 #> temp <# 9
       valuet := (fix * 1000) | (temp * 100) | (satno <# 99)
@@ -394,6 +394,7 @@ pri setpintx() | rp, x, clk, mode
   end
 
 pri setpinrx()
+' switch to listen
   waitus(150)                                                                   ' make sure its flushed
   pinstart(rxp, M_SPORTRX, clkx, 0)                                             ' start smart pin rx for S.PORT
   waitus(20)
@@ -401,6 +402,7 @@ pri setpinrx()
   waitus(SPORT_MIN_TELEMETRY_DELAY_US)
 
 pri SendData(prim, applicationIdt, valuet) | byte frame[8], i
+' create frame with CRC
   'serial.fstr3(string("sport SendData %x %x %x | "), prim, applicationIdt, valuet)
   frame[0] := prim
   word[@frame+1] := applicationIdt
@@ -414,7 +416,7 @@ pri SendData(prim, applicationIdt, valuet) | byte frame[8], i
   'serial.fstr0(string("\r"))
 
 pri GetChecksum(pdata, len) : total | i
-
+' calculate CRC
   repeat i from 0 to (len - 1)
     total += byte[pdata][i]
     total += (total >> 8)
@@ -422,7 +424,7 @@ pri GetChecksum(pdata, len) : total | i
   total := $ff - total
 
 pri SendByte(b, first)
-' Send a data byte the FrSky way
+' Send a data byte with stuffing needed
   if (b == SPORT_START) or (b == FSSP_DLE)
     write(FSSP_DLE, first)
     write(b ^ FSSP_DLE_XOR, false)
