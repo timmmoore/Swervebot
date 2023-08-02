@@ -126,21 +126,21 @@ con { fixed io pins }
                                                                                 ' SLK speed of 3Mhz
   USFSMAX_RESET                 = -1                                            ' reset pin is optional
 
+  SPARE_ANALOG                  = 30
   BATTERY_ANALOG                = 31                                            ' battery via resistor divider
                                                                                 ' 8K2 + 3K3
-
   BATTERY_LOW                   = 0
   BATTERY_HIGH                  = 33482                                         ' 8K2 + 3K resistor divider, max voltage is 12.5V * 3000/11200 -> 3.3482
   BATTERY_DIVIDER               = 2678.56                                       ' 33482/2678.56 -> 12.5
   BATTERY_MINIMUM               = 9.9                                           ' minimum voltage
   BATTERY_TEST                  = true
 
-  TEMP_ANALOG                   = 18                                            ' pin 18-21, TMP36,  0.5 + 25 * 0.01 -> .75V = 25C
+  TEMP_ANALOG                   = 26                                            ' pin 26-29, TMP36,  0.5 + 25 * 0.01 -> .75V = 25C
   TEMP_LOW                      = -5000                                         ' 0V -> -50C
   TEMP_HIGH                     = 28000                                         ' 3.3V -> 280C
   TEMP_MAX                      = 12000                                         ' TB6612 thermal shutdown is at 150C, though sensor is external so lower
   TEMP_MIN                      = 9000
-  TEMP_TEST                     = false
+  TEMP_TEST                     = true
 
   ' Bellevue, WA 98008
   M_V                           = 49.4643
@@ -475,7 +475,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
       takeprintlock()
       if sensorupdate & PMWCHANGE
         if debugoutput(UTILITIES.DEBUGOUT3)
-          serial.fstr6(string("PMW3901 x:%d:%d y:%d:%d t:%d a:%d\r"), xsensor_h, xsensor_l, ysensor_h, ysensor_l, tsensor, Acq_time/US_001)
+          serial.fstr6(string("PMW3901 x:%d:%u y:%d:%u t:%d a:%d\r"), xsensor_h, xsensor_l, ysensor_h, ysensor_l, tsensor, Acq_time/US_001)
       if sensorupdate & IMUCHANGE                       ' imu changed
         if debugoutput(UTILITIES.DEBUGOUT3)
           'serial.fstr4(string("USFSMAX QUAT %.2g %.2g %.2g %.2g\r"), qt[0], qt[1], qt[2], qt[3])
@@ -634,5 +634,5 @@ DAT
                 LONG M_V
                 LONG M_H
                 LONG MAG_DECLINIATION
-                byte QUAT_DIV
+                byte QUAT_DIV, 0, 0, 0
 '

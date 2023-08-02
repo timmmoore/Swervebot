@@ -165,8 +165,8 @@ CON
 VAR
   long accLIN[3], grav[3]
   long baroADC
-  long mh, mv, magdec
   long yawoffset
+  long mh, mv, magdec
   byte quatdiv
 
 OBJ
@@ -193,7 +193,7 @@ PUB startx(scl, sda, reset, pconfig, offset) : retv | id, stat, Begin
   'serial.fstr0(string("USFSMAX3 \r"))
 
   waitms(10)
-  ifnot i2c.setup(scl, sda, I2C_CONFIG_SPEED, i2c.PU_3K3, -1) '1K5) ' i2c @ 100kHz, 3K3 pull-ups
+  ifnot i2c.setup(scl, sda, I2C_CONFIG_SPEED, i2c.PU_1K5, -1) ' i2c @ 100kHz, 1K5 pull-ups
     return $01
   waitms(10)
   'serial.fstr0(string("USFSMAX4 \r"))
@@ -220,12 +220,12 @@ PUB startx(scl, sda, reset, pconfig, offset) : retv | id, stat, Begin
   'serial.fstr2(string("USFSMAX1 %x %d\r"), id, stat)
   UploadCfg()
 
-  i2c.setup(scl, sda, I2C_FAST_SPEED, i2c.PU_3K3, -1)       ' i2c @ 3Mhz, 3K3 pull-ups
+  i2c.setup(scl, sda, I2C_FAST_SPEED, i2c.PU_1K5, -1)       ' i2c @ 3Mhz, 1K5 pull-ups
   waitms(10)
   'serial.str(string("USFSMAX fast I2C", 13))
                                        ' start   Quaternions   SCALED_SENSOR
   write8(MAX32660ADDR, FUSION_START_STOP, $01 |    ($00)      | ($01))
-  waitms(50)
+  waitms(10)
   repeat 50
     waitms(10)
     if stat := (read8(MAX32660ADDR, FUSION_STATUS) & FUSION_RUNNING_MASK)
@@ -267,7 +267,9 @@ PRI readBytes(addr, adr, count, pbuf) : retv | byte values[2]
   i2c.start()                                 ' 5us
   values[0] := addr<<1
   values[1] := adr
+  'i2c.wr_block(@values, 2)                     ' 20us
   if i2c.wr_block(@values, 2) == i2c.NAK      ' 20us
+    i2c.stop()
     return
 
   i2c.start()                                 ' 5us
@@ -372,7 +374,7 @@ CON
 PRI yawscaleangle(l, in) : scaledangle
   ' add bot offset and make sure 0-360.0 degrees
   scaledangle := float(in SCA (360*DEGREESCALE))/.DEGREEDIV +. yawoffset
-  if scaledangle >. 360.0
+  if utilities.frel(scaledangle, 360.0, UTILITIES.FGT)
     scaledangle := scaledangle -. 360.0
 
 PRI scaleangle(l, in) : scaledangle
