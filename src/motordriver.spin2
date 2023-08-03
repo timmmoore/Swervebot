@@ -15,8 +15,7 @@ CON
   NO_MOTOR1         =           $02
   NO_MOTOR2         =           $04
 
-  PCA9685_I2C_SPEED =           800                     ' 1000 works but is not consistent
-                                                        ' try again with shorter shielded wires
+  PCA9685_I2C_SPEED =           1000                    '800
 
   DEBUG_OUTPUT      =           500
 

@@ -1,7 +1,7 @@
 {I2C PA1010D GPS}
 
 CON
-  GPS_I2C_SPEED =               1000 '3400                     '
+  GPS_I2C_SPEED =               1500                    '1000                     '
   GPS_I2C_ADDR  =               $10
 
   GPS_MAX_I2C_TRANSFER =        32                      ' The max number of bytes we'll try to read at once

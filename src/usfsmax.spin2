@@ -160,7 +160,7 @@ CON
   QUAT_DIV                      =     $07
 
   I2C_CONFIG_SPEED              =     100
-  I2C_FAST_SPEED                =     3000 '3400
+  I2C_FAST_SPEED                =     3400              '3000
 
 VAR
   long accLIN[3], grav[3]
