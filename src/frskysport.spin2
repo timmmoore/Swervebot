@@ -27,7 +27,7 @@ CON
 ' 0x00,0xA1,0x22,0x83,0xE4,0x45,0xC6,0x67,0x48,0xE9,0x6A,0xCB,0xAC,0x0D,0x8E,0x2F,0xD0,0x71,0xF2,0x53,0x34,0x95,0x16,0xB7,0x98,0x39,0xBA,0x1B
 ' shows up on tx as 224 + ID, i.e., battery monitor is 225, gps is 227, acc is 229
   DATA_ID_VARIO                 = $00                   ' sensor 0 used for Alt and Vspeed, Vario2 (altimeter high precision)
-  'DATA_ID_FLVSS                 = 1                    '        1 used for Cell values, FLVSS Lipo sensor (can be sent with one or two cell voltages)
+  DATA_ID_FLVSS                 = 1                    '        1 used for Cell values, FLVSS Lipo sensor (can be sent with one or two cell voltages)
   DATA_ID_FAS                   = 2                     '        2 used for vfas , current and fuel, FAS-40S current sensor
   DATA_ID_GPS                   = 3                     '        3 used for GPS data, GPS / altimeter (normal precision)
   DATA_ID_ACTUALS               = 4                     '        4 used for actual swerve speeds and angles
@@ -125,6 +125,7 @@ CON
   SENSOR_APPL_ID_GHDOP   = $5112                        ' GPS HDOP
 
   MAXNOSENSORS           = 50
+  MAXCELLS               = 6
 
 VAR
   long rxp
@@ -139,6 +140,7 @@ VAR
   long actualspeeds[4], actualaspeeds[4], actualangles[4] ' from swerve modules
   long flow[2], temps[4]
   long voltage
+  long batterycount, battery[MAXCELLS]
   long StkAddr[10000]
 
 OBJ
@@ -182,6 +184,10 @@ pub setvoltage(tvoltage)
 
 pub settemperature(ptemps)                                                      ' temperature telemetry
   longmove(@temps, ptemps, 4)
+
+pub setcells(count, pcells)
+  batterycount := count
+  longmove(@battery, pcells, count<#MAXCELLS)
 
 '' rethink this, the response needs to be called from the poll
 pub setCommand(command)
@@ -275,6 +281,15 @@ pri rxcheck() : rxbyte | o1
   else
     return -1
 
+pri cellData(subindex) : value
+' battery cell data, max MAXCELLS cells
+  value := subindex                                                             ' Bit 0-3: Cell id, 0 = 1&2, 2 = 3&4, 4 = 5&6
+  value |= (batterycount << 4)                                                  ' Bit 4-7: Total cell count
+
+  if subindex >= 0 and subindex < MAXCELLS/2
+    value |= round(battery[subindex<<1] *. 500.0) << 8                          ' Bit 8-19: Cell 1,3,5 voltage (0.002 resolution)
+    value |= round(battery[(subindex<<1)+1] *. 500.0) << 20                     ' Bit 20-31: Cell 2,4,6 voltage (0.002 resolution)
+
 pri actual(value) : valuet
 ' make 16bit signed value
   valuet := value
@@ -333,6 +348,8 @@ pri sensor_getData(applicationIdt, subindex) : valuet | temp
       valuet := temps[2]
     FSSP_DATAID_TEMP4:
       valuet := temps[3]
+    FSSP_DATAID_CELLS:
+      valuet := cellData(subindex)
 
 pri querysensorsent(Index) : retv
   return lastsensorindex[Index/_sensornoentries] == 0
@@ -475,5 +492,7 @@ _sensors      word      DATA_ID_GPS,     FSSP_DATAID_LATLONG,     0,   1000     
               word      DATA_ID_TEMP,    FSSP_DATAID_TEMP2,       0,   1000     ' $0B72, motor driver temps, 0,01C *100
               word      DATA_ID_TEMP,    FSSP_DATAID_TEMP3,       0,   1000     ' $0B73, motor driver temps, 0,01C *100
               word      DATA_ID_TEMP,    FSSP_DATAID_TEMP4,       0,   1000     ' $0B74, motor driver temps, 0,01C *100
+              word      DATA_ID_FLVSS,   FSSP_DATAID_CELLS,       0,   1000     ' $0300, battery cell 0, 1
+              word      DATA_ID_FLVSS,   FSSP_DATAID_CELLS,       1,   1000     ' $0300, battery cell 2
 _sensorsend
 '

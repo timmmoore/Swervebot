@@ -6,7 +6,7 @@
                 -> debug serial to PC (tx(62), rx(63))
                 -> 1x radio (sbus_in(7), SPORT(6), sbus_out(5), 5V, Gnd)
                       FrSky R-XSR
-                      SPORT sends telemetry: GPS, yaw, pitch, roll, speed/angle of each swerve module
+                      SPORT sends telemetry: GPS, yaw, pitch, roll, speed/angle of each swerve module battery voltage, temperatures, optical flow
                 -> 2x motor driver (SCL(22), SDA(23), Vio, Gnd)
                       I2C motor drivers with PCA9865 and 2x TN6612
                       https://www.tindie.com/products/cburgess129/quad-motor-servo-shield-for-wireless-dev-board/
@@ -26,6 +26,7 @@
                 -> Battery Voltage (31), 8K2, 3K resistor network
                 -> 4x quadrature encoders (Gnd, 3V3, A (14, 12, 3, 1), B (15, 13, 2, 0)), 1:3, 12:30, 1:2 -> 1:15
                       7 ticks or 28 count/rev
+                --> 4X Temperature sensors, 1 per motor driver (Gnd, 3V3, 26, 27, 28, 20)
 
 TODO
   Map USFSMax yaw angle to bot rotation
@@ -62,6 +63,11 @@ con { fixed io pins }
   SD_CS                         = 60  { O }
   SD_SDI                        = 59  { O }
   SD_SDO                        = 58  { I }
+
+  WIFI_RES_PIN                  = 56                                             ' pins when using WX WIFI adapter
+  WIFI_PGM_PIN                  = 57
+  WIFI_DI_PIN                   = 62
+  WIFI_DO_PIN                   = 63
 
   NOCHANNELS                    = 18                                            ' number of channels
 
@@ -171,8 +177,8 @@ con { fixed io pins }
   MINPIDCONSTANT                = -1000                                         ' PID constants are in range +-4.0
   MAXPIDCONSTANT                = 1000
 
-  MINSBUSCHANNEL                = 172                   '240
-  MAXSBUSCHANNEL                = 1810                  '1807
+  MINSBUSCHANNEL                = 172
+  MAXSBUSCHANNEL                = 1810
   MIDSBUSCHANNEL                = (MAXSBUSCHANNEL+MINSBUSCHANNEL)/2
 
   MINDEBUG                      = 500
@@ -182,16 +188,16 @@ con { fixed io pins }
   MINDEFAULT                    = 0
   MAXDEFAULT                    = 1000
 
-  SHAREDPMW                     = 5                     ' xsensor_l, xsensor_h, ysensor_l, ysensor_h, tsensor                     '
-  SHAREDIMU                     = 4                     ' osensor
-  SHAREDGPS                     = 11                    ' ogpst, ohour, omin, osec, onorthdeg, owestdeg, ospeed, oalt, ofix, osatno, ohdop
+  SHAREDPMW                     = 5                                             ' xsensor_l, xsensor_h, ysensor_l, ysensor_h, tsensor                     '
+  SHAREDIMU                     = 4                                             ' osensor
+  SHAREDGPS                     = 11                                            ' ogpst, ohour, omin, osec, onorthdeg, owestdeg, ospeed, oalt, ofix, osatno, ohdop
   SHAREVOLTAGE                  = 1
   SHARETEMP                     = 4
   SHAREDVARIABLES               = 1+NOCHANNELS+SHAREDIMU+SHAREDPMW+SHAREDGPS+SHAREVOLTAGE+SHARETEMP
 
   NO_SWERVE_MODULES             = 4
 
-  SPARE1_PIN                    = 30                                            ' unused pin
+  SPARE1_PIN                    = 30                                            ' unused pin, note SBUS_TX is also not used
   SPARE2_PIN                    = 4
 
 VAR
