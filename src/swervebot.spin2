@@ -64,7 +64,7 @@ con { fixed io pins }
   SD_SDI                        = 59  { O }
   SD_SDO                        = 58  { I }
 
-  WIFI_RES_PIN                  = 56                                             ' pins when using WX WIFI adapter
+  WIFI_RES_PIN                  = 56                                            ' pins when using WX WIFI adapter
   WIFI_PGM_PIN                  = 57
   WIFI_DI_PIN                   = 62
   WIFI_DO_PIN                   = 63
@@ -204,21 +204,21 @@ VAR
   ' shared variables
   long synclock, printlock
 
-  long sharedupdate, channels[NOCHANNELS], output[4], deltax_l, deltax_h, deltay_l, deltay_h, deltat
-  long gpst, hour, min, sec, northdeg, westdeg, speed, alt, fix, satno, hdop, voltage, temps[4]
+  long sharedupdate, channels[NOCHANNELS], output[SHAREDIMU], deltax_l, deltax_h, deltay_l, deltay_h, deltat
+  long gpst, hour, min, sec, northdeg, westdeg, speed, alt, fix, satno, hdop, voltage, temps[SHARETEMP]
 
   ' swerve cog
-  long swerveupdate, swervechannels[NOCHANNELS], oswerve[4], xswerve_l, xswerve_h, yswerve_l, yswerve_h, tswerve   ' swerve cog locals
-  long sgpst, shour, smin, ssec, snorthdeg, swestdeg, sspeed, salt, sfix, ssatno, shdop, svoltage, stemps[4]
+  long swerveupdate, swervechannels[NOCHANNELS], oswerve[SHAREDIMU], xswerve_l, xswerve_h, yswerve_l, yswerve_h, tswerve   ' swerve cog locals
+  long sgpst, shour, smin, ssec, snorthdeg, swestdeg, sspeed, salt, sfix, ssatno, shdop, svoltage, stemps[SHARETEMP]
 
   long lastchannels[NOCHANNELS]
   long debug1
 
   ' sensor cog
-  long sensorupdate, sbuschannels[NOCHANNELS], osensor[4], xsensor_l, xsensor_h, ysensor_l, ysensor_h, tsensor     ' sensor cog locals
-  long ogpst, ohour, omin, osec, onorthdeg, owestdeg, ospeed, oalt, ofix, osatno, ohdop, ovoltage, otemps[4]
+  long sensorupdate, sbuschannels[NOCHANNELS], osensor[SHAREDIMU], xsensor_l, xsensor_h, ysensor_l, ysensor_h, tsensor     ' sensor cog locals
+  long ogpst, ohour, omin, osec, onorthdeg, owestdeg, ospeed, oalt, ofix, osatno, ohdop, ovoltage, otemps[SHARETEMP]
 
-  long osensor1[4]
+  long osensor1[SHAREDIMU]
   long qt[4]
   long stopped                                                  ' stop bot if true
   long motorstopped                                             ' stop motors if true
@@ -236,7 +236,7 @@ OBJ
   usfsmax       : "usfsmax"                                     ' IMU
   gps           : "gps_pa1010d"                                 ' GPS
   battery       : "jm_ez_analog"                                ' A2D to read battery voltage
-  temperature[4] : "jm_ez_analog"
+  temperature[4] : "jm_ez_analog"                               ' A2D to read motor driver temperature sensors
 
 PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_time, again, temp, temp1, speeds[NO_SWERVE_MODULES], aspeeds[NO_SWERVE_MODULES], angles[NO_SWERVE_MODULES]
   debug1, debug2, debug3 := INIT_DEBUG, INIT_DEBUG, INIT_DEBUG
@@ -380,7 +380,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
 
   battery.start(BATTERY_ANALOG, BATTERY_LOW, BATTERY_HIGH)
 
-  repeat ch from 0 to 3                                 ' temperature sensors 1 per motor driver TB6612
+  repeat ch from 0 to SHARETEMP-1                       ' temperature sensors 1 per motor driver TB6612
     temperature[ch].start(TEMP_ANALOG+ch, TEMP_LOW, TEMP_HIGH)
 
   delaystart := getms()
@@ -444,7 +444,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
       compute_time := getct() - compute_time - 40
       'releaseprintlock()                                ' release lock soon as we have finished printing
       sport.setimu(osensor[YAW], osensor[PITCH], osensor[ROLL], osensor[PRESSURE]) ' imu telemetry
-      if utilities.longcompf(@lasto, @osensor, 4, true)
+      if utilities.longcompf(@lasto, @osensor, SHAREDIMU, 0.11, true)
         sensorupdate |= IMUCHANGE                       ' imu changed
 
     if havegps
@@ -464,10 +464,10 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
       oldvoltage := ovoltage
       sensorupdate |= VOLTAGECHANGE
 
-    repeat ch from 0 to 3
+    repeat ch from 0 to SHARETEMP-1
       otemps[ch] := (TEMP_TEST == true)?(++temp // (TEMP_MAX-1)):temperature[ch].read()
     sport.settemperature(@otemps)                        ' temperature telemetry, 0.01C * 100
-    if utilities.longcomp(@lasttemps, @otemps, 4, 10, true)
+    if utilities.longcomp(@lasttemps, @otemps, SHARETEMP, 10, true)
       sensorupdate |= TEMPCHANGE
 
     takesynclock()

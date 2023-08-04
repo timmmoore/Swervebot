@@ -62,7 +62,7 @@ PUB output() : out, delta | dt, time, A0, A1, A2, error0
 '' output is +- maxoutput
   ' calculate dt and A? constants each time, A2 default to 0.0
   dt := float((time := getms()) - lasttime\time)/.1000.0
-  ifnot dt ==. 0.0
+  ifnot utilities.frel(dt, 0.0, UTILITIES.FEQ)
     A2 := sKd/.dt
   A0 := sKp +. sKi*.dt +. A2
   A1 := -2.0*.A2 -. sKp

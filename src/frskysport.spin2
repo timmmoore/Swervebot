@@ -18,20 +18,21 @@ CON
   FSSP_DLE_XOR                  = $20
 
   FSSP_DATA_FRAME               = $10
-  FSSP_MSPC_FRAME_SMARTPORT     = $30                   ' MSP client frame
-  FSSP_MSPC_FRAME_FPORT         = $31                   ' MSP client frame
-  FSSP_MSPS_FRAME               = $32                   ' MSP server frame
+  FSSP_MSPC_FRAME_SMARTPORT     = $30                   ' MSP client frame, not supported
+  FSSP_MSPC_FRAME_FPORT         = $31                   ' MSP client frame, not supported
+  FSSP_MSPS_FRAME               = $32                   ' MSP server frame, not supported
 
 ' Physical ID of sensor. Must be something that is polled by FrSky RX, there are 32 ID's polled by smartport master
 ' top 3 bits are crc (according to comments in openTx code)
 ' 0x00,0xA1,0x22,0x83,0xE4,0x45,0xC6,0x67,0x48,0xE9,0x6A,0xCB,0xAC,0x0D,0x8E,0x2F,0xD0,0x71,0xF2,0x53,0x34,0x95,0x16,0xB7,0x98,0x39,0xBA,0x1B
 ' shows up on tx as 224 + ID, i.e., battery monitor is 225, gps is 227, acc is 229
-  DATA_ID_VARIO                 = $00                   ' sensor 0 used for Alt and Vspeed, Vario2 (altimeter high precision)
-  DATA_ID_FLVSS                 = 1                    '        1 used for Cell values, FLVSS Lipo sensor (can be sent with one or two cell voltages)
+' unless you are emulating a real sensor, it seems you can put any sensor id under any physical id
+' physical ids seems a way to group sensors together.
+  DATA_ID_VARIO                 = 0                     ' sensor 0 used for Alt and Vspeed, Vario2 (altimeter high precision)
+  DATA_ID_FLVSS                 = 1                     '        1 used for Cell values, FLVSS Lipo sensor (can be sent with one or two cell voltages)
   DATA_ID_FAS                   = 2                     '        2 used for vfas , current and fuel, FAS-40S current sensor
   DATA_ID_GPS                   = 3                     '        3 used for GPS data, GPS / altimeter (normal precision)
   DATA_ID_ACTUALS               = 4                     '        4 used for actual swerve speeds and angles
-'  DATA_ID_RPM                   = 4                    '        4 used for rpm, T1, T2, airspeed, RPM
   DATA_ID_ACC                   = 5                     '        5 used for Acc X, Y, Z, SP2UART(Host)
   DATA_ID_FLOW                  = 7                     '        7 used for optical flow x and y
   DATA_ID_TEMP                  = 8                     '        8 used for motor driver temperatures
@@ -109,7 +110,7 @@ CON
 
   VOLTS_AP_ID            = $003B
   VOLTS_BP_ID            = $003A
-  DIY_STREAM_FIRST_ID    = $5000                        ' 5000-50ff, edgetx uses it for lua passthrough
+  DIY_STREAM_FIRST_ID    = $5000                        ' 5000-50ff, edgetx uses it for lua passthrough, so dont use them as sensor ids
 
   FSSP_ACTUAL1           = $5100                        ' Swerve speed/angle
   FSSP_ACTUAL2           = $5101
@@ -228,8 +229,7 @@ PRI runsport() | rx, byte buffer[10], valid, index, physicalId
   longfill(@lastsensortime, lastsensortime[0], MAXNOSENSORS)
   repeat
     if (rx := rxcheck()) <> -1
-      if rx == SPORT_START
-        ' poll should be every 12ms
+      if rx == SPORT_START                              ' poll should be every 12ms
         valid~~
         index~
       elseif valid && index == 1
@@ -239,8 +239,7 @@ PRI runsport() | rx, byte buffer[10], valid, index, physicalId
           'serial.fstr2(string("sport phy %x %x\r"), buffer[0], physicalId)
           if SendCommand() == false
             valid := !SendSensor(physicalId)
-        elseif r_commandId <> physicalId && rxcheck() == -1
-          ' if its not for us, then discard
+        elseif r_commandId <> physicalId && rxcheck() == -1 ' if its not for us, then discard
           ' if its a commandId we want, then commandReceived below will eventually be called
           'serial.fstr2(string("sport not commandid %x %x\r"), buffer[0], physicalId)
           valid~
@@ -253,24 +252,7 @@ PRI runsport() | rx, byte buffer[10], valid, index, physicalId
 
 pri validid(physicalId) : sensorid
 ' is it one of our physical sensors?
-  sensorid := false
-  case physicalId
-'    DATA_ID_VARIO:                                     ' sensor 0 used for Alt and Vspeed
-'      sensorid := true
-'    DATA_ID_FLVSS:                                     '        1 used for Cell values
-'      sensorid := true
-    DATA_ID_FAS:                                        '        2 used for vfas , current and fuel
-      sensorid := true
-    DATA_ID_GPS:                                        '        3 used for GPS data
-      sensorid := true
-    DATA_ID_ACTUALS:                                    '        4 used for swerve speeds/angles
-      sensorid := true
-    DATA_ID_ACC:                                        '        5 used for Acc X, Y, Z
-      sensorid := true
-    DATA_ID_FLOW:                                       ' optical flow sensor
-      sensorid := true
-    DATA_ID_TEMP:                                       ' temperature sensors, 1 per motor driver
-      sensorid := true
+  sensorid := lookdown(physicalId: DATA_ID_FAS, DATA_ID_GPS, DATA_ID_ACTUALS, DATA_ID_ACC, DATA_ID_FLOW, DATA_ID_TEMP) ', DATA_ID_FLVSS, DATA_ID_VARIO)
 
 pri rxcheck() : rxbyte | o1
 '' Check for serial input
@@ -281,14 +263,14 @@ pri rxcheck() : rxbyte | o1
   else
     return -1
 
-pri cellData(subindex) : value
+pri cellData(cellindex) : value
 ' battery cell data, max MAXCELLS cells
-  value := subindex                                                             ' Bit 0-3: Cell id, 0 = 1&2, 2 = 3&4, 4 = 5&6
+  value := cellindex                                                            ' Bit 0-3: Cell id, 0 = 1&2, 2 = 3&4, 4 = 5&6
   value |= (batterycount << 4)                                                  ' Bit 4-7: Total cell count
 
-  if subindex >= 0 and subindex < MAXCELLS/2
-    value |= round(battery[subindex<<1] *. 500.0) << 8                          ' Bit 8-19: Cell 1,3,5 voltage (0.002 resolution)
-    value |= round(battery[(subindex<<1)+1] *. 500.0) << 20                     ' Bit 20-31: Cell 2,4,6 voltage (0.002 resolution)
+  if cellindex >= 0 and cellindex < MAXCELLS-1
+    value |= round(battery[cellindex] *. 500.0) << 8                            ' Bit 8-19: Cell 1,3,5 voltage (0.002 resolution)
+    value |= round(battery[cellindex+1] *. 500.0) << 20                         ' Bit 20-31: Cell 2,4,6 voltage (0.002 resolution)
 
 pri actual(value) : valuet
 ' make 16bit signed value
@@ -311,7 +293,7 @@ pri sensor_getData(applicationIdt, subindex) : valuet | temp
     FSSP_DATAID_GPS_ALT:                                                        ' in cm
       valuet := round(alt *. 30.48)
     SENSOR_APPL_ID_GSATS:                                                       ' satellite fix, quality and number
-      temp := (round(hdop *. 100) - 51)/50
+      temp := (round(hdop *. 100) - 51)/50                                      ' hdop to 0-9 range
       temp := 0 #> temp <# 9
       valuet := (fix * 1000) | (temp * 100) | (satno <# 99)
     FSSP_DATAID_HEADING:                                                        ' in degrees * 100 according to SmartPort spec
@@ -349,7 +331,7 @@ pri sensor_getData(applicationIdt, subindex) : valuet | temp
     FSSP_DATAID_TEMP4:
       valuet := temps[3]
     FSSP_DATAID_CELLS:
-      valuet := cellData(subindex)
+      valuet := cellData(subindex<<1)
 
 pri querysensorsent(Index) : retv
   return lastsensorindex[Index/_sensornoentries] == 0
@@ -359,18 +341,16 @@ pri updatesensorsent(Index, physicalId) | i, clear
 ' should we allow for the time delays for each sensor? i.e., if we have 500ms sensors and 1000ms sensors on same physicalId
 ' we cant send the 500ms sensor twice while waiting for the 1000ms sensors to be sent.
   lastsensorindex[Index/_sensornoentries] := 1
-  clear := true
+  clear~~
   repeat i from 0 to _sensorCount-1
     ' is there a sensor for the physical id that hasn't been sent yet
     if (word[@_sensors][i*_sensornoentries] == physicalId) and (lastsensorindex[i] == 0)
-      ' then we dont want to reset the lastsensorindex
-      clear := false
+      clear~                                                                    ' then we dont want to reset the lastsensorindex array
       quit
-  ' all sensors for this physicalid have been sent, so reset lastsensorindex
-  if clear == true
-    repeat i from 0 to _sensorCount-1
+  if clear                                                                      ' all sensors for this physicalid have been sent
+    repeat i from 0 to _sensorCount-1                                           ' so reset lastsensorindex array
       if (word[@_sensors][i*_sensornoentries] == physicalId)
-        lastsensorindex[i] := 0
+        lastsensorindex[i]~
 
 pri sendtime(Index) : retv
   if (getms() - lastsensortime[Index/_sensornoentries]) > word[@_sensors][Index+3] ' send sensor value every 500ms

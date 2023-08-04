@@ -28,19 +28,17 @@ PUB fullclamp(input, tmininput, tmaxinput) : s
   s := tmininput #> input <# tmaxinput                  ' greater= min; less= max
 
 PUB longcomp(p1, p2, count, diff, update) : retv
-' return true if p1 and p2 not the same
+' return true if p1 and p2 not the same with less then diff delta
   repeat retv from 0 to count-1
     if abs(long[p1][retv] - long[p2][retv]) > diff
       quit
   if (retv := retv < count) && (update <> false)
     longmove(p1, p2, count)
 
-PUB longcompf(p1, p2, count, update) : retv
-' return true if p1 and p2 not the same with float precision <0.1
-  ' .0/.1 - .8/.9 *10 round
-  ' .9/1.0 + 0.1 trunc 1.0/1.1
+PUB longcompf(p1, p2, count, diff, update) : retv
+' return true if p1 and p2 not the same with float precision with less than diff delta
   repeat retv from 0 to count-1
-    if fabs(long[p1][retv] -. long[p2][retv]) >. 0.11
+    if frel(fabs(long[p1][retv] -. long[p2][retv]), diff, FGT)
       quit
   if (retv := retv < count) && (update <> false)
     longmove(p1, p2, count)
@@ -66,11 +64,8 @@ CON
   FLTE          = $aa
   FGTE          = $ac
 
-PUB frel(t1, t2, p): r | x, w, y, _FFFFFFFF, paa
+PUB frel(w, x, paa): r | y, _FFFFFFFF
 ' floating point comparision, without spin interpreter bug
-  w := t1
-  x := t2
-  paa := p
   _FFFFFFFF~~
   org
 
