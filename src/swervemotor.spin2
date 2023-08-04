@@ -39,21 +39,21 @@ CON
   MINSPEEDR                     = 50
 
 VAR
-  long speeders[MAX_SWERVE_MODULES*2]   ' 0: drive motor speeds, 1: steering speed for 4 swerve modules
-  long angles[MAX_SWERVE_MODULES]       ' angle for 4 swerve modules
-  long motors[MAX_SWERVE_MODULES*2]     ' motor channels
+  long speeders[MAX_SWERVE_MODULES*2]                   ' 0: drive motor speeds, 1: steering speed for 4 swerve modules
+  long angles[MAX_SWERVE_MODULES]                       ' angle for 4 swerve modules
+  long motors[MAX_SWERVE_MODULES*2]                     ' motor channels
   word debug2
   long lastcx, lastcy, lastcr, motorsareoff
   long acctime
-  long cosbot[2]                        ' float, bot size/rad
+  long cosbot[2]                                        ' float, bot size/rad
   long overridemax[2]
   word inverts[MAX_SWERVE_MODULES*2]
   long encodertime
   long driveencodercount[MAX_SWERVE_MODULES]
-  long driveencodervelocity[MAX_SWERVE_MODULES]
+  long driveencodervelocity[MAX_SWERVE_MODULES]         ' drive encoder velocity
   long driveencodertime[MAX_SWERVE_MODULES]
-  long actualangles[MAX_SWERVE_MODULES]
-  long actualspeeds[MAX_SWERVE_MODULES]
+  long actualangles[MAX_SWERVE_MODULES]                 ' set drive motor speed
+  long actualspeeds[MAX_SWERVE_MODULES]                 ' swerve angle from encoder
 
 OBJ
   serial        : "isp_serial_singleton_tmm"
@@ -110,17 +110,20 @@ PUB getactuals(pspeeds, paspeeds, pangles)
   longmove(pangles, @actualangles, MAX_SWERVE_MODULES)
 
 pub stopmotors()
-  longfill(@actualspeeds, 0, MAX_SWERVE_MODULES)
+  longfill(@actualspeeds, 0, MAX_SWERVE_MODULES)                                ' clear telemetry speeds
   longfill(@driveencodervelocity, 0, MAX_SWERVE_MODULES)
-  motor.stopmotors()
+  longfill(@lastcx, 0, 3)                                                       ' clear acceleration history
+  motor.stopmotors()                                                            ' motors into stop/coast
 
-PRI setmotorspeeds(pspeeds) | ch, speed
+PRI setmotorspeeds(pspeeds) | ch, speed, drive
   ' set all motor speeds, drive and angle
   ' swerve modules on 1st and 2nd motor driver
   repeat ch from 0 to 7
     speed := long[pspeeds][ch]
+    if (drive := ch & 1) == 0
+      actualspeeds[ch>>1] := speed
     ' final clamping to max motor speed
-    motor.run(motors[ch], abs(speed) > minmotorspeed[ch&1] ? utilities.clamp(speed, overridemax[ch&1]) : 0)
+    motor.run(motors[ch], abs(speed) > minmotorspeed[drive] ? utilities.clamp(speed, overridemax[drive]) : 0)
 
 PRI drivespeeds(pspeeds) : retv | ch, ponespeed, delta, dpido, denc, ct, dt
   repeat ch from 0 to MAX_SWERVE_MODULES-1
@@ -159,7 +162,6 @@ PRI angletospeed(pspeeds, pangles) : retv | rawangle, requestangle, ch, wrappeda
     retv |= long[ponespeed][1] <> 0                     ' have we reached correct steering angle? i.e. steering motor not moving
     ' slowdown drive speed depending on how far out of alignment the swerve module is
     long[ponespeed] := qcos(long[ponespeed], delta, MAXANGLE)
-    actualspeeds[ch] := long[ponespeed]
     SwerveDebug(3, @@sptr[ch], rawangle, long[ponespeed], long[ponespeed][1], long[pangles][ch], requestangle, wrappedangle)
 
 PRI SwerveDebug(no, p1, p2, p3, p4, p5, p6, p7)
@@ -278,7 +280,7 @@ PUB update(x, y, r, off) : notcomplete | changed, newoffstate, previousoffstate,
       if !minspeeds(x, y, r)                            ' if we are not really moving dont hunt the steering motor
         notcomplete |= angletospeed(@speeders, @angles) ' convert steering angle to steering motor speed
 
-      notcomplete |= drivespeeds(@speeders)             ' match drive speeds tp motor encoders
+      notcomplete |= drivespeeds(@speeders)             ' match drive speeds to motor encoders
 
       setmotorspeeds(@speeders)                         ' set speeds of drive and steering motors
   elseifnot previousoffstate                            ' if not already off, make sure motors are off
