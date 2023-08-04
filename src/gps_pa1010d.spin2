@@ -42,7 +42,7 @@ PUB start(scl, sda) : retv
   lastreadtime := getms()
   currentline := @line1
   lastline := @line2
-  ifnot i2c.setup(scl, sda, GPS_I2C_SPEED, i2c.PU_15K, -1) ' i2c @ 1000kHz, 15K pull-ups
+  ifnot i2c.setup(scl, sda, GPS_I2C_SPEED, i2c.PU_15K, -1) ' i2c @ 1500kHz, 15K pull-ups
     retv |= $01
 
   ifnot i2c.present(GPS_I2C_ADDR<<1) == true

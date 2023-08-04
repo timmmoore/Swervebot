@@ -35,7 +35,7 @@ PUB null()
 PUB start(scl, sda, ppinvert) : retv | ch
   pinvert := ppinvert
   uscount := clkfreq /1_000_000
-  ifnot i2c.setup(scl, sda, PCA9685_I2C_SPEED, i2c.PU_3K3, -1) ' i2c @ 800kHz, 3K3 pull-ups
+  ifnot i2c.setup(scl, sda, PCA9685_I2C_SPEED, i2c.PU_3K3, -1) ' i2c @ 1000kHz, 3K3 pull-ups
     return $01|NO_MOTOR1|NO_MOTOR2
 
   if(i2c.present(MOTOR1<<1) == true)
@@ -64,7 +64,7 @@ PUB stop()
   stopmotors()
 
 PUB stopmotors() | ch
-  repeat ch from 0 to 15                                ' all pins off
+  repeat ch from 0 to 15                                ' all pins off, motor output is high impedance, coast mode
     setPWM(MOTOR1<<1, ch+LED0_ON_L, 0)
     setPWM(MOTOR2<<1, ch+LED0_ON_L, 0)
 
@@ -138,6 +138,8 @@ PUB run(motor, speed) | addr, pwm, in1, in2, in2v, pwmv, temp
 '' set speed of 1 motor of a swerve module
   ' lookup PCA9865 board address and PCA9865 led registers used for each motor driver pin: pwm, in1, in2
   ' note addr is already << 1 shifted and pins are register indexes
+  ' speed 0 is coast rather than brake
+  ' coast is in1, in2, pwm all low, brake is in1, in2, pwm all high
   addr, pwm, in1, in2 := addrs[motor>>2], pwmpins[temp:=motor&3], in1pins[temp], in2pins[temp]
 
   ' set the direction and pwm pin values

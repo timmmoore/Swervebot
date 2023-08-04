@@ -89,7 +89,7 @@ con { fixed io pins }
   SBUS_TX                       = 5                                             ' not used
 
   MOTOR_SDA                     = 23                                            ' i2c pins for motor controllers
-  MOTOR_SCL                     = 22                                            ' SCK speed of 800KHz
+  MOTOR_SCL                     = 22                                            ' SCK speed of 1000KHz
 
   ENCODERPIN1                   = 8                                             ' pwm encoder pins, must be contiguous pins
   ENCODERPIN2                   = 9
@@ -127,7 +127,7 @@ con { fixed io pins }
   ' USFSMAX_GND
   USFSMAX_SDA                   = 21                                            ' i2c pins for IMU
   USFSMAX_SCL                   = 20                                            ' different I2C bus from motor driver as supports much faster clock speed
-                                                                                ' SLK speed of 3Mhz
+                                                                                ' SLK speed of 3.4Mhz
   USFSMAX_RESET                 = -1                                            ' reset pin is optional
 
   BATTERY_ANALOG                = 31                                            ' battery via resistor divider, 8K2 + 3K3
