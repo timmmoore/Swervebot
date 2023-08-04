@@ -263,23 +263,16 @@ pri rxcheck() : rxbyte | o1
   else
     return -1
 
-pri cellData(cellindex) : value
+pri flv_getData(applicationIdt, subindex) : valuet | cellindex
 ' battery cell data, max MAXCELLS cells
-  value := cellindex                                                            ' Bit 0-3: Cell id, 0 = 1&2, 2 = 3&4, 4 = 5&6
-  value |= (batterycount << 4)                                                  ' Bit 4-7: Total cell count
+  valuet := cellindex := subindex<<1                                            ' Bit 0-3: Cell id, 0 = 1&2, 2 = 3&4, 4 = 5&6
+  valuet |= (batterycount << 4)                                                 ' Bit 4-7: Total cell count
 
   if cellindex >= 0 and cellindex < MAXCELLS-1
-    value |= round(battery[cellindex] *. 500.0) << 8                            ' Bit 8-19: Cell 1,3,5 voltage (0.002 resolution)
-    value |= round(battery[cellindex+1] *. 500.0) << 20                         ' Bit 20-31: Cell 2,4,6 voltage (0.002 resolution)
+    valuet |= round(battery[cellindex] *. 500.0) << 8                           ' Bit 8-19: Cell 1,3,5 voltage (0.002 resolution)
+    valuet |= round(battery[cellindex+1] *. 500.0) << 20                        ' Bit 20-31: Cell 2,4,6 voltage (0.002 resolution)
 
-pri actual(value) : valuet
-' make 16bit signed value
-  valuet := value
-  if valuet < 0
-    valuet := abs(valuet)
-    valuet |= DECOD(15)
-
-pri sensor_getData(applicationIdt, subindex) : valuet | temp
+pri gps_getData(applicationIdt, subindex) : valuet | temp
   case applicationIdt
     FSSP_DATAID_LATLONG:
       temp := (subindex==0)?latitude:longitude
@@ -296,42 +289,48 @@ pri sensor_getData(applicationIdt, subindex) : valuet | temp
       temp := (round(hdop *. 100) - 51)/50                                      ' hdop to 0-9 range
       temp := 0 #> temp <# 9
       valuet := (fix * 1000) | (temp * 100) | (satno <# 99)
+
+pri acc_getData(applicationIdt, subindex) : valuet
+  case applicationIdt
     FSSP_DATAID_HEADING:                                                        ' in degrees * 100 according to SmartPort spec
       valuet := round(heading *. 100.0)
     FSSP_DATAID_PITCH:                                                          ' given in 10*deg
       valuet := round(pitch *. 10.0)
     FSSP_DATAID_ROLL:
       valuet := round(roll *. 10.0)
-    FSSP_ACTUAL1:                                                               ' +- MAXSPEED in lower word angle in upper word
-      valuet := actual(actualspeeds[0])                                         ' sign in word bit 15
-      valuet |= (actual(round((float(actualangles[0]) *. 360.0)/.10.24)) << 16) ' 0-360.00 * 100 in upper word
-    FSSP_ACTUAL2:                                                               ' +- MAXSPEED in lower word angle in upper word
-      valuet := actual(actualspeeds[1])                                         ' sign in word bit 15
-      valuet |= (actual(round((float(actualangles[1]) *. 360.0)/.10.24)) << 16) ' 0-360.00 * 100 in upper word
-    FSSP_ACTUAL3:                                                               ' +- MAXSPEED in lower word angle in upper word
-      valuet := actual(actualspeeds[2])                                         ' sign in word bit 15
-      valuet |= (actual(round((float(actualangles[2]) *. 360.0)/.10.24)) << 16) ' 0-360.00 * 100 in upper word
-    FSSP_ACTUAL4:                                                               ' +- MAXSPEED in lower word angle in upper word
-      valuet := actual(actualspeeds[3])                                         ' sign in word bit 15
-      valuet |= (actual(round((float(actualangles[3]) *. 360.0)/.10.24)) << 16) ' 0-360.00 * 100 in upper word
-    FSSP_DATAID_FLOWX:
-      valuet := flow[0]
-    FSSP_DATAID_FLOWY:
-      valuet := flow[1]
-    FSSP_DATAID_VFAS:
-      valuet := round(voltage*.100.0)                                           ' in 0.01
     SENSOR_APPL_ID_PRESSURE:
       valuet := round(pressure *. 100.0)                                        ' 0.01hPa
-    FSSP_DATAID_TEMP1:
-      valuet := temps[0]                                                        ' 0.01C
-    FSSP_DATAID_TEMP2:
-      valuet := temps[1]
-    FSSP_DATAID_TEMP3:
-      valuet := temps[2]
-    FSSP_DATAID_TEMP4:
-      valuet := temps[3]
-    FSSP_DATAID_CELLS:
-      valuet := cellData(subindex<<1)
+
+pri fas_getData(applicationIdt, subindex) : valuet
+      valuet := round(voltage*.100.0)                                           ' in 0.01
+
+pri actual(value) : valuet
+' make 16bit signed value
+  valuet := value
+  if valuet < 0
+    valuet := abs(valuet)
+    valuet |= DECOD(15)
+
+pri actuals_getData(applicationIdt, subindex) : valuet
+  valuet := actual(actualspeeds[applicationIdt-FSSP_ACTUAL1])               ' sign in word bit 15
+  valuet |= (actual(round((float(actualangles[applicationIdt-FSSP_ACTUAL1]) *. 360.0)/.10.24)) << 16) ' 0-360.00 * 100 in upper word
+
+pri sensor_getData(physicalId, applicationIdt, subindex) : valuet
+  case_fast physicalId                                                          ' index from lookdown of physicalId
+    DATA_ID_FAS:                                                                ' applicationId == FSSP_DATAID_VFAS
+      valuet := fas_getData(applicationIdt, subindex)
+    DATA_ID_GPS:                                                                          '
+      valuet := gps_getData(applicationIdt, subindex)
+    DATA_ID_ACTUALS:                                                            ' applicationId == FSSP_ACTUAL1-FSSP_ACTUAL4               '
+      valuet := actuals_getData(applicationIdt, subindex)
+    DATA_ID_ACC:                                                                          '
+      valuet := acc_getData(applicationIdt, subindex)
+    DATA_ID_FLOW:                                                               ' applicationId == FSSP_DATAID_FLOWX/FSSP_DATAID_FLOWY
+      valuet := flow[applicationIdt-FSSP_DATAID_FLOWX]
+    DATA_ID_TEMP:                                                               ' applicationId == FSSP_DATAID_TEMP1-FSSP_DATAID_TEMP4
+      valuet := temps[applicationIdt-FSSP_DATAID_TEMP1]                         ' 0.01C
+    DATA_ID_FLVSS:                                                              ' applicationId == FSSP_DATAID_CELLS
+      valuet := flv_getData(applicationIdt, subindex)
 
 pri querysensorsent(Index) : retv
   return lastsensorindex[Index/_sensornoentries] == 0
@@ -364,7 +363,7 @@ PRI SendSensor(physicalId) : retv | Index, applicationIdt, valuet, data
     'serial.fstr5(string("sport Sensorindex %d %d %x %x %x\r"), Index, _sensorIndex, physicalId, word[@_sensors][Index], word[@_sensors][Index+1])
     if (word[@_sensors][Index] == physicalId) and querysensorsent(Index)        ' have a sensor
       updatesensorsent(Index, physicalId)
-      valuet := sensor_getData(applicationIdt := word[@_sensors][Index+1], word[@_sensors][Index+2]) ' have sensor data to send?
+      valuet := sensor_getData(physicalId, applicationIdt := word[@_sensors][Index+1], word[@_sensors][Index+2]) ' have sensor data to send?
       'serial.fstr6(string("sport Sensor %d %x %x %x %d %d\r"), Index, physicalId, applicationIdt, valuet, word[@_sensors][Index+2], word[@_sensors][Index+3])
       setpintx()                                                                ' switch pin to transmit
       'waitus(100)
