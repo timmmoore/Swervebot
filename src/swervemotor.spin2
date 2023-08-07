@@ -1,4 +1,11 @@
-{Object_Title_and_Purpose}
+{
+  Converts x, y, r movement requests into motor speeds for 4 swerve modules.
+  Each swerve module consists of 2 motors: drive and steering.
+  There is an absolute PWM encoder on the steering output.
+  There is a quadrature encoder on the drive motor.
+
+  Currently only supports 4 swerve modules.
+}
 
 CON
   MAXSPEEDSHIFT = 12
@@ -8,6 +15,8 @@ CON
   MINDRIVESPEED = 30
   MINSTEERINGSPEED = 40
 
+  ' 4 swerve modules, each has a drive and a steering motor
+  ' 4 modules are ordered as FL (front left), FR (front right), BL (back left), BR (back right)
   MAX_SWERVE_MODULES = 4
   MAX_ENCODERS  = MAX_SWERVE_MODULES                         ' 1 per swerve module
 
@@ -69,15 +78,14 @@ PUB null()
 
 PUB start(scl, sda, epin, pbot, ppinoffsets, pangleoffsets, pminencoder, pmaxencoder, pinvert, pmotor, pdencoders) : retv | ch, t1, t2, rad
   '' start 4 swerve modules
-  longmove(@motors, pmotor, MAX_SWERVE_MODULES*2)
   rad := fsqrt(long[pbot][BOT_WIDTH]*.long[pbot][BOT_WIDTH] +. long[pbot][BOT_LENGTH]*.long[pbot][BOT_LENGTH])/.2.0 ' diag of bot
   cosbot[BOT_WIDTH], cosbot[BOT_LENGTH] := long[pbot][BOT_WIDTH]/.rad, long[pbot][BOT_LENGTH]/.rad
   acctime := getms()
   if debugoutput(UTILITIES.DEBUGOUT2)
     serial.fstr3(string("Swerve starting %.2g %.2g %.2g\r"), long[pbot][BOT_WIDTH], long[pbot][BOT_LENGTH], rad)
 
-  ' switch invert flags to match order of motordrivers, not swerve modules
-  repeat ch from 0 to 7
+  longmove(@motors, pmotor, MAX_SWERVE_MODULES*2)       ' conversion between swerve motor number and motor driver motor number
+  repeat ch from 0 to 7                                 ' switch invert flags to match order of motordrivers, not swerve modules
     inverts[long[pmotor][ch]] := word[pinvert][ch]
   retv := motor.start(scl, sda, @inverts)
 
@@ -121,8 +129,8 @@ PRI setmotorspeeds(pspeeds) | ch, speed, drive
   repeat ch from 0 to 7
     speed := long[pspeeds][ch]
     if (drive := ch & 1) == 0
-      actualspeeds[ch>>1] := speed
-    ' final clamping to max motor speed
+      actualspeeds[ch>>1] := speed                                              ' update drive telemetry
+    ' final clamping to max motor speed, convert between swerve motor no to motor driver motor no
     motor.run(motors[ch], abs(speed) > minmotorspeed[drive] ? utilities.clamp(speed, overridemax[drive]) : 0)
 
 PRI drivespeeds(pspeeds) : retv | ch, ponespeed, delta, dpido, denc, ct, dt
