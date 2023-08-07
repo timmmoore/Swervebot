@@ -28,7 +28,7 @@ PUB fullclamp(input, tmininput, tmaxinput) : s
   s := tmininput #> input <# tmaxinput                  ' greater= min; less= max
 
 PUB longcomp(p1, p2, count, diff, update) : retv
-' return true if p1 and p2 not the same with less then diff delta
+' return true if p1 and p2 not the same with greater then diff delta
   repeat retv from 0 to count-1
     if abs(long[p1][retv] - long[p2][retv]) > diff
       quit
@@ -36,7 +36,7 @@ PUB longcomp(p1, p2, count, diff, update) : retv
     longmove(p1, p2, count)
 
 PUB longcompf(p1, p2, count, diff, update) : retv
-' return true if p1 and p2 not the same with float precision with less than diff delta
+' return true if p1 and p2 not the same with float precision with greater than diff delta
   repeat retv from 0 to count-1
     if frel(fabs(long[p1][retv] -. long[p2][retv]), diff, FGT)
       quit
@@ -102,7 +102,7 @@ con
   DEBUGOUT4       = 4
 
 PUB debugoutput(debug1, type) : retv
-  if type > 0 and type < 4
+  if type > 0 and type <= 4
     retv := debug1 >= debugtypes[type-1]
 
 dat
