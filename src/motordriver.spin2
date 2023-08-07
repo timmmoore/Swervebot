@@ -12,10 +12,11 @@ CON
                                                         ' per led: on low, on high, off low, off high
   LED_ALWAYS        =           4096                    ' bit 12 set means always on/off
 
-  NO_MOTOR1         =           $02
-  NO_MOTOR2         =           $04
+  NO_MOTOR1         =           $04
+  NO_MOTOR2         =           $08
 
   PCA9685_I2C_SPEED =           1000                    ' 800
+  PCA9685_CONFIG_SPEED =        100                     ' 800
 
   DEBUG_OUTPUT      =           500
 
@@ -35,7 +36,7 @@ PUB null()
 PUB start(scl, sda, ppinvert) : retv | ch
   pinvert := ppinvert
   uscount := clkfreq /1_000_000
-  ifnot i2c.setup(scl, sda, PCA9685_I2C_SPEED, i2c.PU_3K3, -1) ' i2c @ 1000kHz, 3K3 pull-ups
+  ifnot i2c.setup(scl, sda, PCA9685_CONFIG_SPEED, i2c.PU_3K3, -1) ' i2c @ 100kHz, 3K3 pull-ups
     return $01|NO_MOTOR1|NO_MOTOR2
 
   if(i2c.present(MOTOR1<<1) == true)
@@ -58,6 +59,8 @@ PUB start(scl, sda, ppinvert) : retv | ch
     initpwm(MOTOR1)
   ifnot retv & NO_MOTOR2
     initpwm(MOTOR2)
+  ifnot i2c.setup(scl, sda, PCA9685_I2C_SPEED, i2c.PU_3K3, -1) ' i2c @ 1000kHz, 3K3 pull-ups
+    return $02|NO_MOTOR1|NO_MOTOR2
   stopmotors()
 
 PUB stop()
@@ -68,6 +71,14 @@ PUB stopmotors() | ch
     setPWM(MOTOR1<<1, ch+LED0_ON_L, 0)
     setPWM(MOTOR2<<1, ch+LED0_ON_L, 0)
 
+PUB brakemotors() | ch
+  repeat ch from 0 to 7
+    brakemotor(ch)
+
+PUB brakemotor(m)
+' brake motor, m is motor driver no
+  setPWMAll(addrs[m>>2], pwmpins[m&3], in1pins[m&3], in2pins[m&3], LED_ALWAYS, LED_ALWAYS, LED_ALWAYS)
+
 PRI initpwm(addr) | oldmode
   '' init pwm on motor driver board
   if debugoutput(UTILITIES.DEBUGOUT4)
@@ -75,10 +86,10 @@ PRI initpwm(addr) | oldmode
   write8(addr, PCA9685_MODE1, $0)
   oldmode := read8(addr, PCA9685_MODE1)
   write8(addr, PCA9685_MODE1, (oldmode&$7F) | $10)      ' go to sleep
-  write8(addr, PCA9685_PRESCALE, 3)                     ' set the prescaler
-  write8(addr, PCA9685_MODE1, oldmode)
-  waitus(5)
-  write8(addr, PCA9685_MODE1, oldmode | $a1)            ' This sets the MODE1 register to turn on auto increment.
+  write8(addr, PCA9685_PRESCALE, 3)                     ' set the prescaler, output frequency 1525Hz
+  write8(addr, PCA9685_MODE1, oldmode)                  ' disable sleep
+  waitus(500)
+  write8(addr, PCA9685_MODE1, oldmode | $a1)            ' Restart and turn on auto increment.
   if debugoutput(UTILITIES.DEBUGOUT4)
     serial.fstr1(string("initpwm done %x\r"), addr)
 
@@ -102,7 +113,7 @@ PRI write8(addr, adr, d) | byte values[3]
   i2c.wr_block(@values, 3)
   i2c.stop()
 
-PRI setPWM(addr, num, value) | byte values[6]
+PRI setPWM(addr, num, value) : retv | byte values[6]
   '' set PWM on/off for single motor pin on motor driver board
   ' addr must be already shifted
   values[0] := addr
@@ -110,15 +121,17 @@ PRI setPWM(addr, num, value) | byte values[6]
 '  bytemove(@values[2], @value, 4)
   long[@values[2]] := value
   i2c.start()
-  i2c.wr_block(@values, 6)
+  retv := !!(i2c.wr_block(@values, 6) == i2c.NAK)
   i2c.stop()
   if debugoutput(UTILITIES.DEBUGOUT4)
-    serial.fstr4(string("setpwm done %x %d %d %d\r"), addr, num, values[1], values[2])
+    serial.fstr5(string("setpwm done %x %d %d %d %d\r"), addr, num, values[1], values[2], retv)
 
-PRI setPWMAll(addr, num3, num2, num1, value1, value2, value3)
+PRI setPWMAll(addr, num3, num2, num1, value1, value2, value3) : retv
   '' set direction/PWM values for a motor on motor driver board
   ' sort led registers and values, led registers need to be contiguous
   ' registers in reverse order to values and register value is in MSB of numX.
+  ' register order is on low, on high, off low, off high
+  ' on and off 12bits, 13th bit is always on/off, off has priorty over on
   ' addr must be already shifted
   if num3 +< num1
     num1, num3, value1, value3 := num3, num1, value3, value1
@@ -129,34 +142,36 @@ PRI setPWMAll(addr, num3, num2, num1, value1, value2, value3)
   ' insert PCA9685 addr and first register and write sorted values to PCA9685
   num1 |= addr                                          ' addr value is in byte 2 of addr
   i2c.start()
-  i2c.wr_block(@num1.word[1], 14)
+  retv := !!(i2c.wr_block(@num1.word[1], 14) == i2c.NAK)
   i2c.stop()                                            ' pins are updated on I2C stop so write order for one batch doesn't matter
   if debugoutput(UTILITIES.DEBUGOUT4)
-    serial.fstr7(string("setpwmall done %x %d %x %d %x %d %x\r"), addr, num1, value1, num2, value2, num3, value3)
+    serial.fstr8(string("setpwmall done %x %x %x %x %x %x %x %d\r"), addr, num1, value1, num2, value2, num3, value3, retv)
 
-PUB run(motor, speed) | addr, pwm, in1, in2, in2v, pwmv, temp
+PUB run(motor, speed) | addr, pwm, in1, in2, in2v, pwmv, temp, retv
 '' set speed of 1 motor of a swerve module
   ' lookup PCA9865 board address and PCA9865 led registers used for each motor driver pin: pwm, in1, in2
   ' note addr is already << 1 shifted and pins are register indexes
   ' speed 0 is coast rather than brake
   ' coast is in1, in2, pwm all low, brake is in1, in2, pwm all high
-  addr, pwm, in1, in2 := addrs[motor>>2], pwmpins[temp:=motor&3], in1pins[temp], in2pins[temp]
 
   ' set the direction and pwm pin values
+  ' low word is on, high word is off
+  ' bit 12 is always on/off
   if (pwmv := abs(speed)) <> 0
-    in2v := LED_ALWAYS
-    pwmv := pwmv >= in2v ? in2v : pwmv<<16
+    in2v := LED_ALWAYS                                  ' always on
+    pwmv := pwmv >= in2v ? in2v : pwmv<<16              ' always on or pwm in off
 
+  pwm, in1, in2 := pwmpins[temp:=motor&3], in1pins[temp], in2pins[temp]
   ' invert the direction registers if needed by switching the 2 direction pins
   if word[pinvert][motor] ^^ (speed < 0)
     in1, in2 := in2, in1
 
   temp := getct()
-  ' 210-215us
-  setPWMAll(addr, pwm, in2, in1, 0, in2v, pwmv)
+  ' 185-186us
+  retv := setPWMAll(addr := addrs[motor>>2], pwm, in2, in1, 0, in2v, pwmv)
   temp := getct() - temp - 40
   if debugoutput(UTILITIES.DEBUGOUT3)
-    serial.fstr7(string("run motor %.8x %d %.8x %.8x %.8x %d %d\r"), addr, motor, pwm, in2, in1, speed, temp/uscount)
+    serial.fstr8(string("run motor %.8x %d %.8x %.8x %.8x %d %d %d\r"), addr, motor, pwm, in2, in1, speed, retv, temp/uscount)
 
 PRI debugoutput(type) : retv
   retv := utilities.debugoutput(debug2, type)
