@@ -302,7 +302,7 @@ pri acc_getData(applicationIdt, subindex) : valuet
       valuet := round(pressure *. 100.0)                                        ' 0.01hPa
 
 pri fas_getData(applicationIdt, subindex) : valuet
-      valuet := round(voltage*.100.0)                                           ' in 0.01
+  valuet := round(voltage*.100.0)                                               ' in 0.01
 
 pri actual(value) : valuet
 ' make 16bit signed value
