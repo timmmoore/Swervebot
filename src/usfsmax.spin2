@@ -160,7 +160,7 @@ CON
   QUAT_DIV                      =     $07
 
   I2C_CONFIG_SPEED              =     100
-  I2C_FAST_SPEED                =     3400              '3000
+  I2C_FAST_SPEED                =     3000              '3000
 
 VAR
   long accLIN[3], grav[3]
@@ -299,7 +299,7 @@ PRI BARO_getADC() | BYTE bytes[4]
 
 PUB getMin() : retv, qt0, qt1, qt2, qt3 | BYTE bytes[19]
 ' getQUAT and BARO_getADC
-' 242us (3MHz)
+' 239us (3MHz)
   if readBytes(MAX32660ADDR, BARO_XL, 19, @bytes) == false '235us
     return
   bytemove(@qt0, @bytes[3], 16)
