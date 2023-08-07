@@ -26,7 +26,7 @@
                 -> Battery Voltage (31), 8K2, 3K resistor network
                 -> 4x quadrature encoders (Gnd, 3V3, A (14, 12, 3, 1), B (15, 13, 2, 0)), 1:3, 12:30, 1:2 -> 1:15
                       7 ticks or 28 count/rev
-                --> 4X Temperature sensors, 1 per motor driver (Gnd, 3V3, 26, 27, 28, 20)
+                -> 4X Temperature sensors TMP36, 1 per motor driver (Gnd, 3V3, 26, 27, 28, 20)
 
 TODO
   Map USFSMax yaw angle to bot rotation
@@ -135,6 +135,7 @@ con { fixed io pins }
   BATTERY_HIGH                  = 33482                                         ' 8K2 + 3K resistor divider, max voltage is 12.5V * 3000/11200 -> 3.3482
   BATTERY_DIVIDER               = 2678.56                                       ' 33482/2678.56 -> 12.5
   BATTERY_MINIMUM               = 9.9                                           ' minimum voltage
+  BATTERYDELTA                  = 0.2
   BATTERY_TEST                  = true
 
   TEMP_ANALOG                   = 26                                            ' pin 26-29, TMP36,  0.5 + 25 * 0.01 -> .75V = 25C
@@ -142,6 +143,7 @@ con { fixed io pins }
   TEMP_HIGH                     = 28000                                         ' 3.3V -> 280C
   TEMP_MAX                      = 12000                                         ' TB6612 thermal shutdown is at 150C, though sensor is external so lower
   TEMP_MIN                      = 9000
+  TEMPDELTA                     = 100
   TEMP_TEST                     = true
 
   ' Bellevue, WA 98008
@@ -241,10 +243,11 @@ OBJ
 PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_time, again, temp, temp1, speeds[NO_SWERVE_MODULES], aspeeds[NO_SWERVE_MODULES], angles[NO_SWERVE_MODULES]
   debug1, debug2, debug3 := INIT_DEBUG, INIT_DEBUG, INIT_DEBUG
   longfill(@lastchannels, -1, NOCHANNELS)
+  waitms(2000)
   serial.start(BR_SERIAL)
 
-  waitms(100)
-  if debugoutput(UTILITIES.DEBUGOUT4)
+  waitms(2000)
+  if true 'debugoutput(UTILITIES.DEBUGOUT4)
     serial.fstr0(string("Swerve Controller\r"))
 
   ' lock used to synchronize sensor Input across cogs
@@ -266,6 +269,9 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
         serial.fstr1(string("Swerve motors I2C bus error %x\r"), havemotors)
       if havemotors & (swerve.NO_MOTOR1|swerve.NO_MOTOR2)
         serial.fstr1(string("Swerve motors not found %x\r"), havemotors)
+  else
+    if debugoutput(UTILITIES.DEBUGOUT4)
+      serial.fstr1(string("Swerve motors found %x\r"), havemotors)
 
   '' initialize sensors
   cognum := COGSPIN(newcog, runsensors(), @StkAddr)
@@ -432,7 +438,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
     if haveusfsmax
       'takeprintlock()
       Acq_time1 := getct()
-      _, qt[0], qt[1], qt[2], qt[3] := usfsmax.getMin() ' 242us (3.0MHz)
+      _, qt[0], qt[1], qt[2], qt[3] := usfsmax.getMin() ' 239us (3.0MHz)
       Acq_time1 := getct() - Acq_time1 - 40
       'compute_time1 := getct()
       ' 89us (200MHz)
@@ -460,14 +466,15 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
 
     ovoltage := float((BATTERY_TEST == true)?27000 + (++volt // (BATTERY_HIGH-27000)):battery.read())/.BATTERY_DIVIDER
     sport.setvoltage(ovoltage)                          ' battery voltage telemetry
-    if utilities.frel(fabs(ovoltage -. oldvoltage), 0.2, UTILITIES.FGT)
+    if utilities.frel(fabs(ovoltage -. oldvoltage), BATTERYDELTA, UTILITIES.FGT)
       oldvoltage := ovoltage
       sensorupdate |= VOLTAGECHANGE
 
     repeat ch from 0 to SHARETEMP-1
-      otemps[ch] := (TEMP_TEST == true)?(++temp // (TEMP_MAX-1)):temperature[ch].read()
+      ' use temp offset to get temp in FL, FR, BL, BR order
+      otemps[ch] := (TEMP_TEST == true)?(++temp // (TEMP_MAX-1)):temperature[tempoffsets[ch]].read()
     sport.settemperature(@otemps)                        ' temperature telemetry, 0.01C * 100
-    if utilities.longcomp(@lasttemps, @otemps, SHARETEMP, 10, true)
+    if utilities.longcomp(@lasttemps, @otemps, SHARETEMP, TEMPDELTA, true)
       sensorupdate |= TEMPCHANGE
 
     takesynclock()
@@ -516,14 +523,14 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
           stopped := true
           sbus.stop()                                   ' stop the sbus cog
           serial.fstr1(string("Minimum Voltage reached %.2g\r"), ovoltage)
-          waitms(40)
+          waitms(40)                                    ' wait so the message is output
           quit                                          ' stop this cog
       if sensorupdate & TEMPCHANGE
+        if debugoutput(UTILITIES.DEBUGOUT3)
+          serial.fstr4(string("Temp FL:%.2f FR:%.2f BL:%.2f BR:%.2f\r"), otemps[0], otemps[1], otemps[2], otemps[3])
         repeat ch from 0 to 3
-          if debugoutput(UTILITIES.DEBUGOUT3)
-            serial.fstr2(string("Temp%d %.2f\r"), ch, otemps[ch])
           if (otemps[ch] > TEMP_MAX) and (motorstopped == false)
-            motorstopped := true
+            motorstopped := true                        ' stop driving the motors
             serial.fstr2(string("Max Temperature %d reached %.2f\r"), ch, otemps[ch])
           if (otemps[ch] < TEMP_MIN) and (motorstopped == true)
             motorstopped := false
@@ -621,6 +628,8 @@ DAT
   '                     FL    FR    BL    BR
   '                     D  S  D  S  D  S  D  S
   motoroffsets  long    7, 6, 3, 2, 4, 5, 0, 1
+  '                     FL, FR, BL, BR
+  tempoffsets   long    3,  1,  2,  0
 
   ' whether each motor is inverted
   ' setup so gear on drive wheel are inside on both left and right
