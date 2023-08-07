@@ -137,6 +137,7 @@ con { fixed io pins }
   BATTERY_MINIMUM               = 9.9                                           ' minimum voltage
   BATTERYDELTA                  = 0.2
   BATTERY_TEST                  = false
+  BATTERY_MIN_STOP              = false
 
   TEMP_ANALOG                   = 26                                            ' pin 26-29, TMP36,  0.5 + 25 * 0.01 -> .75V = 25C
   TEMP_LOW                      = -5000                                         ' 0V -> -50C
@@ -522,11 +523,12 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
         if debugoutput(UTILITIES.DEBUGOUT3)
           serial.fstr1(string("Voltage %.2g\r"), ovoltage)
         if utilities.frel(ovoltage, BATTERY_MINIMUM, UTILITIES.FLT)
-          'stopped := true
-          'sbus.stop()                                   ' stop the sbus cog
           serial.fstr1(string("Minimum Voltage reached %.2g\r"), ovoltage)
-          'waitms(40)                                    ' wait so the message is output
-          'quit                                          ' stop this cog
+          if BATTERY_MIN_STOP                           ' if stop on battery min enabled
+            stopped := true                             ' stop main cog
+            sbus.stop()                                 ' stop the sbus cog
+            waitms(40)                                  ' wait so the message is output
+            quit                                        ' stop this cog
       if sensorupdate & TEMPCHANGE
         if debugoutput(UTILITIES.DEBUGOUT3)
           serial.fstr4(string("Temp FL:%.2f FR:%.2f BL:%.2f BR:%.2f\r"), otemps[0], otemps[1], otemps[2], otemps[3])
