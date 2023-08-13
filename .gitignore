@@ -1,2 +1,3 @@
 
-src/swervebot.binary
+*.binary
+*.zip
