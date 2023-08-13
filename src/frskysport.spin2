@@ -96,7 +96,7 @@ CON
   FSSP_DATAID_TIMEDATE   = $0850
   FSSP_DATAID_ALTITUDE   = $0100                        ' in cm according to SmartPort spec
   FSSP_DATAID_ASPD       = $0A00
-  FSSP_DATAID_TEMP       = $0B70
+  FSSP_DATAID_TEMP       = $0B70                        ' these are limited to 1 byte by edgetx
   FSSP_DATAID_TEMP1      = $0B71
   FSSP_DATAID_TEMP2      = $0B72
   FSSP_DATAID_TEMP3      = $0B73
@@ -125,6 +125,11 @@ CON
   SENSOR_APPL_ID_GSATS   = $5111                        ' GPS no satellites
   SENSOR_APPL_ID_GHDOP   = $5112                        ' GPS HDOP
 
+  DATA_ID_TEMP_ID1       = $5116
+  DATA_ID_TEMP_ID2       = $5117
+  DATA_ID_TEMP_ID3       = $5118
+  DATA_ID_TEMP_ID4       = $5119
+
   MAXNOSENSORS           = 50
   MAXCELLS               = 6
 
@@ -142,7 +147,7 @@ VAR
   long flow[2], temps[4]
   long voltage
   long batterycount, battery[MAXCELLS]
-  long StkAddr[10000]
+  long StkAddr[20000]
 
 OBJ
   serial        : "isp_serial_singleton_tmm"
@@ -302,10 +307,10 @@ pri acc_getData(applicationIdt, subindex) : valuet
       valuet := round(pressure *. 100.0)                                        ' 0.01hPa
 
 pri fas_getData(applicationIdt, subindex) : valuet
-  valuet := round(voltage*.100.0)                                               ' in 0.01
+  valuet := round(voltage*.100.0)                                               ' in 0.01V
 
 pri actual(value) : valuet
-' make 16bit signed value
+' make 32bit signed value into 16bit unsigned and msb 1 if -ve
   valuet := value
   if valuet < 0
     valuet := abs(valuet)
@@ -315,10 +320,16 @@ pri actuals_getData(applicationIdt, subindex) : valuet
   valuet := actual(actualspeeds[applicationIdt-FSSP_ACTUAL1])               ' sign in word bit 15
   valuet |= (actual(round((float(actualangles[applicationIdt-FSSP_ACTUAL1]) *. 360.0)/.10.24)) << 16) ' 0-360.00 * 100 in upper word
 
+pri flow_getData(index) : valuet
+  valuet := flow[index]
+
+pri temps_getData(index) : valuet
+  valuet := temps[index]                                                        ' 0.01C
+
 pri sensor_getData(physicalId, applicationIdt, subindex) : valuet
   case_fast physicalId                                                          ' index from lookdown of physicalId
     DATA_ID_FAS:                                                                ' applicationId == FSSP_DATAID_VFAS
-      valuet := fas_getData(applicationIdt, subindex)
+      valuet := fas_getData(applicationIdt, subindex)                           ' voltage * 0.01V
     DATA_ID_GPS:                                                                          '
       valuet := gps_getData(applicationIdt, subindex)
     DATA_ID_ACTUALS:                                                            ' applicationId == FSSP_ACTUAL1-FSSP_ACTUAL4               '
@@ -326,11 +337,11 @@ pri sensor_getData(physicalId, applicationIdt, subindex) : valuet
     DATA_ID_ACC:                                                                          '
       valuet := acc_getData(applicationIdt, subindex)
     DATA_ID_FLOW:                                                               ' applicationId == FSSP_DATAID_FLOWX/FSSP_DATAID_FLOWY
-      valuet := flow[applicationIdt-FSSP_DATAID_FLOWX]
+      valuet := flow_getData(applicationIdt-FSSP_DATAID_FLOWX)
     DATA_ID_TEMP:                                                               ' applicationId == FSSP_DATAID_TEMP1-FSSP_DATAID_TEMP4
-      valuet := temps[applicationIdt-FSSP_DATAID_TEMP1]                         ' 0.01C
+      valuet := temps_getData(applicationIdt-DATA_ID_TEMP_ID1)                  ' 0.01C
     DATA_ID_FLVSS:                                                              ' applicationId == FSSP_DATAID_CELLS
-      valuet := flv_getData(applicationIdt, subindex)
+      valuet := flv_getData(applicationIdt, subindex)                           ' voltage per cell, 0.002V
 
 pri querysensorsent(Index) : retv
   return lastsensorindex[Index/_sensornoentries] == 0
@@ -467,10 +478,10 @@ _sensors      word      DATA_ID_GPS,     FSSP_DATAID_LATLONG,     0,   1000     
               word      DATA_ID_ACC,     FSSP_DATAID_ROLL,        0,   1000     ' $5240, given in deg *10
               word      DATA_ID_ACC,     SENSOR_APPL_ID_PRESSURE, 0,   1000     ' $5113, hPa *100
               word      DATA_ID_FAS,     FSSP_DATAID_VFAS,        0,   1000     ' $0210, given in 0.01V *100
-              word      DATA_ID_TEMP,    FSSP_DATAID_TEMP1,       0,   1000     ' $0B71, motor driver temps, 0,01C *100
-              word      DATA_ID_TEMP,    FSSP_DATAID_TEMP2,       0,   1000     ' $0B72, motor driver temps, 0,01C *100
-              word      DATA_ID_TEMP,    FSSP_DATAID_TEMP3,       0,   1000     ' $0B73, motor driver temps, 0,01C *100
-              word      DATA_ID_TEMP,    FSSP_DATAID_TEMP4,       0,   1000     ' $0B74, motor driver temps, 0,01C *100
+              word      DATA_ID_TEMP,    DATA_ID_TEMP_ID1,        0,   1000     ' $5116, motor driver temps, 0,01C *100
+              word      DATA_ID_TEMP,    DATA_ID_TEMP_ID2,        0,   1000     ' $5117, motor driver temps, 0,01C *100
+              word      DATA_ID_TEMP,    DATA_ID_TEMP_ID3,        0,   1000     ' $5118, motor driver temps, 0,01C *100
+              word      DATA_ID_TEMP,    DATA_ID_TEMP_ID4,        0,   1000     ' $5119, motor driver temps, 0,01C *100
               word      DATA_ID_FLVSS,   FSSP_DATAID_CELLS,       0,   1000     ' $0300, battery cell 0, 1
               word      DATA_ID_FLVSS,   FSSP_DATAID_CELLS,       1,   1000     ' $0300, battery cell 2
 _sensorsend
