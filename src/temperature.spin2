@@ -1,0 +1,48 @@
+{
+Temp sensor - TMP36
+
+  Denoise the temp sensors
+  Noise from RC radio makes the temp sensors underread, so max filter the sensors
+}
+
+
+CON
+  HISTORY_SIZE    = 8
+
+VAR
+  long  history[HISTORY_SIZE]
+  long  index
+
+OBJ
+  serial        : "isp_serial_singleton_tmm"
+  analog        : "jm_ez_analog"                               ' A2D to read motor driver temperature sensors
+
+pub null()
+
+  ' This is not a top-level object
+
+pub start(pin, lo, hi) | i
+
+  stop()
+  longfill(@history, 0, HISTORY_SIZE)
+  analog.start(pin, lo, hi)
+
+  ' fill history with initial values
+  repeat i from 0 to HISTORY_SIZE-1
+    waitms(1)
+    read()
+
+pub stop()
+
+  analog.stop()
+
+pub read() : result | max, i
+
+  max := history[index] := analog.read()
+  index := (index+1) // HISTORY_SIZE
+
+  repeat i from 0 to HISTORY_SIZE-1
+    if max < history[i]
+      max := history[i]
+  return max
+'

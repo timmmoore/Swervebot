@@ -78,7 +78,7 @@ pub start(pin, lo, hi) | clo, chi
 }
   pinstart(pin, P_ADC | P_ADC_GIO, %00_1101, 0)                 ' ground, SINC2, 512 samples, 10 bits
   pinl(pin)
-  waitct(getct() + (8192 << 2))                                 ' allow pin to stablize, ~163us
+  waitct(getct() + (8192 << 2))                                 ' allow pin to stablize, ~164us
   clo := rdpin(pin)                                             ' save ground calibration level
 
   pinstart(pin, P_ADC | P_ADC_VIO, %00_1101, 0)                 ' vio (3.3v)
@@ -102,7 +102,7 @@ pub stop()
     pinfloat(ap)
     longfill(@ap, 0, 6)                                         ' mark disabled
 
-pub read(p) : result
+pub read() : result
 
 '' Read and scale output
 '' -- simple mx+b
