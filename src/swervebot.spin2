@@ -134,7 +134,7 @@ con { fixed io pins }
   BATTERY_ANALOG                = 31                                            ' battery via resistor divider, 8K2 + 3K3
   BATTERY_LOW                   = 0
   BATTERY_HIGH                  = 33482                                         ' 8K2 + 3K resistor divider, max voltage is 12.5V * 3000/11200 -> 3.3482
-  BATTERY_DIVIDER               = 2413.946 '2678.56                                       ' 33482/2678.56 -> 12.5
+  BATTERY_DIVIDER               = 2673.534 '2678.56                             ' 33482/2678.56 -> 12.5
   BATTERY_MINIMUM               = 9.9                                           ' minimum voltage
   BATTERYDELTA                  = 0.2
   BATTERY_TEST                  = false
@@ -243,7 +243,7 @@ OBJ
   usfsmax       : "usfsmax"                                     ' IMU
   gps           : "gps_pa1010d"                                 ' GPS
   battery       : "jm_ez_analog"                                ' A2D to read battery voltage
-  temperature[4] : "jm_ez_analog"                               ' A2D to read motor driver temperature sensors
+  temperature[4] : "temperature"                                ' A2D to read motor driver temperature sensors
 
 PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_time, again, temp, temp1, speeds[NO_SWERVE_MODULES], aspeeds[NO_SWERVE_MODULES], angles[NO_SWERVE_MODULES]
   debug1, debug2, debug3 := INIT_DEBUG, INIT_DEBUG, INIT_DEBUG
@@ -475,9 +475,9 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
         'serial.fstr0(string("gps input changed\r"))
       'releaseprintlock()                                ' release lock soon as we have finished printing
 
-    if (getms() - lasttemp) > 200
+    if (getms() - lasttemp) > 20                        ' ADC needs 164us to take a reading
       'takeprintlock()
-      ovoltage := float((BATTERY_TEST == true)?27000 + (++volt // (BATTERY_HIGH-27000)):battery.read(false))/.BATTERY_DIVIDER
+      ovoltage := float((BATTERY_TEST == true)?27000 + (++volt // (BATTERY_HIGH-27000)):battery.read())/.BATTERY_DIVIDER
       sport.setvoltage(ovoltage)                          ' battery voltage telemetry
       if utilities.frel(fabs(ovoltage -. oldvoltage), BATTERYDELTA, UTILITIES.FGT)
         'serial.fstr1(string("Voltage %.2g\r"), ovoltage)
@@ -486,7 +486,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
 
       repeat ch from 0 to SHARETEMP-1
                                                          ' use temp offset to get temp in FL, FR, BL, BR order
-        otemps[ch] := (TEMP_TEST == true)?(++temp // (TEMP_MAX-1)):temperature[tempoffsets[ch]].read(true)
+        otemps[ch] := (TEMP_TEST == true)?(++temp // (TEMP_MAX-1)):temperature[tempoffsets[ch]].read()
       sport.settemperature(@otemps)                       ' temperature telemetry, 0.01C * 100
       if utilities.longcomp(@lasttemps, @otemps, SHARETEMP, TEMPDELTA, true)
         'serial.fstr5(string("Temp %d FL:%d FR:%d BL:%d BR:%d\r"), lasttemp, otemps[0], otemps[1], otemps[2], otemps[3])
