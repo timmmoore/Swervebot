@@ -27,6 +27,7 @@
                 -> 4x quadrature encoders (Gnd, 3V3, A (14, 12, 3, 1), B (15, 13, 2, 0)), 1:3, 12:30, 1:2 -> 1:15
                       7 ticks or 28 count/rev
                 -> 4X Temperature sensors TMP36, 1 per motor driver (Gnd, 3V3, 26, 27, 28, 20)
+                -> 1x fan with mosfet (Gnd, 3V3, 30)
 
 TODO
   Map USFSMax yaw angle to bot rotation
@@ -133,19 +134,20 @@ con { fixed io pins }
   BATTERY_ANALOG                = 31                                            ' battery via resistor divider, 8K2 + 3K3
   BATTERY_LOW                   = 0
   BATTERY_HIGH                  = 33482                                         ' 8K2 + 3K resistor divider, max voltage is 12.5V * 3000/11200 -> 3.3482
-  BATTERY_DIVIDER               = 2678.56                                       ' 33482/2678.56 -> 12.5
+  BATTERY_DIVIDER               = 2413.946 '2678.56                                       ' 33482/2678.56 -> 12.5
   BATTERY_MINIMUM               = 9.9                                           ' minimum voltage
   BATTERYDELTA                  = 0.2
   BATTERY_TEST                  = false
-  BATTERY_MIN_STOP              = false
+  BATTERY_MIN_STOP              = false                                         ' stop the bot if battery is too low
 
   TEMP_ANALOG                   = 26                                            ' pin 26-29, TMP36,  0.5 + 25 * 0.01 -> .75V = 25C
   TEMP_LOW                      = -5000                                         ' 0V -> -50C
   TEMP_HIGH                     = 28000                                         ' 3.3V -> 280C
   TEMP_MAX                      = 12000                                         ' TB6612 thermal shutdown is at 150C, though sensor is external so lower
   TEMP_MIN                      = 9000
-  TEMPDELTA                     = 100
-  TEMP_TEST                     = true
+  TEMPDELTA                     = 100                                           ' * 0.01deg
+  TEMP_TEST                     = false
+  TEMP_MIN_STOP                 = false                                         ' stop motors if temp is too high
 
   ' Bellevue, WA 98008
   M_V                           = 49.4643
@@ -163,6 +165,8 @@ con { fixed io pins }
 
   #1, OK, FAILSAFE, LOST                                                        ' SBUS states
 
+  MOTOR_FAN_PIN                 = 30                                            ' turn motor driver fan on (high)/off (low)
+
   SENSORPERIOD                  = 50                                            ' ms between sensor query
   SWERVEPERIOD                  = 20                                            ' ms between RC receiver/swerve motor updates
 
@@ -174,6 +178,7 @@ con { fixed io pins }
   VOLTAGECHANGE                 = $20
   TEMPCHANGE                    = $40
 
+  PIDSTEER                      = true
   PIDCONSTANTSDIVIDER10         = 10.0
   PIDCONSTANTSDIVIDER100        = 100.0
   PIDCONSTANTSDIVIDER1000       = 1000.0
@@ -200,8 +205,7 @@ con { fixed io pins }
 
   NO_SWERVE_MODULES             = 4
 
-  SPARE1_PIN                    = 30                                            ' unused pin, note SBUS_TX is also not used
-  SPARE2_PIN                    = 4
+  SPARE2_PIN                    = 4                                             ' unused pin, note SBUS_TX is also not used
 
 VAR
   ' shared variables
@@ -225,7 +229,7 @@ VAR
   long qt[4]
   long stopped                                                  ' stop bot if true
   long motorstopped                                             ' stop motors if true
-  long StkAddr[10000]
+  long StkAddr[20000]
 
 OBJ
                                                                 '  main cog - swerve system
@@ -264,7 +268,7 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
   dopidconstants(true)
 
   ' initialize server modules and motors
-  if (havemotors := swerve.start(MOTOR_SCL, MOTOR_SDA, ENCODERPIN1, @bot, @pinoffsets, @angleoffsets, @minencoder, @maxencoder, @invert, @motoroffsets, @driveencoders))
+  if (havemotors := swerve.start(MOTOR_SCL, MOTOR_SDA, ENCODERPIN1, MOTOR_FAN_PIN, @bot, @pinoffsets, @angleoffsets, @minencoder, @maxencoder, @invert, @motoroffsets, @driveencoders))
     if debugoutput(UTILITIES.DEBUGOUT1)
       if havemotors & $01
         serial.fstr1(string("Swerve motors I2C bus error %x\r"), havemotors)
@@ -282,17 +286,11 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
 
   repeat
     waitms(temp := ((SWERVEPERIOD - (getms() - delaystart)) #> 1)) ' max delay SWERVEPERIOD
-    if stopped                                          ' bot needs to be stopped
-      swerve.stopmotors()                               ' disable all motors
-      swerve.getactuals(@speeds, @aspeeds, @angles)
-      sport.setactuals(@speeds, @aspeeds, @angles)      ' swerve speeds/angles telemetry
-      serial.fstr0(string("Swerve stopped\r"))
-      waitms(100)                                       ' let the message out
-      quit                                              ' stop cog
-    ' make sure shared variables are not being updated
-    ' copy to local variables
+    if TEMP_MIN_STOP and stopped                        ' bot needs to be stopped
+      quit                                              ' leave the repeat loop and stop cog
+
     acq_time := getms()
-    takesynclock()
+    takesynclock()                                      ' make sure shared variables are not being updated
     longmove(@swerveupdate, @sharedupdate, SHAREDVARIABLES) ' copy shared variables to local copy
     releasesynclock()
 
@@ -324,6 +322,12 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
     else
       delaystart := getms()                             ' delay from after motors updated, debug print delays still part of processing time
 
+  swerve.stopmotors()                                   ' disable all motors
+  swerve.getactuals(@speeds, @aspeeds, @angles)
+  sport.setactuals(@speeds, @aspeeds, @angles)          ' swerve speeds/angles telemetry
+  serial.fstr0(string("Swerve stopped\r"))
+  waitms(100)                                           ' let the message out
+
 PRI dopidconstants(init) | tSkp[NO_SWERVE_MODULES], tSki[NO_SWERVE_MODULES], tSkd[NO_SWERVE_MODULES], tDkp[NO_SWERVE_MODULES], tDki[NO_SWERVE_MODULES], tDkd[NO_SWERVE_MODULES], omax[2], i
   ' update pid constants
   ' start with defaults
@@ -336,9 +340,14 @@ PRI dopidconstants(init) | tSkp[NO_SWERVE_MODULES], tSki[NO_SWERVE_MODULES], tSk
   ' if not init then radio values delta on top of the defaults
   ifnot init
     repeat i from 0 to NO_SWERVE_MODULES-1
-      tDkp[i] := float(swervechannels[CHANNEL_KP])/.PIDCONSTANTSDIVIDER100 +. tDkp[i]
-      tDki[i] := float(swervechannels[CHANNEL_KI])/.PIDCONSTANTSDIVIDER100 +. tDki[i]
-      tDkd[i] := float(swervechannels[CHANNEL_KD])/.PIDCONSTANTSDIVIDER1000 +. tDkd[i]
+      if PIDSTEER
+        tSkp[i] := float(swervechannels[CHANNEL_KP])/.PIDCONSTANTSDIVIDER100 +. tSkp[i]
+        tSki[i] := float(swervechannels[CHANNEL_KI])/.PIDCONSTANTSDIVIDER100 +. tSki[i]
+        tSkd[i] := float(swervechannels[CHANNEL_KD])/.PIDCONSTANTSDIVIDER1000 +. tSkd[i]
+      else
+        tDkp[i] := float(swervechannels[CHANNEL_KP])/.PIDCONSTANTSDIVIDER100 +. tDkp[i]
+        tDki[i] := float(swervechannels[CHANNEL_KI])/.PIDCONSTANTSDIVIDER100 +. tDki[i]
+        tDkd[i] := float(swervechannels[CHANNEL_KD])/.PIDCONSTANTSDIVIDER1000 +. tDkd[i]
 
   if debugoutput(UTILITIES.DEBUGOUT3)
     serial.fstr4(string("radio %d steer pid:%.2g %.2g %.2g\r"), init, tSkp[0], tSki[0], tSkd[0])
@@ -347,7 +356,7 @@ PRI dopidconstants(init) | tSkp[NO_SWERVE_MODULES], tSki[NO_SWERVE_MODULES], tSk
   omax[0] := omax[1] := swervechannels[CHANNEL_OFF]
   swerve.setpidconstants(@tSkp, @tSki, @tSkd, @tDkp, @tDki, @tDkd, @omax)
 
-PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_time, compute_time1, havepmw, haveusfsmax, havegps, sbusstatus, lsbusstatus, ch, lastx_l, lastx_h, lasty_l, lasty_h, lasto[4], debugo, delaystart, gpsret, gpsrel, xl, yl, oldvoltage, volt, s, lasttemps[4], temp
+PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_time, compute_time1, havepmw, haveusfsmax, havegps, sbusstatus, lsbusstatus, ch, lastx_l, lastx_h, lasty_l, lasty_h, lasto[4], debugo, delaystart, gpsret, gpsrel, xl, yl, oldvoltage, volt, s, lasttemps[4], temp, temphigh, templow, lasttemp
 
   ' init optical flow sensor
   ifnot pmw.begin(PMW_CS, PMW_SCK, PMW_SDO, PMW_SDI) == false
@@ -389,8 +398,9 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
 
   repeat ch from 0 to SHARETEMP-1                       ' temperature sensors 1 per motor driver TB6612
     temperature[ch].start(TEMP_ANALOG+ch, TEMP_LOW, TEMP_HIGH)
+  'temperature[0].start(TEMP_ANALOG+2, TEMP_LOW, TEMP_HIGH)
 
-  delaystart := getms()
+  lasttemp := delaystart := getms()
 
   repeat
     count++
@@ -465,20 +475,24 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
         'serial.fstr0(string("gps input changed\r"))
       'releaseprintlock()                                ' release lock soon as we have finished printing
 
-    'takeprintlock()
-    ovoltage := float((BATTERY_TEST == true)?27000 + (++volt // (BATTERY_HIGH-27000)):battery.read())/.BATTERY_DIVIDER
-    sport.setvoltage(ovoltage)                          ' battery voltage telemetry
-    if utilities.frel(fabs(ovoltage -. oldvoltage), BATTERYDELTA, UTILITIES.FGT)
-      oldvoltage := ovoltage
-      sensorupdate |= VOLTAGECHANGE
-    'releaseprintlock()                                ' release lock soon as we have finished printing
+    if (getms() - lasttemp) > 200
+      'takeprintlock()
+      ovoltage := float((BATTERY_TEST == true)?27000 + (++volt // (BATTERY_HIGH-27000)):battery.read(false))/.BATTERY_DIVIDER
+      sport.setvoltage(ovoltage)                          ' battery voltage telemetry
+      if utilities.frel(fabs(ovoltage -. oldvoltage), BATTERYDELTA, UTILITIES.FGT)
+        'serial.fstr1(string("Voltage %.2g\r"), ovoltage)
+        oldvoltage := ovoltage
+        sensorupdate |= VOLTAGECHANGE
 
-    repeat ch from 0 to SHARETEMP-1
-      ' use temp offset to get temp in FL, FR, BL, BR order
-      otemps[ch] := (TEMP_TEST == true)?(++temp // (TEMP_MAX-1)):temperature[tempoffsets[ch]].read()
-    sport.settemperature(@otemps)                        ' temperature telemetry, 0.01C * 100
-    if utilities.longcomp(@lasttemps, @otemps, SHARETEMP, TEMPDELTA, true)
-      sensorupdate |= TEMPCHANGE
+      repeat ch from 0 to SHARETEMP-1
+                                                         ' use temp offset to get temp in FL, FR, BL, BR order
+        otemps[ch] := (TEMP_TEST == true)?(++temp // (TEMP_MAX-1)):temperature[tempoffsets[ch]].read(true)
+      sport.settemperature(@otemps)                       ' temperature telemetry, 0.01C * 100
+      if utilities.longcomp(@lasttemps, @otemps, SHARETEMP, TEMPDELTA, true)
+        'serial.fstr5(string("Temp %d FL:%d FR:%d BL:%d BR:%d\r"), lasttemp, otemps[0], otemps[1], otemps[2], otemps[3])
+        sensorupdate |= TEMPCHANGE
+      lasttemp := getms()
+      'releaseprintlock()                                  ' release lock soon as we have finished printing
 
     takesynclock()
     longmove(@sharedupdate, @sensorupdate, SHAREDVARIABLES) ' copy local to shared variables
@@ -525,20 +539,25 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
         if utilities.frel(ovoltage, BATTERY_MINIMUM, UTILITIES.FLT)
           serial.fstr1(string("Minimum Voltage reached %.2g\r"), ovoltage)
           if BATTERY_MIN_STOP                           ' if stop on battery min enabled
-            stopped := true                             ' stop main cog
-            sbus.stop()                                 ' stop the sbus cog
-            waitms(40)                                  ' wait so the message is output
-            quit                                        ' stop this cog
+            quit                                        ' breakout the repeat, so this cog stops
       if sensorupdate & TEMPCHANGE
         if debugoutput(UTILITIES.DEBUGOUT3)
-          serial.fstr4(string("Temp FL:%.2f FR:%.2f BL:%.2f BR:%.2f\r"), otemps[0], otemps[1], otemps[2], otemps[3])
-        repeat ch from 0 to 3
-          if (otemps[ch] > TEMP_MAX) and (motorstopped == false)
-            motorstopped := true                        ' stop driving the motors
+          serial.fstr5(string("Temp %d FL:%.2f FR:%.2f BL:%.2f BR:%.2f\r"), lasttemp, otemps[0], otemps[1], otemps[2], otemps[3])
+        temphigh := templow := 0
+        repeat ch from 0 to 3                           ' count number of drivers above max or below min
+          if (otemps[ch] > TEMP_MAX)
+            temphigh++                                  ' driver too high
             serial.fstr2(string("Max Temperature %d reached %.2f\r"), ch, otemps[ch])
-          if (otemps[ch] < TEMP_MIN) and (motorstopped == true)
-            motorstopped := false
-            serial.fstr2(string("Min Temperature %d reached %.2f\r"), ch, otemps[ch])
+          elseif (otemps[ch] < TEMP_MIN)
+            templow++                                   ' driver ok
+            if motorstopped
+              serial.fstr2(string("Min Temperature %d reached %.2f\r"), ch, otemps[ch])
+        if temphigh and !!motorstopped                  ' at least 1 driver above max, stop the motors
+          motorstopped~~
+          serial.fstr1(string("Stopping motors, driver temps too high %d\r"), motorstopped)
+        elseif templow == 4 and motorstopped            ' all drivers are below min, start the motors
+          motorstopped~
+          serial.fstr0(string("Starting motors, driver temps ok\r"))
 
       if debugoutput(UTILITIES.DEBUGOUT4)
         serial.fstr1(string("Sensor period %d\r"), getms()-period_time)
@@ -546,6 +565,12 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
     ' need to update lastchannels since we didn't when we did the compare
     if sensorupdate & CHANNELCHANGE
       longmove(@lastchannels, @sbuschannels, NOCHANNELS)
+  stopped := true                                       ' stop main cog
+  waitms(100)                                           ' wait to make sure main cog has a chance to complete
+  sbus.stop()                                           ' stop the sbus cog
+  sport.stop()                                          ' stop the telemetry cog
+  serial.fstr0(string("Sensors stopped\r"))
+  waitms(100)                                           ' wait to make sure everything is completed
 
 PRI debugoutput(type) : retv
   retv := utilities.debugoutput(debug1, type)
@@ -602,8 +627,8 @@ DAT
   ' raw is encoder pwm, map is pwm mapped to angle 0-MAXANGLE, out is + encoder offset mod MAXANGLE
   ' pin and angle offsets in order FL, FR, BL, BR
   ' setup so gear on drive wheel are inside on both left and right, so right steering is 180 degree more than encoder
-  angleoffsets  long    round((37.96*.float(swerve.MAXANGLE))/.360.0), round((343.82*.float(swerve.MAXANGLE))/.360.0)
-                long    round((240.11*.float(swerve.MAXANGLE))/.360.0), round((286.38*.float(swerve.MAXANGLE))/.360.0)
+  angleoffsets  long    round((358.94*.float(swerve.MAXANGLE))/.360.0), round((332.22*.float(swerve.MAXANGLE))/.360.0)
+                long    round((227.81*.float(swerve.MAXANGLE))/.360.0), round((274.21*.float(swerve.MAXANGLE))/.360.0)
 
   '   encoder min/max encoder values FL, FR, BL, BR
   '                           spec:   0.9-1.1us       3686-4506us
@@ -614,7 +639,7 @@ DAT
                 long   MAXINCLK * (CLK_FREQ / 100_000_000), MAXINCLK * (CLK_FREQ / 100_000_000)
 
   ' encoder pin offsets in order of FL, FR, BL, BR
-  pinoffsets    long    3, 1, 2, 0
+  pinoffsets    long    3, 2, 1, 0
 
   '                        FL,    FR     BL     BR
   defaultSteerKp long    -16.0, -16.0, -16.0, -16.0
@@ -631,7 +656,7 @@ DAT
   ' motor channels 0-3 on board 1, 4-7 on board 2
   '                     FL    FR    BL    BR
   '                     D  S  D  S  D  S  D  S
-  motoroffsets  long    7, 6, 3, 2, 4, 5, 0, 1
+  motoroffsets  long    7, 6, 3, 2, 5, 4, 1, 0
   '                     FL, FR, BL, BR
   tempoffsets   long    3,  1,  2,  0
 
@@ -639,7 +664,7 @@ DAT
   ' setup so gear on drive wheel are inside on both left and right
   '                      FL    FR    BL    BR
   '                     D  S  D  S  D  S  D  S
-  invert        word    0, 1, 1, 1, 1, 0, 0, 0
+  invert        word    0, 1, 1, 1, 1, 1, 0, 1
 
   ' drive motor encoders - speed of drive motors, 7 rises of a pin per motor rotation
   '  plus 1:3 (planetary) * 1:2 (bevel) * 12:30 (center) = 1:15 -> 105 ticks per wheel rotation
