@@ -116,4 +116,14 @@ PUB add64(xl, xh, x) : rxl, rxh
     add   rxl, x                  wc
     addsx rxh, #0
   end
+
+pub cart_pol(x, y) : r, t
+'' Convert coordinate x,y to polar (length, angle (0.1deg))
+  org
+    qvector   x, y                                      ' cartesian to polar
+    getqx     r                                         ' get radius (length)
+    getqy     t                                         ' get theta (angle)
+    qdiv      t, ##1193046                              ' convert angle to 0.1 degree units
+    getqx     t
+  end
 '
