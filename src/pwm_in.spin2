@@ -61,7 +61,7 @@ PUB read(ch, display) : out | raw, map, dout
   if (out <> lastvalues[ch]\out)
     dout := debugoutput(UTILITIES.DEBUGOUT2)            ' if changed see if we want debug output
   if display or dout                                    ' output offset value assuming current position is 0
-    serial.fstr7(string("encoder%d raw:%u map:%d out:%d offset:%.2g min:%u max:%u\r"), ch, raw>>1, map, out, (float((maxv - map)//maxv)*.360.0)/.1024.0, minencoder[ch]>>1, maxencoder[ch]>>1)
+    serial.fstr8(string("encoder%d/%d raw:%u map:%d out:%d offset:%.2g min:%u max:%u\r"), ch, pinoffsets[ch], raw>>1, map, out, (float((maxv - map)//maxv)*.360.0)/.1024.0, minencoder[ch]>>1, maxencoder[ch]>>1)
 
 PUB updatedebug(tdebug)
   debug1 := tdebug
