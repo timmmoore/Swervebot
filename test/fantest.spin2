@@ -1,0 +1,48 @@
+{
+Test fan turns on/off
+}
+
+
+CON
+  CLK_FREQ = 200_000_000                                                        ' system freq as a constant
+  MS_001   = CLK_FREQ / 1_000                                                   ' ticks in 1ms
+  US_001   = CLK_FREQ / 1_000_000                                               ' ticks in 1us
+
+  BR_SERIAL = 115_200                                                           ' terminal baud rate
+
+  _clkfreq = CLK_FREQ                                                           ' set system clock
+
+VAR
+
+
+OBJ
+  fan      : "motorfan"
+  serial   : "isp_serial_singleton_tmm"
+
+PUB main()
+
+  waitms(2000)
+  serial.start(BR_SERIAL)
+  waitms(2000)
+
+  serial.fstr0(string("fan test\r"))
+
+  fan.startfan(30)
+  repeat
+
+    waitpoll(2)
+    serial.fstr0(string("fan on\r"))
+    fan.fanon()
+
+    waitpoll(1)
+    serial.fstr0(string("fan off timer\r"))
+    fan.fanoff()
+    waitpoll(10)
+    serial.fstr0(string("10sec since fan off timer\r"))
+    waitpoll(5)
+
+PRI waitpoll(t)
+
+  repeat t*2
+    waitms(500)
+    fan.checkfan()
