@@ -17,17 +17,6 @@
    -- At 200MHz samples available every 40.1 microseconds
 }
 
-
-con { fixed io pins }
-
-  RX1      = 63  { I }                                          ' programming / debug
-  TX1      = 62  { O }
-
-  SF_CS    = 61  { O }                                          ' serial flash
-  SF_SCK   = 60  { O }
-  SF_SDO   = 59  { O }
-  SF_SDI   = 58  { I }
-
 OBJ
   serial        : "isp_serial_singleton_tmm"
 
@@ -51,7 +40,7 @@ pub start(pin, lo, hi) | clo, chi
 ''    * scaled from Gnd to Vio (3.3v)
 
   stop()
-{
+
   org
                 fltl      pin                                   ' reset smart pin
                 wrpin     ##(P_ADC | P_ADC_GIO), pin            ' read ground reference
@@ -75,20 +64,6 @@ pub start(pin, lo, hi) | clo, chi
                 wypin     #0, pin
                 dirh      pin                                   ' enable
   end
-}
-  pinstart(pin, P_ADC | P_ADC_GIO, %00_1101, 0)                 ' ground, SINC2, 512 samples, 10 bits
-  pinl(pin)
-  waitct(getct() + (8192 << 2))                                 ' allow pin to stablize, ~164us
-  clo := rdpin(pin)                                             ' save ground calibration level
-
-  pinstart(pin, P_ADC | P_ADC_VIO, %00_1101, 0)                 ' vio (3.3v)
-  pinl(pin)
-  waitct(getct() + (8192 << 2))
-  chi := rdpin(pin)                                             ' save 3.3v calibration level
-
-  pinstart(pin, P_ADC | P_ADC_1X | P_OE | P_LOW_150K, %00_1101, 0) ' pin level, 1x scale
-  pinl(pin)
-
   longmove(@ap, @pin, 5)                                        ' save setup
   setup := true
 
@@ -106,18 +81,8 @@ pub read() : result
 
 '' Read and scale output
 '' -- simple mx+b
-'                              180       33000           678
-'                      311
   result := (rdpin(ap)-callo) * (orhi-orlo) / (calhi-callo)     ' mx
   result := orlo #> result+orlo <# orhi                         ' +b (restricted to range)
-
-  wrpin(ap, P_ADC_GIO | P_ADC)
-  waitms(1)
-  callo := rdpin(ap)
-  wrpin(ap, P_ADC_VIO | P_ADC)
-  waitms(1)
-  calhi := rdpin(ap)
-  wrpin(ap, P_ADC_1X | P_OE | P_LOW_150K | P_ADC)
 
 pub raw() : result
 
