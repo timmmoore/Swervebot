@@ -55,6 +55,7 @@ con { fixed io pins }
   RX1                           = 63  { I }                                     ' programming / debug
   TX1                           = 62  { O }
 
+                                                                                ' note CS/CLK switched between SD card and flash
   SF_CS                         = 61  { O }                                     ' serial flash
   SF_SCK                        = 60  { O }
   SF_SDO                        = 59  { O }
@@ -70,18 +71,23 @@ con { fixed io pins }
   WIFI_DI_PIN                   = 62
   WIFI_DO_PIN                   = 63
 
-  NOCHANNELS                    = 18                                            ' number of channels
+  LED_56                        = 56                                            ' leds on P2 edge board
+  LED_57                        = 57                                            ' disable via switch on board
+
+  NOCHANNELS                    = 18                                            ' number of RC channels
 
   CHANNEL_X                     = 1                                             ' 1 - x speed
   CHANNEL_Y                     = 0                                             ' 2 - y speed
   CHANNEL_R                     = 3                                             ' 3 - rotate speed
   CHANNEL_OFF                   = 2                                             ' 4 - throttle/disable motors
-  CHANNEL_KP                    = 4                                             ' 5 - pid Kp ls
-  CHANNEL_KI                    = 5                                             ' 6 - pid Ki rs
-  CHANNEL_KD                    = 6                                             ' 7 - pid Kd s1
+  CHANNEL_KP                    = 4                                             ' 5 - pid Kp LS
+  CHANNEL_KI                    = 5                                             ' 6 - pid Ki RS
+  CHANNEL_KD                    = 6                                             ' 7 - pid Kd S1
   CHANNEL_DEBUG1                = 7                                             ' 8 - debug values sa
   CHANNEL_DEBUG2                = 8                                             ' 9                sb
   CHANNEL_DEBUG3                = 9                                             ' 10               sc
+                                                                                ' 11 - not used, S2
+  CHANNEL_PIDSELECT             = 11                                            ' 12 - pid adjustment selector sd
 
   MINDELTA                      = 5                                             ' minimum channel change
 
@@ -109,8 +115,8 @@ con { fixed io pins }
   ' min 98-101 max:402035-415613
   ' if use spec ranges then error bar is 20-30% which causes large 'deadband' around 0 and the pids oscillate
   ' using actual ranges which have error of 2-3%, much smaller 'deadband'
-  MININCLK                      = 98 '90                                        ' min encoder PWM width 0.9-1.1us * 100
-  MAXINCLK                      = 415600 '450600                                ' max encoder PWM width 3696-4506us * 100
+  MININCLK                      = 98                    '90                     ' min encoder PWM width 0.9-1.1us * 100
+  MAXINCLK                      = 415600                '450600                 ' max encoder PWM width 3696-4506us * 100
 
   'PMW_VCC   = 3.3V
   'PMW_GND
@@ -122,7 +128,7 @@ con { fixed io pins }
   PMW_X_INVERT                  = false                                         ' default init orientation
   PMW_Y_INVERT                  = true
   PMW_XY_SWAP                   = true                                          ' swap x and y axis
-  PMW_LED                       = false
+  PMW_LED                       = false                                         ' default config is led on
 
   ' USFSMAX_VCC = 3.3V
   ' USFSMAX_GND
@@ -133,12 +139,12 @@ con { fixed io pins }
 
   BATTERY_ANALOG                = 31                                            ' battery via resistor divider, 8K2 + 3K3
   BATTERY_LOW                   = 0
-  BATTERY_HIGH                  = 33482                                         ' 8K2 + 3K resistor divider, max voltage is 12.5V * 3000/11200 -> 3.3482
-  BATTERY_DIVIDER               = 2673.534 '2678.56                             ' 33482/2678.56 -> 12.5
-  BATTERY_MINIMUM               = 9.9                                           ' minimum voltage
+  BATTERY_HIGH                  = 33750 '33482                                  ' 8K2 + 3K resistor divider, max voltage is 12.6V * 3000/11200 -> 3.375
+  BATTERY_DIVIDER               = 2673.534 '2678.56                             ' 33750/2678.56 -> 12.6, absolute max is 4.2V per cell (total 12.6V)
+                                                                                ' 33750/2673.534 -> 12.624
+  BATTERY_MINIMUM               = 9.9                                           ' minimum voltage, absolute min is 3.2V per cell (total 9.6V)
   BATTERYDELTA                  = 0.2
-  BATTERY_TEST                  = false
-  BATTERY_MIN_STOP              = false                                         ' stop the bot if battery is too low
+  BATTERY_MIN_STOP              = true                                          ' stop the bot if battery is too low
 
   TEMP_ANALOG                   = 26                                            ' pin 26-29, TMP36,  0.5 + 25 * 0.01 -> .75V = 25C
   TEMP_LOW                      = -5000                                         ' 0V -> -50C
@@ -146,8 +152,7 @@ con { fixed io pins }
   TEMP_MAX                      = 12000                                         ' TB6612 thermal shutdown is at 150C, though sensor is external so lower
   TEMP_MIN                      = 9000
   TEMPDELTA                     = 100                                           ' * 0.01deg
-  TEMP_TEST                     = false
-  TEMP_MIN_STOP                 = false                                         ' stop motors if temp is too high
+  TEMP_MAX_STOP                 = true                                          ' stop motors if temp is too high
 
   ' Bellevue, WA 98008
   M_V                           = 49.4643
@@ -229,7 +234,7 @@ VAR
   long qt[4]
   long stopped                                                  ' stop bot if true
   long motorstopped                                             ' stop motors if true
-  long StkAddr[20000]
+  long StkAddr[10000]
 
 OBJ
                                                                 '  main cog - swerve system
@@ -252,7 +257,7 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
   serial.start(BR_SERIAL)
 
   waitms(2000)
-  if debugoutput(UTILITIES.DEBUGOUT4)
+  if debugoutput(UTILITIES.DEBUGOUT3)
     serial.fstr0(string("Swerve Controller\r"))
 
   ' lock used to synchronize sensor Input across cogs
@@ -265,7 +270,7 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
       serial.fstr0(string("Swerve Controller failed to allocate printlock\r"))
 
   swerve.debugconfig(debug2, debug3)
-  dopidconstants(true)
+  dopidconstants()
 
   ' initialize server modules and motors
   if (havemotors := swerve.start(MOTOR_SCL, MOTOR_SDA, ENCODERPIN1, MOTOR_FAN_PIN, @bot, @pinoffsets, @angleoffsets, @minencoder, @maxencoder, @invert, @motoroffsets, @driveencoders))
@@ -286,7 +291,7 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
 
   repeat
     waitms(temp := ((SWERVEPERIOD - (getms() - delaystart)) #> 1)) ' max delay SWERVEPERIOD
-    if TEMP_MIN_STOP and stopped                        ' bot needs to be stopped
+    if stopped                                          ' bot needs to be stopped
       quit                                              ' leave the repeat loop and stop cog
 
     acq_time := getms()
@@ -304,31 +309,38 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
       if debugo := (debugoutput(UTILITIES.DEBUGOUT1) || utilities.debugoutput(debug2, UTILITIES.DEBUGOUT1) || utilities.debugoutput(debug3, UTILITIES.DEBUGOUT1))
         takeprintlock()
 
-      dopidconstants(false)
+      dopidconstants()
 
       delaystart := getms()                             ' delay from after motors updated, debug print delays part of processing time
       ' update swerve modules with updated movements
       if havemotors <> (swerve.NO_MOTOR1|swerve.NO_MOTOR2)
-        if motorstopped == false
-          again := swerve.update(swervechannels[CHANNEL_Y], swervechannels[CHANNEL_X], swervechannels[CHANNEL_R], swervechannels[CHANNEL_OFF])
-        else
+        if TEMP_MAX_STOP and motorstopped == true       ' 1 or more temp sensors have reached max temp
           swerve.stopmotors()                           ' disable all motors
+        else
+          again := swerve.update(swervechannels[CHANNEL_Y], swervechannels[CHANNEL_X], swervechannels[CHANNEL_R], swervechannels[CHANNEL_OFF])
       swerve.getactuals(@speeds, @aspeeds, @angles)
       sport.setactuals(@speeds, @aspeeds, @angles)      ' swerve speeds/angles telemetry
       if debugo
-        if debugoutput(UTILITIES.DEBUGOUT3)
+        if debugoutput(UTILITIES.DEBUGOUT4)
           serial.fstr2(string("Swerve period %d %d\r"), temp1 := getms()-acq_time, temp)
         releaseprintlock()                              ' release lock soon as we have finished printing
     else
       delaystart := getms()                             ' delay from after motors updated, debug print delays still part of processing time
-
-  swerve.stopmotors()                                   ' disable all motors
+                                                        ' swerve cog is stopping
+  swerve.stopmotors()                                   ' stop all motors
   swerve.getactuals(@speeds, @aspeeds, @angles)
-  sport.setactuals(@speeds, @aspeeds, @angles)          ' swerve speeds/angles telemetry
-  serial.fstr0(string("Swerve stopped\r"))
+  sport.setactuals(@speeds, @aspeeds, @angles)          ' update swerve speeds/angles telemetry
+  swerve.stop()                                         ' shutdown the swerve modules
+  serial.fstr0(string("Swerve cog stopped\r"))
   waitms(100)                                           ' let the message out
 
-PRI dopidconstants(init) | tSkp[NO_SWERVE_MODULES], tSki[NO_SWERVE_MODULES], tSkd[NO_SWERVE_MODULES], tDkp[NO_SWERVE_MODULES], tDki[NO_SWERVE_MODULES], tDkd[NO_SWERVE_MODULES], omax[2], i
+PRI updatepidconstants(pKp, pKi, pKd) | i
+  repeat i from 0 to NO_SWERVE_MODULES-1
+    long[pKp][i] := long[pKp][i] +. float(swervechannels[CHANNEL_KP])/.PIDCONSTANTSDIVIDER100
+    long[pKi][i] := long[pKi][i] +. float(swervechannels[CHANNEL_KI])/.PIDCONSTANTSDIVIDER100
+    long[pKd][i] := long[pKd][i] +. float(swervechannels[CHANNEL_KD])/.PIDCONSTANTSDIVIDER1000
+
+PRI dopidconstants() | tSkp[NO_SWERVE_MODULES], tSki[NO_SWERVE_MODULES], tSkd[NO_SWERVE_MODULES], tDkp[NO_SWERVE_MODULES], tDki[NO_SWERVE_MODULES], tDkd[NO_SWERVE_MODULES], omax[2]
   ' update pid constants
   ' start with defaults
   longmove(@tSkp, @defaultSteerKp, NO_SWERVE_MODULES)
@@ -337,23 +349,13 @@ PRI dopidconstants(init) | tSkp[NO_SWERVE_MODULES], tSki[NO_SWERVE_MODULES], tSk
   longmove(@tDkp, @defaultDriveKp, NO_SWERVE_MODULES)
   longmove(@tDki, @defaultDriveKi, NO_SWERVE_MODULES)
   longmove(@tDkd, @defaultDriveKd, NO_SWERVE_MODULES)
-  ' if not init then radio values delta on top of the defaults
-  ifnot init
-    repeat i from 0 to NO_SWERVE_MODULES-1
-      if PIDSTEER
-        tSkp[i] := float(swervechannels[CHANNEL_KP])/.PIDCONSTANTSDIVIDER100 +. tSkp[i]
-        tSki[i] := float(swervechannels[CHANNEL_KI])/.PIDCONSTANTSDIVIDER100 +. tSki[i]
-        tSkd[i] := float(swervechannels[CHANNEL_KD])/.PIDCONSTANTSDIVIDER1000 +. tSkd[i]
-      else
-        tDkp[i] := float(swervechannels[CHANNEL_KP])/.PIDCONSTANTSDIVIDER100 +. tDkp[i]
-        tDki[i] := float(swervechannels[CHANNEL_KI])/.PIDCONSTANTSDIVIDER100 +. tDki[i]
-        tDkd[i] := float(swervechannels[CHANNEL_KD])/.PIDCONSTANTSDIVIDER1000 +. tDkd[i]
-
+  if swervechannels[CHANNEL_PIDSELECT] == MINDEFAULT
+    updatepidconstants(@tSkp, @tSki, @tSkd)
+  else
+    updatepidconstants(@tDkp, @tDki, @tDkd)
   if debugoutput(UTILITIES.DEBUGOUT3)
-    serial.fstr4(string("radio %d steer pid:%.2g %.2g %.2g\r"), init, tSkp[0], tSki[0], tSkd[0])
-    serial.fstr4(string("radio %d drive pid:%.2g %.2g %.2g\r"), init, tDkp[0], tDki[0], tDkd[0])
-  ' set override max output speed
-  omax[0] := omax[1] := swervechannels[CHANNEL_OFF]
+    serial.fstr6(string("radio steer pid:%.2g %.2g %.2g, drive pid:%.2g %.2g %.2g\r"), tSkp[0], tSki[0], tSkd[0], tDkp[0], tDki[0], tDkd[0])
+  omax[0] := omax[1] := swervechannels[CHANNEL_OFF]     ' set override max output speed
   swerve.setpidconstants(@tSkp, @tSki, @tSkd, @tDkp, @tDki, @tDkd, @omax)
 
 PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_time, compute_time1, havepmw, haveusfsmax, havegps, sbusstatus, lsbusstatus, ch, lastx_l, lastx_h, lasty_l, lasty_h, lasto[4], debugo, delaystart, gpsret, gpsrel, xl, yl, oldvoltage, volt, s, lasttemps[4], temp, temphigh, templow, lasttemp
@@ -437,10 +439,10 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
     if havepmw
       'takeprintlock()
       Acq_time := getct()
-      ch, xl, yl := pmw.readMotionCountBurstQuick()      ' acquire 24us (4Mhz)
+      ch, xl, yl := pmw.readMotionCountBurstQuick()     ' acquire 24us (4Mhz)
       xsensor_l, xsensor_h, ysensor_l, ysensor_h, tsensor := pmw.readMotionAccum(false)
       Acq_time := getct() - Acq_time - 40
-      sport.setflow(@xl)                                 ' optical flow telemetry
+      sport.setflow(@xl)                                ' optical flow telemetry
       'releaseprintlock()                                ' release lock soon as we have finished printing
       if ch && utilities.longcomp(@lastx_l, @xsensor_l, 4, 0, ch)
         sensorupdate |= PMWCHANGE                       ' pmw changed
@@ -465,34 +467,25 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
         sensorupdate |= IMUCHANGE                       ' imu changed
 
     if havegps
-      'takeprintlock()
-      'serial.fstr0(string("gps input\r"))
       if (gpsret := gps.input()) <> 0
         ohour, omin, osec, onorthdeg, owestdeg, ospeed, oalt, gpsrel, ofix, osatno, ohdop := gps.gps()
         sport.setgps(onorthdeg, owestdeg, ospeed, oalt, ofix, osatno, ohdop)
         ogpst |= gpsret
         sensorupdate |= GPSCHANGE                       ' GPS changed
-        'serial.fstr0(string("gps input changed\r"))
-      'releaseprintlock()                                ' release lock soon as we have finished printing
 
     if (getms() - lasttemp) > 20                        ' ADC needs 164us to take a reading
-      'takeprintlock()
-      ovoltage := float((BATTERY_TEST == true)?27000 + (++volt // (BATTERY_HIGH-27000)):battery.read())/.BATTERY_DIVIDER
-      sport.setvoltage(ovoltage)                          ' battery voltage telemetry
+      ovoltage := float(battery.read())/.BATTERY_DIVIDER
+      sport.setvoltage(ovoltage)                        ' battery voltage telemetry
       if utilities.frel(fabs(ovoltage -. oldvoltage), BATTERYDELTA, UTILITIES.FGT)
-        'serial.fstr1(string("Voltage %.2g\r"), ovoltage)
         oldvoltage := ovoltage
         sensorupdate |= VOLTAGECHANGE
 
       repeat ch from 0 to SHARETEMP-1
-                                                         ' use temp offset to get temp in FL, FR, BL, BR order
-        otemps[ch] := (TEMP_TEST == true)?(++temp // (TEMP_MAX-1)):temperature[tempoffsets[ch]].read()
-      sport.settemperature(@otemps)                       ' temperature telemetry, 0.01C * 100
+        otemps[ch] := temperature[tempoffsets[ch]].read() ' use temp offset to get temp in FL, FR, BL, BR order
+      sport.settemperature(@otemps)                     ' temperature telemetry, 0.01C * 100
       if utilities.longcomp(@lasttemps, @otemps, SHARETEMP, TEMPDELTA, true)
-        'serial.fstr5(string("Temp %d FL:%d FR:%d BL:%d BR:%d\r"), lasttemp, otemps[0], otemps[1], otemps[2], otemps[3])
         sensorupdate |= TEMPCHANGE
       lasttemp := getms()
-      'releaseprintlock()                                  ' release lock soon as we have finished printing
 
     takesynclock()
     longmove(@sharedupdate, @sensorupdate, SHAREDVARIABLES) ' copy local to shared variables
@@ -512,7 +505,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
           serial.fstr2(string("USFSMAX acq: %d compute: %d \r"), Acq_time1/US_001, compute_time/US_001)
           'serial.fstr4(string("USFSMAX1 Yaw: %.2g, Pitch: %.2g, Roll: %.2g, Pressure: %.2ghPa\r"), osensor1[YAW], osensor1[PITCH], osensor1[ROLL], osensor1[PRESSURE])
           'serial.fstr2(string("USFSMAX1 acq: %d compute: %d \r"), Acq_time1/US_001, compute_time1/US_001)
-      if sensorupdate & CHANNELSTATE
+      if sensorupdate & CHANNELSTATE                    ' radio state change
         if debugoutput(UTILITIES.DEBUGOUT3)
           case_fast sbusstatus
             OK: serial.str(string("Online"))
@@ -520,27 +513,26 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
             LOST: serial.str(string("Frame Lost"))
             other: serial.str(string("Unknown"))
           serial.fstr3(string(" %d %d %d\r"), count, sbustime, sbus.count())
-      ' if channel values have changed
-      if sensorupdate & CHANNELCHANGE
+      if sensorupdate & CHANNELCHANGE                   ' channel values change
         if debugoutput(UTILITIES.DEBUGOUT3)
           serial.fstr1(string("Radio (%d): "), count)
           repeat ch from 0 to NOCHANNELS-1
             serial.fstr2(string("%d(%d) "), sbuschannels[ch], sbuschannels[ch]-lastchannels[ch]) ' channel value and delta from previous value
           serial.fstr0(string("\r"))
-      if sensorupdate & GPSCHANGE
+      if sensorupdate & GPSCHANGE                       ' gps change
         if debugoutput(fix == 0?UTILITIES.DEBUGOUT3:UTILITIES.DEBUGOUT4)
           serial.fstr5(string("GPS (%s) %x %2.2d:%2.2d:%+4.8g "), gpsrel, ogpst, ohour, omin, osec)
           serial.fstr2(string("%8.5g %10.5g "), onorthdeg, owestdeg)
           serial.fstr4(string("%.4g %.4g %d %d\r"), ospeed, oalt, fix, satno)
 
-      if sensorupdate & VOLTAGECHANGE
+      if sensorupdate & VOLTAGECHANGE                   ' battery voltage change
         if debugoutput(UTILITIES.DEBUGOUT3)
           serial.fstr1(string("Voltage %.2g\r"), ovoltage)
         if utilities.frel(ovoltage, BATTERY_MINIMUM, UTILITIES.FLT)
           serial.fstr1(string("Minimum Voltage reached %.2g\r"), ovoltage)
           if BATTERY_MIN_STOP                           ' if stop on battery min enabled
             quit                                        ' breakout the repeat, so this cog stops
-      if sensorupdate & TEMPCHANGE
+      if sensorupdate & TEMPCHANGE                      ' temperature sensor change
         if debugoutput(UTILITIES.DEBUGOUT3)
           serial.fstr5(string("Temp %d FL:%.2f FR:%.2f BL:%.2f BR:%.2f\r"), lasttemp, otemps[0], otemps[1], otemps[2], otemps[3])
         temphigh := templow := 0
@@ -562,14 +554,15 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
       if debugoutput(UTILITIES.DEBUGOUT4)
         serial.fstr1(string("Sensor period %d\r"), getms()-period_time)
       releaseprintlock()                                ' release lock soon as we have finished printing
-    ' need to update lastchannels since we didn't when we did the compare
-    if sensorupdate & CHANNELCHANGE
+
+    if sensorupdate & CHANNELCHANGE                     ' need to update lastchannels since we didn't when we did the compare
       longmove(@lastchannels, @sbuschannels, NOCHANNELS)
+                                                        ' sensor cog is stopping
   stopped := true                                       ' stop main cog
   waitms(100)                                           ' wait to make sure main cog has a chance to complete
   sbus.stop()                                           ' stop the sbus cog
   sport.stop()                                          ' stop the telemetry cog
-  serial.fstr0(string("Sensors stopped\r"))
+  serial.fstr0(string("Sensor cog stopped\r"))
   waitms(100)                                           ' wait to make sure everything is completed
 
 PRI debugoutput(type) : retv
@@ -596,12 +589,12 @@ DAT
   Defaults      word    0, 0,   0,   0
   '                            Kp                                 Ki                                Kd
   '                            5                                  6                                 7
-                word    trunc(-0.0*.PIDCONSTANTSDIVIDER100), trunc(-0.0*.PIDCONSTANTSDIVIDER100), trunc(-0.0*.PIDCONSTANTSDIVIDER1000)
+                word    trunc(0.0*.PIDCONSTANTSDIVIDER100), trunc(0.0*.PIDCONSTANTSDIVIDER100), trunc(0.0*.PIDCONSTANTSDIVIDER1000)
   '                        D1        D2        D3
   '                         8         9        10
                 word    MINDEBUG, MINDEBUG, MINDEBUG
-  '                      11    12    13    14    15    16    17    18
-                word      0,    0,    0,    0,    0,    0,    0,    0
+  '                      11    12             13    14    15    16    17    18
+                word      0,    MINDEFAULT,    0,    0,    0,    0,    0,    0
   ' minimum sbus mapping
   '                            Y                 X                T                R
   minmap        long    -swerve.MAXSPEED, -swerve.MAXSPEED,       0,        -swerve.MAXSPEED
@@ -657,7 +650,7 @@ DAT
   '                     FL    FR    BL    BR
   '                     D  S  D  S  D  S  D  S
   motoroffsets  long    7, 6, 3, 2, 5, 4, 1, 0
-  '                     FL, FR, BL, BR
+  '                     FL, FR, BL, BR - FR and BR tested, FL/BL untested and maybe switched
   tempoffsets   long    3,  1,  2,  0
 
   ' whether each motor is inverted
@@ -679,3 +672,27 @@ DAT
                 LONG MAG_DECLINIATION
                 byte QUAT_DIV, 0, 0, 0
 '
+con { license }
+
+{{
+
+  Terms of Use: MIT License
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this
+  software and associated documentation files (the "Software"), to deal in the Software
+  without restriction, including without limitation the rights to use, copy, modify,
+  merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to the following
+  conditions:
+
+  The above copyright notice and this permission notice shall be included in all copies
+  or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+  PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+  CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+  OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+}}
