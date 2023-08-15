@@ -5,7 +5,6 @@ Temp sensor - TMP36
   Noise from RC radio makes the temp sensors underread, so max filter the sensors
 }
 
-
 CON
   HISTORY_SIZE    = 8
 
@@ -18,7 +17,6 @@ OBJ
   analog        : "jm_ez_analog"                               ' A2D to read motor driver temperature sensors
 
 pub null()
-
   ' This is not a top-level object
 
 pub start(pin, lo, hi) | i
@@ -27,9 +25,9 @@ pub start(pin, lo, hi) | i
   longfill(@history, 0, HISTORY_SIZE)
   analog.start(pin, lo, hi)
 
-  ' fill history with initial values
+  ' fill history buffer with initial values
   repeat i from 0 to HISTORY_SIZE-1
-    waitms(1)
+    waitus(250)
     read()
 
 pub stop()
@@ -37,7 +35,7 @@ pub stop()
   analog.stop()
 
 pub read() : result | max, i
-
+' keep last HISTORY_SIZE in array and return largest of these values
   max := history[index] := analog.read()
   index := (index+1) // HISTORY_SIZE
 
@@ -46,3 +44,27 @@ pub read() : result | max, i
       max := history[i]
   return max
 '
+con { license }
+
+{{
+
+  Terms of Use: MIT License
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this
+  software and associated documentation files (the "Software"), to deal in the Software
+  without restriction, including without limitation the rights to use, copy, modify,
+  merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to the following
+  conditions:
+
+  The above copyright notice and this permission notice shall be included in all copies
+  or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+  PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+  CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+  OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+}}
