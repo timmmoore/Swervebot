@@ -1,5 +1,7 @@
 {
   FrSky S.Port
+                timmoore
+
         57600 baud/ 8N
         inverted rx/tx - bidirectional
 

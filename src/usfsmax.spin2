@@ -1,7 +1,10 @@
-{USFSMax}
-{ https://hackaday.io/project/160283-max32660-motion-co-processor }
-{ https://github.com/gregtomasch/USFSMAX_MMC_Module }
-{ https://d3s5r33r268y59.cloudfront.net/datasheets/22105/2020-12-08-22-58-37/USFSMAX.ProductBrief.pdf }
+{USFSMax
+                timmoore
+
+ https://hackaday.io/project/160283-max32660-motion-co-processor
+ https://github.com/gregtomasch/USFSMAX_MMC_Module
+ https://d3s5r33r268y59.cloudfront.net/datasheets/22105/2020-12-08-22-58-37/USFSMAX.ProductBrief.pdf
+}
 
 CON
   MAX32660ADDR                  = $57

@@ -1,5 +1,6 @@
 {
 Temp sensor - TMP36
+                timmoore
 
   Denoise the temp sensors
   Noise from RC radio makes the temp sensors underread, so max filter the sensors

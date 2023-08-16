@@ -1,6 +1,6 @@
-{Swerve bot}
+{Swerve bot
+                timmoore
 
-{
   3S lithium battery
         -> 5V regulator -> propeller 2
                 -> debug serial to PC (tx(62), rx(63))

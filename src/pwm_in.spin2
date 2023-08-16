@@ -1,5 +1,7 @@
 {
   PWM - SRX encoder:
+                 timmoore
+
         pin 2         5V
         pin 10        Gnd
         pin 9         pwm, 3.3V

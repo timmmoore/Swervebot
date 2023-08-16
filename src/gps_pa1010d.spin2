@@ -1,4 +1,7 @@
-{I2C PA1010D GPS}
+{I2C PA1010D GPS
+
+                timmoore
+}
 
 CON
   GPS_I2C_SPEED =               1500                    '

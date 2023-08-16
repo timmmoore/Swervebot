@@ -1,5 +1,7 @@
-{I2C motor driver}
-{}
+{I2C motor driver
+                timmoore
+
+}
 
 CON
   MOTOR1            = $40                               ' i2c address first motor board
