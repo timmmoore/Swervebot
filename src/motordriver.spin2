@@ -10,7 +10,8 @@ CON
   PCA9685_PRESCALE  =           $FE                     ' prescaler register
   LED0_ON_L         =           $6                      ' start of led configuration registers
                                                         ' per led: on low, on high, off low, off high
-  LED_ALWAYS        =           4096                    ' bit 12 set means always on/off
+  LED_ALWAYS_ON     =           (1<<(8+4))      '4096   ' bit 12 set means always on
+  LED_ALWAYS_OFF    =           (1<<(16+8+4))           ' bit 12+16 set means always off
 
   NO_MOTOR1         =           $04
   NO_MOTOR2         =           $08
@@ -77,7 +78,7 @@ PUB brakemotors() | ch
 
 PUB brakemotor(m)
 ' brake motor, m is motor driver no
-  setPWMAll(addrs[m>>2], pwmpins[m&3], in1pins[m&3], in2pins[m&3], LED_ALWAYS, LED_ALWAYS, LED_ALWAYS)
+  setPWMAll(addrs[m>>2], pwmpins[m&3], in1pins[m&3], in2pins[m&3], LED_ALWAYS_ON, LED_ALWAYS_ON, LED_ALWAYS_ON)
 
 PRI initpwm(addr) | oldmode
   '' init pwm on motor driver board
@@ -147,7 +148,7 @@ PRI setPWMAll(addr, num3, num2, num1, value1, value2, value3) : retv
   if debugoutput(UTILITIES.DEBUGOUT4)
     serial.fstr8(string("setpwmall done %x %x %x %x %x %x %x %d\r"), addr, num1, value1, num2, value2, num3, value3, retv)
 
-PUB run(motor, speed) | addr, pwm, in1, in2, in2v, pwmv, temp, retv
+PUB run(motor, speed) : retv | addr, pwm, in1, in2, in2v, pwmv, temp
 '' set speed of 1 motor of a swerve module
   ' lookup PCA9865 board address and PCA9865 led registers used for each motor driver pin: pwm, in1, in2
   ' note addr is already << 1 shifted and pins are register indexes
@@ -156,10 +157,15 @@ PUB run(motor, speed) | addr, pwm, in1, in2, in2v, pwmv, temp, retv
 
   ' set the direction and pwm pin values
   ' low word is on, high word is off
-  ' bit 12 is always on/off
+  ' bit 12 means always on/off
+  ' in1 and in2 can be ON(0)|OFF(0) or ON(LED_ALWAYS)|OFF(0)
+  ' should we use ON(0)|OFF(LED_ALWAYS) or ON(LED_ALWAYS)|OFF(0) instead?
+  ' pwm is ON(pwm)|OFF(0) or ON(LED_ALWAYS)|OFF(0)
+  ' out is on after ON count, and off after OFF count, count for on and off is from same time
+  ' except if count > 4095 in which case, off is from next count start
   if (pwmv := abs(speed)) <> 0
-    in2v := LED_ALWAYS                                  ' always on
-    pwmv := pwmv >= in2v ? in2v : pwmv<<16              ' always on or pwm in off
+    in2v := LED_ALWAYS_ON                               ' always on
+    pwmv := pwmv >= in2v ? in2v : pwmv<<16              ' always on or pwm in off (on at count 0, off at count pwmv)
 
   pwm, in1, in2 := pwmpins[temp:=motor&3], in1pins[temp], in2pins[temp]
   ' invert the direction registers if needed by switching the 2 direction pins
