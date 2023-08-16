@@ -110,7 +110,7 @@ dat
   debugtypes long  DEBUG1_OUTPUT, DEBUG2_OUTPUT, DEBUG3_OUTPUT, DEBUG4_OUTPUT
 
 PUB add64(xl, xh, x) : rxl, rxh
-' 64bit signed add
+' 64bit + 32bit signed add
   longmove(@rxl, @xl, 2)
 
   org
@@ -120,11 +120,12 @@ PUB add64(xl, xh, x) : rxl, rxh
 
 pub cart_pol(x, y) : r, t
 '' Convert coordinate x,y to polar (length, angle (0.1deg))
+' from forums
   org
     qvector   x, y                                      ' cartesian to polar
     getqx     r                                         ' get radius (length)
     getqy     t                                         ' get theta (angle)
-    qdiv      t, ##1193046                              ' convert angle to 0.1 degree units
+    qdiv      t, ##1193046                              ' convert angle to 0.1 degree units, $ffffffff/1193046 -> 3600
     getqx     t
   end
 '
