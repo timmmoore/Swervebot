@@ -86,8 +86,14 @@ con { fixed io pins }
   CHANNEL_DEBUG1                = 7                                             ' 8 - debug values sa
   CHANNEL_DEBUG2                = 8                                             ' 9                sb
   CHANNEL_DEBUG3                = 9                                             ' 10               sc
-                                                                                ' 11 - not used, S2
+  CHANNEL_10                    = 10                                            ' 11 - not used, S2
   CHANNEL_PIDSELECT             = 11                                            ' 12 - pid adjustment selector sd
+  CHANNEL_12                    = 12                                            ' 13 - not used
+  CHANNEL_13                    = 13                                            ' 14 - not used
+  CHANNEL_14                    = 14                                            ' 15 - not used
+  CHANNEL_15                    = 15                                            ' 16 - not used
+  CHANNEL_16                    = 16                                            ' 17 - not used
+  CHANNEL_17                    = 17                                            ' 18 - not used
 
   MINDELTA                      = 5                                             ' minimum channel change
 
@@ -254,7 +260,7 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
   debug1, debug2, debug3 := INIT_DEBUG, INIT_DEBUG, INIT_DEBUG
   longfill(@lastchannels, -1, NOCHANNELS)
   waitms(2000)
-  serial.start(BR_SERIAL)
+  serial.startx(WIFI_DO_PIN, WIFI_DI_PIN, BR_SERIAL)
 
   waitms(2000)
   if debugoutput(UTILITIES.DEBUGOUT3)
@@ -272,8 +278,7 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
   swerve.debugconfig(debug2, debug3)
   dopidconstants()
 
-  ' initialize server modules and motors
-
+  ' initialize swerve modules and motors
   if (havemotors := swerve.start(MOTOR_SCL, MOTOR_SDA, ENCODERPIN1, MOTOR_FAN_PIN, @bot, @pinoffsets, @angleoffsets, @minencoder, @maxencoder, @invert, @motoroffsets, @driveencoders))
     if debugoutput(UTILITIES.DEBUGOUT1)
       if havemotors & $01
@@ -283,6 +288,8 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
   else
     if debugoutput(UTILITIES.DEBUGOUT4)
       serial.fstr1(string("Swerve motors found %x\r"), havemotors)
+  swerve.getactuals(@speeds, @aspeeds, @angles)         ' init telemetry to initialized values
+  sport.setactuals(@speeds, @aspeeds, @angles, swerve.MAXANGLE) ' swerve speeds/angles telemetry
 
   cognum := COGSPIN(newcog, runsensors(), @StkAddr)     ' initialize sensors
 
@@ -291,15 +298,14 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
   repeat
     waitms(temp := ((SWERVEPERIOD - (getms() - delaystart)) #> 1)) ' max delay SWERVEPERIOD
     if stopped                                          ' bot needs to be stopped
-      quit                                              ' leave the repeat loop and stop cog
+      quit                                              ' leave the repeat and stop cog
 
     acq_time := getms()
     takesynclock()                                      ' make sure shared variables are not being updated
     longmove(@swerveupdate, @sharedupdate, SHAREDVARIABLES) ' copy shared variables to local copy
     releasesynclock()
 
-    ' use local variables and see if any channel changes or swerve modules need updating again
-    if swerveupdate & CHANNELCHANGE || again
+    if swerveupdate & CHANNELCHANGE || again            ' use local cog variables and see if any channel changes or swerve modules need updating again
       if debugo := (debugoutput(UTILITIES.DEBUGOUT1) || utilities.debugoutput(debug2, UTILITIES.DEBUGOUT1) || utilities.debugoutput(debug3, UTILITIES.DEBUGOUT1))
         takeprintlock()                                 ' take the print lock if any debug level is on
       delaystart := getms()                             ' delay from after motors updated, debug print delays part of processing time
@@ -307,8 +313,7 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
       if swerveupdate & CHANNELCHANGE                   ' dont need to do this unless channels have changed
         ' update local debug variable before using it
         debug1, debug2, debug3 := swervechannels[CHANNEL_DEBUG1], swervechannels[CHANNEL_DEBUG2], swervechannels[CHANNEL_DEBUG3]
-        ' update remaining debug values through system
-        swerve.debugconfig(debug2, debug3)
+        swerve.debugconfig(debug2, debug3)              ' update remaining debug values through system
         dopidconstants()
 
       if havemotors <> (swerve.NO_MOTOR1|swerve.NO_MOTOR2) ' update swerve modules with updated movements
@@ -341,8 +346,7 @@ PRI updatepidconstants(pKp, pKi, pKd) | i
 
 PRI dopidconstants() | tSkp[NO_SWERVE_MODULES], tSki[NO_SWERVE_MODULES], tSkd[NO_SWERVE_MODULES], tDkp[NO_SWERVE_MODULES], tDki[NO_SWERVE_MODULES], tDkd[NO_SWERVE_MODULES], omax[2]
   ' update pid constants
-  ' start with defaults
-  longmove(@tSkp, @defaultSteerKp, NO_SWERVE_MODULES)
+  longmove(@tSkp, @defaultSteerKp, NO_SWERVE_MODULES)   ' start with defaults
   longmove(@tSki, @defaultSteerKi, NO_SWERVE_MODULES)
   longmove(@tSkd, @defaultSteerKd, NO_SWERVE_MODULES)
   longmove(@tDkp, @defaultDriveKp, NO_SWERVE_MODULES)
@@ -359,8 +363,7 @@ PRI dopidconstants() | tSkp[NO_SWERVE_MODULES], tSki[NO_SWERVE_MODULES], tSkd[NO
 
 PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_time, compute_time1, havepmw, haveusfsmax, havegps, sbusstatus, lsbusstatus, ch, lastx_l, lastx_h, lasty_l, lasty_h, lasto[4], debugo, delaystart, gpsret, gpsrel, xl, yl, oldvoltage, volt, s, lasttemps[4], temp, temphigh, templow, lasttemp, lastimu
 
-  ' init optical flow sensor
-  ifnot pmw.begin(PMW_CS, PMW_SCK, PMW_SDO, PMW_SDI) == false
+  ifnot pmw.begin(PMW_CS, PMW_SCK, PMW_SDO, PMW_SDI) == false ' init optical flow sensor
     havepmw := true
   if debugoutput(havepmw?UTILITIES.DEBUGOUT3:UTILITIES.DEBUGOUT1)
     serial.fstr1(string("PMW3901%sfound\r"), havepmw?string(" "):string(" not "))
@@ -370,8 +373,8 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
     if PMW_LED
       pmw.setLed(PMW_LED)
     pmw.readMotionAccum(true)                           ' reset accumulator
-  ' init IMU
-  ifnot (Acq_time := usfsmax.startx(USFSMAX_SCL, USFSMAX_SDA, USFSMAX_RESET, @Config, yawoffset)) == 0
+
+  ifnot (Acq_time := usfsmax.startx(USFSMAX_SCL, USFSMAX_SDA, USFSMAX_RESET, @Config, yawoffset)) == 0 ' init IMU
     if debugoutput(UTILITIES.DEBUGOUT1)
       case_fast Acq_time
         $01: serial.fstr1(string("USFSMAX I2C bus error %x\r"), Acq_time)
@@ -382,9 +385,8 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
       serial.fstr0(string("USFSMAX found\r"))
     haveusfsmax := true
 
-  ' init RC receiver
   sbus.start(SBUS_RX, @Defaults)                        ' start s.bus rx
-  waitms(100)
+  waitms(50)
   sbus.reset_count()                                    ' reset frames received count
   sport.start(SBUS_SPORT)                               ' start telemetry channel to transmitter
 
@@ -406,8 +408,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
     period_time := getms()
     ' read sensors into local variables
     sensorupdate := 0
-    ' any channel to tx sbus?
-    lsbusstatus := 0
+    lsbusstatus := 0                                    ' any channel to tx sbus?
     if sbus.in_failsafe()
       lsbusstatus := FAILSAFE
     elseifnot sbus.has_signal()
@@ -430,8 +431,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
     'serial.fstr0(string("\r"))
     'releaseprintlock()                                  ' release lock soon as we have finished printing
 
-    ' optical flow sensor
-    if havepmw
+    if havepmw                                          ' optical flow sensor
       'takeprintlock()
       Acq_time := getct()
       ch, xl, yl := pmw.readMotionCountBurstQuick()     ' acquire 24us (4Mhz)
@@ -442,8 +442,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
       if ch && utilities.longcomp(@lastx_l, @xsensor_l, 4, 0, ch)
         sensorupdate |= PMWCHANGE                       ' pmw changed
 
-    ' IMU
-    if haveusfsmax
+    if haveusfsmax                                      ' IMU
       'takeprintlock()
       Acq_time1 := getct()
       _, qt[0], qt[1], qt[2], qt[3] := usfsmax.getMin() ' 239us (3.0MHz)
@@ -461,14 +460,14 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
       if utilities.longcompf(@lasto, @osensor, SHAREDIMU, 0.11, true)
         sensorupdate |= IMUCHANGE                       ' imu changed
 
-    if havegps
+    if havegps                                          ' gps
       if (gpsret := gps.input()) <> 0
         ohour, omin, osec, onorthdeg, owestdeg, ospeed, oalt, gpsrel, ofix, osatno, ohdop := gps.gps()
         sport.setgps(onorthdeg, owestdeg, ospeed, oalt, ofix, osatno, ohdop)
         ogpst |= gpsret
         sensorupdate |= GPSCHANGE                       ' GPS changed
 
-    if (getms() - lasttemp) > 20                        ' ADC needs 164us to take a reading
+    if (getms() - lasttemp) > 20                        ' ADCs needs 164us to take a reading
       ovoltage := float(battery.read())/.BATTERY_DIVIDER
       sport.setvoltage(ovoltage)                        ' battery voltage telemetry
       if utilities.frel(fabs(ovoltage -. oldvoltage), BATTERYDELTA, UTILITIES.FGT)
@@ -487,8 +486,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
     releasesynclock()
 
     delaystart := getms()                               ' print delays are part of sensor delay
-    ' print any changes if debutoutput enabled
-    if debugoutput(UTILITIES.DEBUGOUT3) or debugoutput(UTILITIES.DEBUGOUT4)
+    if debugoutput(UTILITIES.DEBUGOUT3) or debugoutput(UTILITIES.DEBUGOUT4) ' print any changes if debutoutput enabled
       takeprintlock()
       if sensorupdate & PMWCHANGE
         if debugoutput(UTILITIES.DEBUGOUT3)
@@ -646,7 +644,7 @@ DAT
   '                     FL    FR    BL    BR
   '                     D  S  D  S  D  S  D  S
   motoroffsets  long    7, 6, 3, 2, 5, 4, 1, 0
-  '                     FL, FR, BL, BR - FR/BR offset correct, FL/BL offset untested
+  '                     FL, FR, BL, BR
   tempoffsets   long    3,  1,  2,  0
 
   ' whether each motor is inverted

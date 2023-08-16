@@ -10,7 +10,7 @@
 CON
   MAXSPEEDSHIFT = 12
   MAXSPEED      = 1<<MAXSPEEDSHIFT                      ' -4096 < 0 < 4096
-  MAXANGLE      = 3600                                  ' 0-1024 is 0-360deg, +ve is clockwise, -ve anticlockwise
+  MAXANGLE      = 3600                                  ' 0-3600 is 0-360deg, +ve is clockwise, -ve anticlockwise
 
   MINDRIVESPEED = 30
   MINSTEERINGSPEED = 40
@@ -96,6 +96,7 @@ PUB start(scl, sda, epin, tfpin, pbot, ppinoffsets, pangleoffsets, pminencoder, 
 
   repeat ch from 0 to MAX_SWERVE_MODULES-1
     pid[ch].init(ch, MAXANGLE, MAXSPEED)                ' 0-MAXANGLE input, +- MAXSPEED output
+    pid[ch].currentposition(actualangles[ch] := encoder.read(ch, false)) ' current angle of swerve
     pid[ch].setposition(0)                              ' start angle
     driveencoders[ch].start(long[pdencoders][ch], long[pdencoders][ch+4], clkfreq/10)
     driveencodercount[ch], driveencodervelocity[ch] := driveencoders[ch].read() ' current quadrature count
