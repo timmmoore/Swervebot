@@ -49,6 +49,7 @@ var { globals }
   long  clktix                                                  ' ticks in 1/4 clock period
   long  setup
 
+pub null()
 
 pub start(sdi, sdo, sck, mode, khz)
 

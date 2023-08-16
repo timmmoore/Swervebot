@@ -27,6 +27,8 @@ VAR
 OBJ
   serial        : "isp_serial_singleton_tmm"
 
+PUB null()
+
 PUB startfan(fpin)
 ' config the fan output pin and make sure fan is off
   fanpin := fpin
