@@ -67,10 +67,10 @@ pub fpdec(value, dp) : p_str | multi, negs, len, byte scratch[12]
 '' -- return pointer to converted string
 
   if (multi := lookup(dp: 10.0, 100.0, 1000.0, 10000.0, 100000.0)) == 0
-    multi := 100.0                                               ' default
+    multi := 10000.0                                             ' default
   negs := (value < 0)
   value := fabs(value)
-  p_str := itoa((trunc(value*.multi)-(trunc(value)*trunc(multi))), 10, 0, 0)
+  p_str := itoa((round(value*.multi)-(trunc(value)*trunc(multi))), 10, dp, 0)
   strcopy(@scratch, p_str, 11)                                   ' save fraction to scratch buffer
 
   p_str := itoa(trunc(value), 10, 0, negs)
