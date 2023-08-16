@@ -143,15 +143,17 @@ VAR
   long lastsensorindex[MAXNOSENSORS]                    ' has sensor been sent, make sure all sensors for physicalid have been sent
   long latitude, longitude, speed, alt, fix, satno, hdop ' from gps
   long heading, pitch, roll, pressure                   ' from imu
-  long actualspeeds[4], actualaspeeds[4], actualangles[4] ' from swerve modules
+  long actualspeeds[4], actualaspeeds[4], actualangles[4], maxangle ' from swerve modules
   long flow[2], temps[4]
   long voltage
   long batterycount, battery[MAXCELLS]
-  long StkAddr[10000]
+  long StkAddr[20000]
 
 OBJ
   serial        : "isp_serial_singleton_tmm"
   utilities     : "utilities"
+
+pub null()
 
 PUB start(pin) : retv | x
   rxp := pin
@@ -177,10 +179,11 @@ pub setgps(tlatitude, tlongitude, tspeed, talt, tfix, tsatno, thdop)
 pub setimu(theading, tpitch, troll, tpressure)
   longmove(@heading, @theading, 4)
 
-pub setactuals(pspeeds, paspeeds, pangles)
+pub setactuals(pspeeds, paspeeds, pangles, tmax)
   longmove(@actualspeeds, pspeeds, 4)
   longmove(@actualaspeeds, paspeeds, 4)
   longmove(@actualangles, pangles, 4)
+  maxangle := tmax
 
 pub setflow(pflows)
   longmove(@flow, pflows, 2)
@@ -317,8 +320,8 @@ pri actual(value) : valuet
     valuet |= DECOD(15)
 
 pri actuals_getData(applicationIdt, subindex) : valuet
-  valuet := actual(actualspeeds[applicationIdt-FSSP_ACTUAL1])               ' sign in word bit 15
-  valuet |= (actual(round((float(actualangles[applicationIdt-FSSP_ACTUAL1]) *. 360.0)/.10.24)) << 16) ' 0-360.00 * 100 in upper word
+  valuet := actual(actualspeeds[applicationIdt-FSSP_ACTUAL1])
+  valuet |= (actual(muldiv64(actualangles[applicationIdt-FSSP_ACTUAL1], 36000, maxangle)) << 16) ' 0-360.00 * 100 in upper word
 
 pri flow_getData(index) : valuet
   valuet := flow[index]

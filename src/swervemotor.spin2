@@ -10,7 +10,7 @@
 CON
   MAXSPEEDSHIFT = 12
   MAXSPEED      = 1<<MAXSPEEDSHIFT                      ' -4096 < 0 < 4096
-  MAXANGLE      = 1024                                  ' 0-1024 is 0-360deg, +ve is clockwise, -ve anticlockwise
+  MAXANGLE      = 3600                                  ' 0-1024 is 0-360deg, +ve is clockwise, -ve anticlockwise
 
   MINDRIVESPEED = 30
   MINSTEERINGSPEED = 40
@@ -131,6 +131,7 @@ pub stopmotors()
 PRI setmotorspeeds(pspeeds) : retv | ch, speed, drive, off
   ' set all motor speeds, drive and angle
   ' swerve modules on 1st and 2nd motor driver
+  ' return true if any motor is above min speed
   repeat ch from 0 to 7
     speed := long[pspeeds][ch]
     if (drive := ch & 1) == 0
@@ -207,32 +208,19 @@ PRI calculate(x, y, r, pspeeds, pangles) | a, b, c, d, xrl, yrl, rl
   if debugoutput(UTILITIES.DEBUGOUT3)
     serial.fstr4(string("Swerve calculate %d %d %d %d\r"), a, b, c, d)
 
-  ' xypol returns length and unsigned 32-bit angle, where $00000000..$FFFFFFFF = 0..359.9999999 degrees
-  ' scale angle to MAXANGLE
-  long[pspeeds][D_FRONT_LEFT],  long[pangles][A_FRONT_LEFT]  := scaleangle(xypol(b, c)) ' front, left
-  long[pspeeds][S_FRONT_LEFT] := 0
+  ' cart_pol returns length and unsigned 32-bit angle, where 0..3599 = 0..359.9 degrees
+  long[pspeeds][D_FRONT_LEFT],  long[pangles][A_FRONT_LEFT],  long[pspeeds][S_FRONT_LEFT] := utilities.cart_pol(b, c), 0 ' front, left
   Swerve1Debug(0, pspeeds, pangles, D_FRONT_LEFT, A_FRONT_LEFT)
-  long[pspeeds][D_FRONT_RIGHT], long[pangles][A_FRONT_RIGHT] := scaleangle(xypol(a, c)) ' front, right
-  long[pspeeds][S_FRONT_RIGHT] := 0
+  long[pspeeds][D_FRONT_RIGHT], long[pangles][A_FRONT_RIGHT], long[pspeeds][S_FRONT_RIGHT] := utilities.cart_pol(a, c), 0 ' front, right
   Swerve1Debug(1, pspeeds, pangles, D_FRONT_RIGHT, A_FRONT_RIGHT)
-  long[pspeeds][D_BACK_LEFT],   long[pangles][A_BACK_LEFT]   := scaleangle(xypol(b, d)) ' back, left
-  long[pspeeds][S_BACK_LEFT] := 0
+  long[pspeeds][D_BACK_LEFT],   long[pangles][A_BACK_LEFT],   long[pspeeds][S_BACK_LEFT]   := utilities.cart_pol(b, d), 0 ' back, left
   Swerve1Debug(2, pspeeds, pangles, D_BACK_LEFT, A_BACK_LEFT)
-  long[pspeeds][D_BACK_RIGHT],  long[pangles][A_BACK_RIGHT]  := scaleangle(xypol(a, d)) ' back, right
-  long[pspeeds][S_BACK_RIGHT] := 0
+  long[pspeeds][D_BACK_RIGHT],  long[pangles][A_BACK_RIGHT],  long[pspeeds][S_BACK_RIGHT] := utilities.cart_pol(a, d), 0 ' back, right
   Swerve1Debug(3, pspeeds, pangles, D_BACK_RIGHT, A_BACK_RIGHT)
 
 PRI Swerve1Debug(no, pspeeds, pangles, p1, p2)
   if debugoutput(UTILITIES.DEBUGOUT3)
-    serial.fstr4(string("Swerve %s speed/angle %d %d(%.2f)\r"), @@sptr[no], long[pspeeds][p1],  long[pangles][p2],  scaleangle360(long[pangles][p2]))
-
-PRI scaleangle360(inangle) : scaledangle
-' scale 0-MAXANGLE to 0-36000
-  scaledangle := muldiv64(inangle, 36000, MAXANGLE)
-
-PRI scaleangle(ind, inangle) : rd, scaledangle
-' scale xypol output angle to 0-MAXANGLE
-  rd, scaledangle := ind, inangle SCA MAXANGLE
+    serial.fstr4(string("Swerve %s speed/angle %d %d(%.1f)\r"), @@sptr[no], long[pspeeds][p1],  long[pangles][p2],  long[pangles][p2])
 
 CON
   ACCINTERVAL   = 20                                    ' acceleration limiting interval, ms
