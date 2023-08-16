@@ -205,6 +205,7 @@ con { fixed io pins }
   INIT_DEBUG                    = 500
 
   MINDEFAULT                    = 0
+  MIDDEFAULT                    = 500
   MAXDEFAULT                    = 1000
 
   SHAREDPMW                     = 5                                             ' xsensor_l, xsensor_h, ysensor_l, ysensor_h, tsensor                     '
@@ -259,10 +260,10 @@ OBJ
 PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_time, again, temp, temp1, speeds[NO_SWERVE_MODULES], aspeeds[NO_SWERVE_MODULES], angles[NO_SWERVE_MODULES]
   debug1, debug2, debug3 := INIT_DEBUG, INIT_DEBUG, INIT_DEBUG
   longfill(@lastchannels, -1, NOCHANNELS)
-  waitms(2000)
+  waitms(1000)
   serial.startx(WIFI_DO_PIN, WIFI_DI_PIN, BR_SERIAL)
 
-  waitms(2000)
+  waitms(1000)
   if debugoutput(UTILITIES.DEBUGOUT3)
     serial.fstr0(string("Swerve Controller\r"))
 
@@ -352,7 +353,7 @@ PRI dopidconstants() | tSkp[NO_SWERVE_MODULES], tSki[NO_SWERVE_MODULES], tSkd[NO
   longmove(@tDkp, @defaultDriveKp, NO_SWERVE_MODULES)
   longmove(@tDki, @defaultDriveKi, NO_SWERVE_MODULES)
   longmove(@tDkd, @defaultDriveKd, NO_SWERVE_MODULES)
-  if swervechannels[CHANNEL_PIDSELECT] == MINDEFAULT
+  if swervechannels[CHANNEL_PIDSELECT] < MIDDEFAULT
     updatepidconstants(@tSkp, @tSki, @tSkd)
   else
     updatepidconstants(@tDkp, @tDki, @tDkd)
