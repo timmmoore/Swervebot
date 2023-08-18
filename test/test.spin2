@@ -63,39 +63,78 @@ PUB main()
 PRI testf(t)
     serial.fstr4(string("\rtest %d test1:%d.%d(%x)"), t, trunc(test1), trunc(test1*.10.0)-(trunc(test1)*10), test1)
     serial.fstr3(string(" test2:%d.%d(%x)\r"), trunc(test2), trunc(test2*.10.0)-(trunc(test2)*10), test2)
-    if frel(test1, test2, $a2) 'test1 <. test2
-      serial.fstr0(string("if test1 <. test2\r"))
-    else
-      serial.fstr0(string("else test1 <. test2\r"))
-    if frel(test2, test1, $a4) 'test2 >. test1
-      serial.fstr0(string("if test2 >. test1\r"))
-    else
-      serial.fstr0(string("else test2 >. test1\r"))
-    if frel(test1, test2, $aa) 'test1 <=. test2
-      serial.fstr0(string("if test1 <=. test2\r"))
-    else
-      serial.fstr0(string("else test1 <=. test2\r"))
-    if frel(test2, test1, $ac) 'test2 >=. test1
-      serial.fstr0(string("if test2 >=. test1\r"))
-    else
-      serial.fstr0(string("else test2 >=. test1\r"))
 
-    if frel(test2, test1, $a2) 'test2 <. test1
-      serial.fstr0(string("if test2 <. test1\r"))
-    else
-      serial.fstr0(string("else test2 <. test1\r"))
-    if frel(test1, test2, $a4) 'test1 >. test2
-      serial.fstr0(string("if test1 >. test2\r"))
-    else
-      serial.fstr0(string("else test1 >. test2\r"))
-    if frel(test2, test1, $aa) 'test2 <=. test1
-      serial.fstr0(string("if test2 <=. test1\r"))
-    else
-      serial.fstr0(string("else test2 <=. test1\r"))
-    if frel(test1, test2, $ac) 'test1 >=. test2
-      serial.fstr0(string("if test1 >=. test2\r"))
-    else
-      serial.fstr0(string("else test1 >=. test2\r"))
+   if test1 <. test2
+     serial.fstr0(string("if test1 <. test2\r"))
+   else
+     serial.fstr0(string("else test1 <. test2\r"))
+   if frel(test1, test2, $a2) 'test1 <. test2
+     serial.fstr0(string("if frel test1 <. test2\r"))
+   else
+     serial.fstr0(string("else frel test1 <. test2\r"))
+
+   if test2 >. test1
+     serial.fstr0(string("if test2 >. test1\r"))
+   else
+     serial.fstr0(string("else test2 >. test1\r"))
+   if frel(test2, test1, $a4) 'test2 >. test1
+     serial.fstr0(string("if frel test2 >. test1\r"))
+   else
+     serial.fstr0(string("else frel test2 >. test1\r"))
+
+   if test1 <=. test2
+     serial.fstr0(string("if test1 <=. test2\r"))
+   else
+     serial.fstr0(string("else test1 <=. test2\r"))
+   if frel(test1, test2, $aa) 'test1 <=. test2
+     serial.fstr0(string("if frel test1 <=. test2\r"))
+   else
+     serial.fstr0(string("else frel test1 <=. test2\r"))
+
+   if test2 >=. test1
+     serial.fstr0(string("if test2 >=. test1\r"))
+   else
+     serial.fstr0(string("else test2 >=. test1\r"))
+   if frel(test2, test1, $ac) 'test2 >=. test1
+     serial.fstr0(string("if frel test2 >=. test1\r"))
+   else
+     serial.fstr0(string("else frel test2 >=. test1\r"))
+
+   if test2 <. test1
+     serial.fstr0(string("if test2 <. test1\r"))
+   else
+     serial.fstr0(string("else test2 <. test1\r"))
+   if frel(test2, test1, $a2) 'test2 <. test1
+     serial.fstr0(string("if frel test2 <. test1\r"))
+   else
+     serial.fstr0(string("else frel test2 <. test1\r"))
+
+   if test1 >. test2
+     serial.fstr0(string("if test1 >. test2\r"))
+   else
+     serial.fstr0(string("else test1 >. test2\r"))
+   if frel(test1, test2, $a4) 'test1 >. test2
+     serial.fstr0(string("if frel test1 >. test2\r"))
+   else
+     serial.fstr0(string("else frel test1 >. test2\r"))
+
+   if test2 <=. test1
+     serial.fstr0(string("if test2 <=. test1\r"))
+   else
+     serial.fstr0(string("else test2 <=. test1\r"))
+   if frel(test2, test1, $aa) 'test2 <=. test1
+     serial.fstr0(string("if frel test2 <=. test1\r"))
+   else
+     serial.fstr0(string("else frel test2 <=. test1\r"))
+
+   if test1 >=. test2
+     serial.fstr0(string("if test1 >=. test2\r"))
+   else
+     serial.fstr0(string("else test1 >=. test2\r"))
+   if frel(test1, test2, $ac) 'test1 >=. test2
+     serial.fstr0(string("if frel test1 >=. test2\r"))
+   else
+     serial.fstr0(string("else frel test1 >=. test2\r"))
 
 PRI frel(t1, t2, p): r | x, w, y, _FFFFFFFF, paa
 
@@ -124,9 +163,10 @@ PRI frel(t1, t2, p): r | x, w, y, _FFFFFFFF, paa
 
                 muxc    r,_FFFFFFFF             'return boolean
   end
-  '
-  'serial.fstr5(string("rel %x %x %x %x %x\r"), w, x, y, r, paa)
+'
 {
+  original code from spin interupter
+
 frel_           popa    w                       'pop left-side float
 
                 bitl    w,#31           wcz     'make left-side comparable
