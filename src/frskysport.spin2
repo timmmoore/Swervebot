@@ -397,8 +397,8 @@ PRI SendSensor(physicalId) : retv | Index, applicationIdt, valuet, data
 pri setpintx() | rp, x, clk, mode
   rp := rxp
   org
-   fltl  rp
-   wrpin ##(P_ASYNC_TX | P_INVERT_OUT), rp
+   flth  rp 'fltl  rp                                                           ' set output to be high
+   wrpin ##(P_ASYNC_TX | P_INVERT_OUT), rp                                      ' output disabled while flush the shifter registers
    wxpin #0, rp
    drvl  rp
    waitx #1
@@ -447,16 +447,16 @@ pri SendByte(b, first)
 pri write(b, first) | rp, x, clk, mode
   rp := rxp
   clk := clkx
-  mode := M_SPORTTXOE                                   ' do not remove, needed for timing
+  mode := M_SPORTTXOE                                                           ' moving this to ## asm changes timing
   'serial.fstr2(string("%x(%d) "), b, first)
     org
-       testb first, #0          wc
-  if_c wrpin mode, rp
-  if_c wxpin clk, rp
+       testb first, #0          wc                                              ' is this the first byte for tx
+  if_c wrpin mode, rp                                                           ' enable the output
+  if_c wxpin clk, rp                                                            ' set the clock
        waitx #1
-       wypin b, rp
+       wypin b, rp                                                              ' write the byte
        waitx #1
-wait   rdpin x, rp              wc
+wait   rdpin x, rp              wc                                              ' wait until it is sent
   if_c jmp #wait
     end
 
