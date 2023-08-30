@@ -1,0 +1,33 @@
+8x	motors			https://www.revrobotics.com/rev-41-1600/
+1x	bearing insert		https://www.revrobotics.com/rev-41-1528-pk20/
+4x	28 tooth gear		https://www.revrobotics.com/5mm-Metal-Hex-Bore-Gears/
+
+4x	bevel gear		https://www.gobilda.com/2-1-ratio-bevel-gear-set-8mm-rex-bore-pinion-gear/
+4x	gear			https://www.gobilda.com/2303-series-steel-mod-0-8-pinion-gear-6mm-d-bore-30-tooth/
+
+16x	bearing	8mm		https://www.amazon.com/gp/product/B082PPLHLQ
+4x	spacers			https://www.amazon.com/gp/product/B09HSS2TJY
+4x	shoulder bolt		https://www.amazon.com/gp/product/B09L51S24P
+4x	bearing 60mm		https://www.amazon.com/gp/product/B082PSBTLP
+	heatset			https://www.amazon.com/dp/B07L96KVP3
+
+4x	position encoder	https://store.ctr-electronics.com/srx-mag-encoder/
+
+1x	battery 3S		https://www.amazon.com/gp/product/B07SYNLFB5
+1x	5V converter		https://www.amazon.com/gp/product/B08VJ2ZF46
+
+1x	fan			https://www.amazon.com/gp/product/B0792BW2VH
+1x	rc receiver		https://www.amazon.com/gp/product/B074QHJRBC
+1x	switch			https://www.amazon.com/gp/product/B0BFHZ9XYX
+
+2x	motor drivers		https://www.tindie.com/products/cburgess129/quad-motor-servo-shield-for-wireless-dev-board/
+
+1x	IMU                   	https://www.tindie.com/products/onehorse/usfsmax-module-and-carrier/
+1x	GPS                   	https://www.adafruit.com/product/4415
+1x	Optical flow		https://shop.pimoroni.com/products/pmw3901-optical-flow-sensor-breakout?variant=27869870358611
+4x	TMP36 temp sensor	https://www.amazon.com/gp/product/B07LG758H3/
+1x	fan mosfet		https://www.amazon.com/gp/product/B00MMY1WTK
+
+1x	prop2 starter		https://www.parallax.com/product/propeller-2-mini-starter-bundle/
+
+1x	pcbs			pcbs see swervebot/pcb (oshpark.com)
