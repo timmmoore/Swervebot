@@ -24,24 +24,24 @@ less8
 
 CON
   CLK_FREQ = 200_000_000                                                        ' system freq as a constant
-
   BR_SERIAL = 115_200                                                           ' terminal baud rate
-
   _clkfreq = CLK_FREQ                                                           ' set system clock
 
+CON {debug}
+  DEBUG_LOG_SIZE = 500_000
 
 var
   long test1, test2
 
 OBJ
-  serial        : "jm_serial"
+'  serial        : "jm_serial"
 
 PUB main()
 
-  serial.start(BR_SERIAL)
+'  serial.start(BR_SERIAL)
 
   waitms(1000)
-  serial.fstr0(string("float test\r"))
+  debug("float test")
   repeat
     waitms(1000)
     test1 := 1.0
@@ -61,80 +61,79 @@ PUB main()
     testf(4)
 
 PRI testf(t)
-    serial.fstr4(string("\rtest %d test1:%d.%d(%x)"), t, trunc(test1), trunc(test1*.10.0)-(trunc(test1)*10), test1)
-    serial.fstr3(string(" test2:%d.%d(%x)\r"), trunc(test2), trunc(test2*.10.0)-(trunc(test2)*10), test2)
+    debug("test ", sdec(t), " test1: ", fdec(test1), " test2: ", fdec(test2))
 
    if test1 <. test2
-     serial.fstr0(string("if test1 <. test2\r"))
+     debug("if test1 <. test2")
    else
-     serial.fstr0(string("else test1 <. test2\r"))
+     debug("else test1 <. test2")
    if frel(test1, test2, $a2) 'test1 <. test2
-     serial.fstr0(string("if frel test1 <. test2\r"))
+     debug("if frel test1 <. test2")
    else
-     serial.fstr0(string("else frel test1 <. test2\r"))
+     debug("else frel test1 <. test2")
 
    if test2 >. test1
-     serial.fstr0(string("if test2 >. test1\r"))
+     debug("if test2 >. test1")
    else
-     serial.fstr0(string("else test2 >. test1\r"))
+     debug("else test2 >. test1")
    if frel(test2, test1, $a4) 'test2 >. test1
-     serial.fstr0(string("if frel test2 >. test1\r"))
+     debug("if frel test2 >. test1")
    else
-     serial.fstr0(string("else frel test2 >. test1\r"))
+     debug("else frel test2 >. test1")
 
    if test1 <=. test2
-     serial.fstr0(string("if test1 <=. test2\r"))
+     debug("if test1 <=. test2")
    else
-     serial.fstr0(string("else test1 <=. test2\r"))
+     debug("else test1 <=. test2")
    if frel(test1, test2, $aa) 'test1 <=. test2
-     serial.fstr0(string("if frel test1 <=. test2\r"))
+     debug("if frel test1 <=. test2")
    else
-     serial.fstr0(string("else frel test1 <=. test2\r"))
+     debug("else frel test1 <=. test2")
 
    if test2 >=. test1
-     serial.fstr0(string("if test2 >=. test1\r"))
+     debug("if test2 >=. test1")
    else
-     serial.fstr0(string("else test2 >=. test1\r"))
+     debug("else test2 >=. test1")
    if frel(test2, test1, $ac) 'test2 >=. test1
-     serial.fstr0(string("if frel test2 >=. test1\r"))
+     debug("if frel test2 >=. test1")
    else
-     serial.fstr0(string("else frel test2 >=. test1\r"))
+     debug("else frel test2 >=. test1")
 
    if test2 <. test1
-     serial.fstr0(string("if test2 <. test1\r"))
+     debug("if test2 <. test1")
    else
-     serial.fstr0(string("else test2 <. test1\r"))
+     debug("else test2 <. test1")
    if frel(test2, test1, $a2) 'test2 <. test1
-     serial.fstr0(string("if frel test2 <. test1\r"))
+     debug("if frel test2 <. test1")
    else
-     serial.fstr0(string("else frel test2 <. test1\r"))
+     debug("else frel test2 <. test1")
 
    if test1 >. test2
-     serial.fstr0(string("if test1 >. test2\r"))
+     debug("if test1 >. test2")
    else
-     serial.fstr0(string("else test1 >. test2\r"))
+     debug("else test1 >. test2")
    if frel(test1, test2, $a4) 'test1 >. test2
-     serial.fstr0(string("if frel test1 >. test2\r"))
+     debug("if frel test1 >. test2")
    else
-     serial.fstr0(string("else frel test1 >. test2\r"))
+     debug("else frel test1 >. test2")
 
    if test2 <=. test1
-     serial.fstr0(string("if test2 <=. test1\r"))
+     debug("if test2 <=. test1")
    else
-     serial.fstr0(string("else test2 <=. test1\r"))
+     debug("else test2 <=. test1")
    if frel(test2, test1, $aa) 'test2 <=. test1
-     serial.fstr0(string("if frel test2 <=. test1\r"))
+     debug("if frel test2 <=. test1")
    else
-     serial.fstr0(string("else frel test2 <=. test1\r"))
+     debug("else frel test2 <=. test1")
 
    if test1 >=. test2
-     serial.fstr0(string("if test1 >=. test2\r"))
+     debug("if test1 >=. test2")
    else
-     serial.fstr0(string("else test1 >=. test2\r"))
+     debug("else test1 >=. test2")
    if frel(test1, test2, $ac) 'test1 >=. test2
-     serial.fstr0(string("if frel test1 >=. test2\r"))
+     debug("if frel test1 >=. test2")
    else
-     serial.fstr0(string("else frel test1 >=. test2\r"))
+     debug("else frel test1 >=. test2")
 
 PRI frel(t1, t2, p): r | x, w, y, _FFFFFFFF, paa
 
