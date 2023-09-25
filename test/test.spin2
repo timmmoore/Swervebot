@@ -42,7 +42,7 @@ PUB main()
 
   waitms(1000)
   debug("float test")
-  repeat
+'  repeat
     waitms(1000)
     test1 := 1.0
     test2 := 2.0
@@ -60,8 +60,16 @@ PUB main()
     test2 := -1.0
     testf(4)
 
+    test1 := $7F800001
+    test2 := -1.0
+    testf(5)
+
+    test1 := -1.0
+    test2 := $7F800001
+    testf(6)
+
 PRI testf(t)
-    debug("test ", sdec(t), " test1: ", fdec(test1), " test2: ", fdec(test2))
+    debug("test ", sdec_(t), " test1: ", fdec_(test1), " test2: ", fdec_(test2))
 
    if test1 <. test2
      debug("if test1 <. test2")
@@ -145,14 +153,13 @@ PRI frel(t1, t2, p): r | x, w, y, _FFFFFFFF, paa
 
                 bitl    w,#31           wcz     'make left-side comparable
                 cmp     w,##$7F800001   wc      'NaN?
+        if_nc   skip    #%1111
         if_z    neg     w                       '+/- %0_xxxxxxxx_mmmmmmmmmmmmmmmmmmmmmmm
-        if_nc   skip    #%111
 
                 bitl    x,#31           wcz     'make right-side comparable
                 cmp     x,##$7F800001   wc      'NaN?
+        if_nc   skip    #%111111                'if either NaN, return false
         if_z    neg     x                       '+/- %0_xxxxxxxx_mmmmmmmmmmmmmmmmmmmmmmm
-
-        if_nc   skip    #%11111                 'if either NaN, return false
 
                 cmps    w,x             wcz     'do comparison
         if_z    mov     y,#%1000                'equal?
