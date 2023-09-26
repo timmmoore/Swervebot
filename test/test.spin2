@@ -68,6 +68,15 @@ PUB main()
     test2 := $7F800001
     testf(6)
 
+    test1 := 1.0
+    test2 := 1.0
+    testf(7)
+
+    test1 := -2.0
+    test2 := -2.0
+    testf(8)
+
+
 PRI testf(t)
     debug("test ", sdec_(t), " test1: ", fdec_(test1), " test2: ", fdec_(test2))
 
@@ -75,73 +84,92 @@ PRI testf(t)
      debug("if test1 <. test2")
    else
      debug("else test1 <. test2")
-   if frel(test1, test2, $a2) 'test1 <. test2
-     debug("if frel test1 <. test2")
-   else
-     debug("else frel test1 <. test2")
+   'if frel(test1, test2, $a2) 'test1 <. test2
+   '  debug("if frel test1 <. test2")
+   'else
+   '  debug("else frel test1 <. test2")
 
    if test2 >. test1
      debug("if test2 >. test1")
    else
      debug("else test2 >. test1")
-   if frel(test2, test1, $a4) 'test2 >. test1
-     debug("if frel test2 >. test1")
-   else
-     debug("else frel test2 >. test1")
+   'if frel(test2, test1, $a4) 'test2 >. test1
+   '  debug("if frel test2 >. test1")
+   'else
+   '  debug("else frel test2 >. test1")
 
    if test1 <=. test2
      debug("if test1 <=. test2")
    else
      debug("else test1 <=. test2")
-   if frel(test1, test2, $aa) 'test1 <=. test2
-     debug("if frel test1 <=. test2")
-   else
-     debug("else frel test1 <=. test2")
+   'if frel(test1, test2, $aa) 'test1 <=. test2
+   '  debug("if frel test1 <=. test2")
+   'else
+   '  debug("else frel test1 <=. test2")
 
    if test2 >=. test1
      debug("if test2 >=. test1")
    else
      debug("else test2 >=. test1")
-   if frel(test2, test1, $ac) 'test2 >=. test1
-     debug("if frel test2 >=. test1")
-   else
-     debug("else frel test2 >=. test1")
+   'if frel(test2, test1, $ac) 'test2 >=. test1
+   '  debug("if frel test2 >=. test1")
+   'else
+   '  debug("else frel test2 >=. test1")
 
    if test2 <. test1
      debug("if test2 <. test1")
    else
      debug("else test2 <. test1")
-   if frel(test2, test1, $a2) 'test2 <. test1
-     debug("if frel test2 <. test1")
-   else
-     debug("else frel test2 <. test1")
+   'if frel(test2, test1, $a2) 'test2 <. test1
+   '  debug("if frel test2 <. test1")
+   'else
+   '  debug("else frel test2 <. test1")
 
    if test1 >. test2
      debug("if test1 >. test2")
    else
      debug("else test1 >. test2")
-   if frel(test1, test2, $a4) 'test1 >. test2
-     debug("if frel test1 >. test2")
-   else
-     debug("else frel test1 >. test2")
+   'if frel(test1, test2, $a4) 'test1 >. test2
+   '  debug("if frel test1 >. test2")
+   'else
+   '  debug("else frel test1 >. test2")
 
    if test2 <=. test1
      debug("if test2 <=. test1")
    else
      debug("else test2 <=. test1")
-   if frel(test2, test1, $aa) 'test2 <=. test1
-     debug("if frel test2 <=. test1")
-   else
-     debug("else frel test2 <=. test1")
+   'if frel(test2, test1, $aa) 'test2 <=. test1
+   '  debug("if frel test2 <=. test1")
+   'else
+   '  debug("else frel test2 <=. test1")
 
    if test1 >=. test2
      debug("if test1 >=. test2")
    else
      debug("else test1 >=. test2")
-   if frel(test1, test2, $ac) 'test1 >=. test2
-     debug("if frel test1 >=. test2")
+   'if frel(test1, test2, $ac) 'test1 >=. test2
+   '  debug("if frel test1 >=. test2")
+   'else
+   '  debug("else frel test1 >=. test2")
+
+   if test1 ==. test2
+     debug("if test1 ==. test2")
    else
-     debug("else frel test1 >=. test2")
+     debug("else test1 ==. test2")
+   'if frel(test1, test2, $a8) 'test1 >=. test2
+   '  debug("if frel test1 ==. test2")
+   'else
+   '  debug("else frel test1 ==. test2")
+
+   if test1 <>. test2
+     debug("if test1 <>. test2")
+   else
+     debug("else test1 <>. test2")
+   'if frel(test1, test2, $a6) 'test1 >=. test2
+   '  debug("if frel test1 <>. test2")
+   'else
+   '  debug("else frel test1 <>. test2")
+
 
 PRI frel(t1, t2, p): r | x, w, y, _FFFFFFFF, paa
 

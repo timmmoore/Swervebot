@@ -40,7 +40,7 @@ PUB longcomp(p1, p2, count, diff, update) : retv
 PUB longcompf(p1, p2, count, diff, update) : retv
 ' return true if p1 and p2 not the same with float precision with greater than diff delta
   repeat retv from 0 to count-1
-    if frel(fabs(long[p1][retv] -. long[p2][retv]), diff, FGT)
+    if fabs(long[p1][retv] -. long[p2][retv]) >. diff
       quit
   if (retv := retv < count) && (update <> false)
     longmove(p1, p2, count)
@@ -56,39 +56,6 @@ PUB swapbytes(val) : result
   org
     mov     result, val
     movbyts result, #%%0123
-  end
-'
-CON
-  FLT           = $a2
-  FGT           = $a4
-  FNE           = $a6
-  FEQ           = $a8
-  FLTE          = $aa
-  FGTE          = $ac
-
-PUB frel(w, x, paa): r | y, _FFFFFFFF
-' floating point comparision, without spin interpreter bug
-  _FFFFFFFF~~
-  org
-
-                bitl    w,#31           wcz     'make left-side comparable
-                cmp     w,##$7F800001   wc      'NaN?
-        if_z    neg     w                       '+/- %0_xxxxxxxx_mmmmmmmmmmmmmmmmmmmmmmm
-        if_nc   skip    #%111
-
-                bitl    x,#31           wcz     'make right-side comparable
-                cmp     x,##$7F800001   wc      'NaN?
-        if_z    neg     x                       '+/- %0_xxxxxxxx_mmmmmmmmmmmmmmmmmmmmmmm
-
-        if_nc   skip    #%11111                 'if either NaN, return false
-
-                cmps    w,x             wcz     'do comparison
-        if_z    mov     y,#%1000                'equal?
-        if_nz   mov     y,#%0100                'above?
-        if_c    mov     y,#%0010                'below?
-                test    y,paa           wc      'test mask
-
-                muxc    r,_FFFFFFFF             'return boolean
   end
 
 con

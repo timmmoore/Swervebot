@@ -377,7 +377,7 @@ CON
 PRI yawscaleangle(l, in) : scaledangle
   ' add bot offset and make sure 0-360.0 degrees
   scaledangle := float(in SCA (360*DEGREESCALE))/.DEGREEDIV +. yawoffset
-  if utilities.frel(scaledangle, 360.0, UTILITIES.FGT)
+  if scaledangle >. 360.0
     scaledangle := scaledangle -. 360.0
 
 PRI scaleangle(l, in) : scaledangle

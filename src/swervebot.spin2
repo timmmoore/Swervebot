@@ -241,7 +241,7 @@ VAR
   long qt[4]
   long stopped                                                  ' stop bot if true
   long motorstopped                                             ' stop motors if true
-  long StkAddr[20000]
+  long StkAddr[1000]
 
 OBJ
                                                                 '  main cog - swerve system
@@ -471,7 +471,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
     if (getms() - lasttemp) > 20                        ' ADCs needs 164us to take a reading
       ovoltage := float(battery.read())/.BATTERY_DIVIDER
       sport.setvoltage(ovoltage)                        ' battery voltage telemetry
-      if utilities.frel(fabs(ovoltage -. oldvoltage), BATTERYDELTA, UTILITIES.FGT)
+      if fabs(ovoltage -. oldvoltage) >. BATTERYDELTA
         oldvoltage := ovoltage
         sensorupdate |= VOLTAGECHANGE
 
@@ -523,7 +523,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
       if sensorupdate & VOLTAGECHANGE                   ' battery voltage change
         if debugoutput(UTILITIES.DEBUGOUT3)
           serial.fstr1(string("Voltage %.2g\r"), ovoltage)
-        if utilities.frel(ovoltage, BATTERY_MINIMUM, UTILITIES.FLT)
+        if ovoltage <. BATTERY_MINIMUM
           serial.fstr1(string("Minimum Voltage reached %.2g\r"), ovoltage)
           if BATTERY_MIN_STOP                           ' if stop on battery min enabled
             quit                                        ' breakout the repeat, so this cog stops
