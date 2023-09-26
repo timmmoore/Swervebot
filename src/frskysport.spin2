@@ -149,7 +149,7 @@ VAR
   long flow[2], temps[4]
   long voltage
   long batterycount, battery[MAXCELLS]
-  long StkAddr[20000]
+  long StkAddr[1000]
 
 OBJ
   serial        : "isp_serial_singleton_tmm"
