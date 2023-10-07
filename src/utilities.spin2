@@ -1,9 +1,9 @@
-{Utilities
+{ Utilities
                 timmoore
 }
 
 OBJ
-  serial        : "isp_serial_singleton_tmm"
+'  serial        : "isp_serial_singleton_tmm"
 
 PUB null()
   ' This is not a top-level object
@@ -31,7 +31,7 @@ PUB fullclamp(input, tmininput, tmaxinput) : s
 
 PUB longcomp(p1, p2, count, diff, update) : retv
 ' return true if p1 and p2 not the same with greater then diff delta
-  repeat retv from 0 to count-1
+  repeat count with retv
     if abs(long[p1][retv] - long[p2][retv]) > diff
       quit
   if (retv := retv < count) && (update <> false)
@@ -39,7 +39,7 @@ PUB longcomp(p1, p2, count, diff, update) : retv
 
 PUB longcompf(p1, p2, count, diff, update) : retv
 ' return true if p1 and p2 not the same with float precision with greater than diff delta
-  repeat retv from 0 to count-1
+  repeat count with retv
     if fabs(long[p1][retv] -. long[p2][retv]) >. diff
       quit
   if (retv := retv < count) && (update <> false)
@@ -98,8 +98,405 @@ pub cart_pol(x, y) : r, t
     getqx     t
   end
 '
-con { license }
+CON
+  fposlimitfull    = 7.0                                ' 16.619047165
+  fneglimitfull    = -7.0
 
+' equilivalent
+'   return 1.0/(1.0 + exp(-x))
+'
+pub sigmoid_full(fin) : result | fsum, fterm, fterm1, fterm2, fterm3, fterm4, fterm5, fterm6, fterm7, fterm8
+' output range 0 to +1
+  fin := -.fin
+                                                        ' make sure in range for the tayor series to converge
+  if fin >. fposlimitfull                               ' >. handle upper limit
+    result := 1.0
+  elseif fin <. fneglimitfull                           ' <. handle lower limit
+    result := 0.0
+  else
+    fterm  := fin *. (fin /. 2.0)                       ' tayor series for exp
+    fterm1 := fterm *. (fin /. 3.0)
+    fterm2 := fterm1 *. (fin /. 4.0)
+    fterm3 := fterm2 *. (fin /. 5.0)
+    fterm4 := fterm3 *. (fin /. 6.0)
+    fterm5 := fterm4 *. (fin /. 7.0)
+    fterm6 := fterm5 *. (fin /. 8.0)
+    fterm7 := fterm6 *. (fin /. 9.0)
+    fterm8 := fterm7 *. (fin /. 10.0)
+    fsum := fin +. fterm +. fterm1 +. fterm2 +. fterm3 +. fterm4 +. fterm5 +. fterm6 +. fterm7 +. fterm8
+    result := 1.0 /. (2.0 +. fsum)
+
+pub sigmoidtest() | t2, t1, to2[6], to1[6]
+' set of test cases for x16 and x16a
+'
+  t2 := getct()
+  to2[0] := x16a(1.0)
+  to2[1] := x16a(0.1)
+  to2[2] := x16a(-1.0)
+  to2[3] := x16a(15.5)
+  to2[4] := x16a(-15.5)
+  to2[5] := x16a(-216.0)
+  t2 := getct() - t2
+  t1 := getct()
+  to1[0] := x16(1.0)
+  to1[1] := x16(0.1)
+  to1[2] := x16(-1.0)
+  to1[3] := x16(15.5)
+  to1[4] := x16(-15.5)
+  to1[5] := x16(-216.0)
+  t1 := getct() - t1
+  debug("x16a ", fdec(to2[0]))
+  debug("x16a ", fdec(to2[1]))
+  debug("x16a ", fdec(to2[2]))
+  debug("x16a ", fdec(to2[3]))
+  debug("x16a ", fdec(to2[4]))
+  debug("x16a ", fdec(to2[5]))
+  debug("x16a time: ", udec_(t2/(270*6)), ".", udec_((t2/(27*6))//10), "us/call")
+  debug("x16 ", fdec(to1[0]))
+  debug("x16 ", fdec(to1[1]))
+  debug("x16 ", fdec(to1[2]))
+  debug("x16 ", fdec(to1[3]))
+  debug("x16 ", fdec(to1[4]))
+  debug("x16 ", fdec(to1[5]))
+  debug("x16 time: ", udec_(t1/(270*6)), ".", udec_((t1/(27*6))//10), "us/call")
+  repeat
+    waitms(1000)
+
+CON
+  fposlimit                     = 16.0
+'
+' approx log_w_approx_exp_no_overflow16_clamped
+' see https://scicomp.stackexchange.com/questions/42186/faster-logistic-function
+'       if x >= 16
+'         sigmod = 1
+'       else
+'         sigmoid = 1/(1 + (1-x/16)^16)
+'
+pub sigmoid(fin) : result
+' output range 0 to +1
+                                                        ' make sure in range for the tayor series to converge
+  if fin >=. fposlimit
+    result := 1.0
+  else
+    result := x16(fin)                                  ' n = 16, so 1/(1-fin/16)^16, using pasm routine for most of calculation
+
+pub sigmoidDer(fin) : result
+' Derivate for sigmoid
+'   (x - x^2) -> x(1-x)
+  result := fin *. (1.0 -. fin)
+
+pub x16a(fin) : result
+' 13.2us
+    fin := 1.0 -. fin /. 16.0                           ' 1-fin/16
+    fin := fin *. fin                                   ' ^2
+    fin := fin *. fin                                   ' ^4
+    fin := fin *. fin                                   ' ^8
+    result := 1.0 /. (1.0 +. (fin *. fin))              ' 1.0 /. (1.0 + fin^16)
+
+pub x16(fx) : result | ma, sa, na, xa, y, mb, mc, md, me, xb, xc, xd, xe, c
+' 6.5us
+' result := 1.0 /. (1.0 +. (1.0 -. x /. 16.0)^16)
+'  skips packf/unpackf where possible
+'
+  ma := fx                                              ' packed float
+  me := md := mc := mb := $2000_0000                    ' b-d=1.0 and e=16.0
+  xd := xc := xb := 0                                   ' 1.0
+  xe := 4                                               ' 16.0
+  org
+                bitl    ma,#31          wcz             'read and clear sign
+                wrc     sa
+
+                cmpr    ma,##$7F800000  wc              'check for NaN
+                wrc     na
+
+                mov     xa,ma                           'get exponent
+                shr     xa,#32-1-8      wz
+
+                zerox   ma,#22                          'get mantissa
+
+        if_nz   bith    ma,#23                          'if exponent <> 0 then insert leading one
+        if_nz   shl     ma,#29-23                       '...bit29-justify mantissa
+
+        if_z    encod   xa,ma                           'if exponent = 0 then get magnitude of mantissa
+        if_z    ror     ma,xa                           '...bit29-justify mantissa
+        if_z    ror     ma,#32-29
+
+                shr     ma,#1                           'make ma < mb
+                qfrac   ma,me                           'compute quotient of (ma << 32) / mb
+
+        if_z    sub     xa,#22                          '...adjust exponent to -22..0
+
+                sub     xa,#127                         'unbias exponent
+'
+' ma /. 16.0
+'
+                sub     xa, xe                          'subtract exponents
+
+                getqx   ma
+                shr     ma,#2                           'justify quotient
+'
+' 1.0 -. ma /. 16.0
+'
+                test    sa              wz              'negate ma?
+                negz    ma
+
+                mov     y,xa                            'determine greater exponent
+                subs    y,xd            wcz             'xa > xb ?
+
+                abs     y                               'absolutize and clamp exponent difference
+                fle     y,#31
+
+        if_a    sar     md,y                            'shift lower-exponent mantissa down
+        if_be   sar     ma,y
+        if_be   mov     xa,xd
+
+                add     ma,md                           'add mantissas
+                abs     ma              wc              'absolutize result
+'
+' mul
+'   (1.0 -. ma /. 16.0)^16
+'
+                qmul    ma,ma                           'compute upper product of ma * ma
+                wrc     sa                              'set sign
+                add     xa,xa                           'add exponents
+                getqy   ma
+                shl     ma,#3                           'justify product
+                test    ma, ##$C000_0000  wz
+          if_nz shr     ma,#2
+                qmul    ma,ma                           'compute upper product of ma * ma
+          if_nz add     xa,#2
+                add     xa,xa                           'add exponents
+                getqy   ma
+                shl     ma,#3                           'justify product
+                test    ma, ##$C000_0000  wz
+          if_nz shr     ma,#2
+                qmul    ma,ma                           'compute upper product of ma * ma
+          if_nz add     xa,#2
+                add     xa,xa                           'add exponents
+                getqy   ma
+                shl     ma,#3                           'justify product
+                test    ma, ##$C000_0000  wz
+          if_nz shr     ma,#2
+                qmul    ma,ma                           'compute upper product of ma * ma
+          if_nz add     xa,#2
+                add     xa,xa                           'add exponents
+                getqy   ma
+                shl     ma,#3                           'justify product
+                test    ma, ##$C000_0000  wz
+          if_nz shr     ma,#2
+          if_nz add     xa,#2
+'
+'   1.0 +. (1.0 -. ma /. 16.0)^16
+'
+                mov     y,xa                            'determine greater exponent
+                subs    y,xb            wcz             'xa > xb ?
+
+                abs     y                               'absolutize and clamp exponent difference
+                fle     y,#31
+
+          if_a  sar     mb,y                            'shift lower-exponent mantissa down
+          if_be sar     ma,y
+          if_be mov     xa,xb
+
+                add     ma,mb                           'add mantissas
+                abs     ma              wc              'absolutize result
+                wrc     sa                              'set sign
+'
+'   1.0 /. (1.0 +. (1.0 -. ma /. 16.0)^16)
+'
+                shr     mc,#1                           'make ma < mb
+                mov     c, #8
+.msb
+                testb   ma,#31          wc
+          if_nc shl     ma,#1
+          if_nc sub     xa,#1
+                djnz    c, #.msb
+
+                qfrac   mc,ma                           'compute quotient of (ma << 32) / mb
+
+                subr    xa, xc                          'subtract exponents
+
+                testbn  na,#0           wc              'if NaN, result $FFFFFFFF
+
+                getqx   ma
+                shr     ma,#2                           'justify quotient
+'
+' Pack float            na,sa,xa,ma --> float ma
+'
+        if_nc   not     ma,#0
+
+        if_c    encod   y,ma            wc              'determine magnitude of mantissa
+        if_nc   ret                                     'if NaN or mantissa=0 (result 0), done
+
+                ror     ma,y                            'msb-justify mantissa without leading 1
+                bitl    ma,#0                           'clear leading 1 now in lsb
+
+                mov     mb,ma                           'check if mantissa is even with 0.500 fraction
+                zerox   mb,#9           wc              'clear msb's, c=0 for addx in case no rounding
+                cmp     mb,#%0100000000 wz              'even with 0.500 fraction?
+        if_nz   add     ma,#%0100000000 wc              'if not, round up mantissa by 0.500
+
+                addx    xa,y                            'adjust exponent and account for rounding overflow
+                add     xa,#127-29                      'bias exponent
+
+                fges    xa,##-23                        'limit exponent to -23..255
+                fles    xa,#255         wc              'if 255 and mantissa not 0, NaN
+        if_c    not     ma,#0                           'if >255, force Nan by making mantissa not 0
+
+                cmps    xa,#1           wc              'exponent < 1?
+
+        if_c    rcr     ma,#1                           'if so, replace leading 1
+        if_c    neg     xa                              'shift mantissa down by exponent
+        if_c    shr     ma,xa                           'if exponent is -23, mantissa becomes 0
+
+                shr     ma,#8                           'make room for exponent
+        if_nc   setbyte ma,xa,#3                        'if exponent < 1 then leave at 0, else install
+
+                testb   sa,#0           wc              'install sign bit
+                rcr     ma,#1
+  end
+  result := ma
+'
+pub SumMultiply(faccum, outer, pone, ptwo, count, size) : result | ma, mb, na, nb, sa, sb, xa, xb, y
+' fast 2 float array multiple and sum
+'   lot of this is copied from spin2 interpreter and modified to skip packf/unpackf where possible
+'
+  org
+                shl size,#2                     ' set up pointer increments for floats
+                shl outer,#2
+                add ptwo, outer                 ' set up start of 2nd pointer
+_next
+                rdlong pr1, ptwo    wz          ' if either are zero then nothing to add to faccum
+       if_z     jmp #_nextloop                  ' if 1st is z skip mainloop and no pusha
+                pusha pr1
+                rdlong ma, pone     wz
+       if_z     popa pr1                        ' if 1st is nz and 2nd is z then popa
+       if_z     jmp #_nextloop                  ' if 1st is nz and 2nd is nz then fall through into main loop
+
+fmul_           call    #unpackf2               'unpack two floats to be multiplied
+
+                qmul    ma,mb                   'compute upper product of ma * mb
+
+                or      na,nb                   'if either NaN, result NaN
+                xor     sa,sb                   'xor signs
+                add     xa,xb                   'add exponents
+
+                getqy   ma
+                shl     ma,#3                   'justify product
+                test    ma, ##$C000_0000  wz
+          if_nz shr     ma,#2
+          if_nz add     xa,#2
+
+                mov     mb, ma
+                mov     sb, sa
+                mov     xb, xa
+                mov     nb, na
+fadd_
+                mov     ma, faccum
+                call    #unpackf                'unpack one float faccum
+
+                or      na,nb                   'if either NaN, result NaN
+
+                test    sa              wz      'negate ma?
+                negnz   ma
+
+                test    sb              wz      'negate mb?
+                negnz   mb
+
+                mov     y,xa                    'determine greater exponent
+                subs    y,xb            wcz     'xa > xb ?
+
+                abs     y                       'absolutize and clamp exponent difference
+                fle     y,#31
+
+        if_a    sar     mb,y                    'shift lower-exponent mantissa down
+        if_be   sar     ma,y
+        if_be   mov     xa,xb
+
+                add     ma,mb                   'add mantissas
+                abs     ma              wc      'absolutize result
+                wrc     sa                      'set sign
+
+                call    #packf                  'pack result
+                mov     faccum, ma              ' save sum in faccum
+
+_nextloop
+                add pone, #4                    ' pone + inner
+                add ptwo, size                  ' ptwo + tempindex1
+                djnz count, #_next              '
+                ret
+
+unpackf2        call    #unpackf                'unpack ma
+
+                mov     nb,na                   'copy na/sa/xa/ma to nb/sb/xb/mb
+                mov     sb,sa
+                mov     xb,xa
+                mov     mb,ma
+
+                popa    ma                      'pop new ma (followed by fp_unpack)
+'
+' Unpack float          float ma --> na,sa,xa,ma
+'
+unpackf         bitl    ma,#31          wcz     'read and clear sign
+                wrc     sa
+
+                cmpr    ma,##$7F800000  wc      'check for NaN
+                wrc     na
+
+                mov     xa,ma                   'get exponent
+                shr     xa,#32-1-8      wz
+
+                zerox   ma,#22                  'get mantissa
+
+        if_nz   bith    ma,#23                  'if exponent <> 0 then insert leading one
+        if_nz   shl     ma,#29-23               '...bit29-justify mantissa
+
+        if_z    encod   xa,ma                   'if exponent = 0 then get magnitude of mantissa
+        if_z    ror     ma,xa                   '...bit29-justify mantissa
+        if_z    ror     ma,#32-29
+        if_z    sub     xa,#22                  '...adjust exponent to -22..0
+
+        _ret_   sub     xa,#127                 'unbias exponent
+'
+' Pack float            na,sa,xa,ma --> float ma
+'
+packf           testbn  na,#0           wc      'if NaN, result $FFFFFFFF
+        if_nc   not     ma,#0
+
+        if_c    encod   y,ma            wc      'determine magnitude of mantissa
+        if_nc   ret                             'if NaN or mantissa=0 (result 0), done
+
+                ror     ma,y                    'msb-justify mantissa without leading 1
+                bitl    ma,#0                   'clear leading 1 now in lsb
+
+                mov     mb,ma                   'check if mantissa is even with 0.500 fraction
+                zerox   mb,#9           wc      'clear msb's, c=0 for addx in case no rounding
+                cmp     mb,#%0100000000 wz      'even with 0.500 fraction?
+        if_nz   add     ma,#%0100000000 wc      'if not, round up mantissa by 0.500
+
+                addx    xa,y                    'adjust exponent and account for rounding overflow
+                add     xa,#127-29              'bias exponent
+
+                fges    xa,##-23                'limit exponent to -23..255
+                fles    xa,#255         wc      'if 255 and mantissa not 0, NaN
+        if_c    not     ma,#0                   'if >255, force Nan by making mantissa not 0
+
+                cmps    xa,#1           wc      'exponent < 1?
+
+        if_c    rcr     ma,#1                   'if so, replace leading 1
+        if_c    neg     xa                      'shift mantissa down by exponent
+        if_c    shr     ma,xa                   'if exponent is -23, mantissa becomes 0
+
+                shr     ma,#8                   'make room for exponent
+        if_nc   setbyte ma,xa,#3                'if exponent < 1 then leave at 0, else install
+
+                testb   sa,#0           wc      'install sign bit
+        _ret_   rcr     ma,#1
+
+  end
+  result := faccum
+'
+con { license }
 {{
 
   Terms of Use: MIT License
