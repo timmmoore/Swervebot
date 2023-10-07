@@ -7,4 +7,4 @@ https://cad.onshape.com/documents/98357d3c8f8b098add8002f2/w/b5a1efd9deb641ade0f
 
 ![render](docs/photos/PXL_20230718_052548300.jpg)
 
-![render](docs/render.png)
+![render](docs/render1.png)
