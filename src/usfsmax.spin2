@@ -173,7 +173,7 @@ VAR
   byte quatdiv
 
 OBJ
-  serial        : "isp_serial_singleton_tmm"
+  'serial        : "isp_serial_singleton_tmm"
   i2c           : "jm_i2c_tmm"
   utilities     : "utilities"
 
@@ -241,7 +241,7 @@ PUB startx(scl, sda, reset, pconfig, offset) : retv | id, stat, Begin
 
   waitms(10)
   if (stat := read8(MAX32660ADDR, SENS_ERR_STAT)) <> 0
-    serial.fstr1(string("USFSMAX error status %d\r"), stat)
+    debug("USFSMAX error status ", udec_(stat))
     return $08
   retv := 0
 

@@ -27,7 +27,7 @@ VAR
   long motorofftimer                                    ' timeout on turning motor fan off
 
 OBJ
-  serial        : "isp_serial_singleton_tmm"
+  'serial        : "isp_serial_singleton_tmm"
 
 PUB null()
 

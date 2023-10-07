@@ -9,7 +9,7 @@ CON
   DEBUG_OUTPUT      =           500
 
 OBJ
-  serial        : "isp_serial_singleton_tmm"
+  'serial        : "isp_serial_singleton_tmm"
   utilities     : "utilities"
 
 VAR
@@ -33,15 +33,15 @@ PUB setconstants(ch, Kp, Ki, Kd)
   ' wrap is maximum input value
   if utilities.longcomp(@sKp, @Kp, 3, 0, true) && debugoutput(UTILITIES.DEBUGOUT4)
     ' Kp, Ki, Kd are floats
-    serial.fstr4(string("PID%d constants %.2g %.2g %.2g\r"), ch, sKp, sKi, sKd)
+    debug("PID", sdec_(ch), " constants ", fdec_(sKp, sKi, sKd))
 
 PUB currentposition(value)
   if (value <> currentpos\value) && debugoutput(UTILITIES.DEBUGOUT3)
-    serial.fstr2(string("PID%d currentposition %d\r"), sch, currentpos)
+    debug("PID", sdec_(sch), " currentposition ", sdec_(currentpos))
 
 PUB setposition(value)
   if (value <> setpos\value) && debugoutput(UTILITIES.DEBUGOUT3)
-    serial.fstr2(string("PID%d setposition %d\r"), sch, setpos)
+    debug("PID", sdec_(sch), " setposition ", sdec_(setpos))
 
 {
 https://en.wikipedia.org/wiki/PID_controller
@@ -76,8 +76,7 @@ PUB output() : out, delta | dt, time, A0, A1, A2, error0
   ' how long the above calculations took
   time := getms() - time
   if (out <> lastout) && debugoutput(UTILITIES.DEBUGOUT2)
-    serial.fstr5(string("PID%d output o:%d lo:%d c:%d s:%d"), sch, out, lastout, currentpos, setpos)
-    serial.fstr7(string(" dt:%.4g A0:%.2g E0:%.2g A1:%.2g E1:%.2g A2:%.2g E2:%.2g\r"), dt, A0, error0, A1, error1, A2, error2)
+    debug("PID", sdec_(sch), " output o:", sdec_(out), " lo:", sdec_(lastout), " c:", sdec_(currentpos), " s:", sdec_(setpos), " dt:", fdec_(dt), fdec(A0, error0, A1, error1, A2, error2))
   ' update inputs for next time, lasttime already been updated
   error2, error1, lastout := error1, error0, out
 

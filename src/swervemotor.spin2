@@ -67,7 +67,7 @@ VAR
   long actualspeeds[MAX_SWERVE_MODULES]                 ' swerve angle from encoder
 
 OBJ
-  serial        : "isp_serial_singleton_tmm"
+  'serial        : "isp_serial_singleton_tmm"
   encoder       : "pwm_in" | NOPWMIN = MAX_ENCODERS     ' angle position of each swerve
   pid[MAX_ENCODERS] : "pid"                             ' pid for controling angle of each swerve
   driveencoders[MAX_SWERVE_MODULES] : "jm_quadrature_tmm"
@@ -85,7 +85,7 @@ PUB start(scl, sda, epin, tfpin, pbot, ppinoffsets, pangleoffsets, pminencoder, 
   cosbot[BOT_WIDTH], cosbot[BOT_LENGTH] := long[pbot][BOT_WIDTH]/.rad, long[pbot][BOT_LENGTH]/.rad
   acctime := getms()
   if debugoutput(UTILITIES.DEBUGOUT2)
-    serial.fstr3(string("Swerve starting %.2g %.2g %.2g\r"), long[pbot][BOT_WIDTH], long[pbot][BOT_LENGTH], rad)
+    debug("Swerve starting ", fdec_(long[pbot][BOT_WIDTH], long[pbot][BOT_LENGTH], rad))
 
   longmove(@motors, pmotor, MAX_SWERVE_MODULES*2)       ' conversion between swerve motor number and motor driver motor number
   repeat ch from 0 to 7                                 ' switch invert flags to match order of motordrivers, not swerve modules
@@ -106,7 +106,7 @@ PUB start(scl, sda, epin, tfpin, pbot, ppinoffsets, pangleoffsets, pminencoder, 
     dpid[ch].init(ch, 0, MAXSPEED)                      ' no wrapping of input, +- MAXSPEED output
     dpid[ch].setposition(0)                             ' start speed
   if debugoutput(UTILITIES.DEBUGOUT4)
-    serial.fstr1(string("Swerve started %x\r"), retv)
+    debug("Swerve started ", uhex_(retv))
 
 PUB stop()
   motor.stop()
@@ -154,7 +154,7 @@ PRI drivespeeds(pspeeds) : retv | ch, ponespeed, delta, dpido, denc, ct, dt
     dpid[ch].setposition(long[ponespeed])               ' requested drive motor speed
     dpido, delta := dpid[ch].output()                   ' update drive motor speed
     if debugoutput(UTILITIES.DEBUGOUT3)
-      serial.fstr6(string("drivespeeds %s %d %d %d %d %d\r"), @@sptr[ch], dt, driveencodervelocity[ch], denc, long[ponespeed], dpido)
+      debug("drivespeeds ", zstr_(@@sptr[ch]), sdec_(dt, driveencodervelocity[ch], denc, long[ponespeed], dpido))
     'long[ponespeed] := dpido
     retv |= delta <> 0                                  ' current and set drive speeds not same
 
@@ -184,7 +184,7 @@ PRI angletospeed(pspeeds, pangles) : retv | rawangle, requestangle, ch, wrappeda
 
 PRI SwerveDebug(no, p1, p2, p3, p4, p5, p6, p7)
   if debugoutput(UTILITIES.DEBUGOUT3)
-    serial.fstr8(string("Swerve%d %s %d %d %d %d %d %d\r"), no, p1, p2, p3, p4, p5, p6, p7)
+    debug("Swerve", sdec_(no), zstr_(p1), sdec_(p2, p3, p4, p5, p6, p7))
 
 PRI scalemaxspeed(pspeeds) | highest, index
   ' scale max speeds if over or under MAXSPEED
@@ -196,7 +196,7 @@ PRI scalemaxspeed(pspeeds) | highest, index
     repeat index from D_FRONT_LEFT to D_BACK_RIGHT step D_FRONT_RIGHT-D_FRONT_LEFT
       long[pspeeds][index] := scalespeed(long[pspeeds][index], highest)
   if debugoutput(UTILITIES.DEBUGOUT4)
-    serial.fstr4(string("Swerve maxspeeds %d %d %d %d\r"), long[pspeeds][D_FRONT_LEFT], long[pspeeds][D_FRONT_RIGHT], long[pspeeds][D_BACK_LEFT], long[pspeeds][D_BACK_RIGHT])
+    debug("Swerve maxspeeds ", sdec_(long[pspeeds][D_FRONT_LEFT], long[pspeeds][D_FRONT_RIGHT], long[pspeeds][D_BACK_LEFT], long[pspeeds][D_BACK_RIGHT]))
 
 PRI scalespeed(in, max) : scaled
   ' assumes in parameter value isn't too large, so multiplying by MAXSPEED doesn't overflow
@@ -209,7 +209,7 @@ PRI calculate(x, y, r, pspeeds, pangles) | a, b, c, d, xrl, yrl, rl
   xrl, yrl := round(rl *. cosbot[BOT_WIDTH]), round(rl *. cosbot[BOT_LENGTH])
   a, b, c, d :=  y - yrl, y + yrl, -x - xrl, -x + xrl
   if debugoutput(UTILITIES.DEBUGOUT3)
-    serial.fstr4(string("Swerve calculate %d %d %d %d\r"), a, b, c, d)
+    debug("Swerve calculate ", sdec_(a, b, c, d))
 
   ' cart_pol returns length and unsigned 32-bit angle, where 0..3599 = 0..359.9 degrees
   long[pspeeds][D_FRONT_LEFT],  long[pangles][A_FRONT_LEFT],  long[pspeeds][S_FRONT_LEFT] := utilities.cart_pol(b, c), 0 ' front, left
@@ -223,7 +223,7 @@ PRI calculate(x, y, r, pspeeds, pangles) | a, b, c, d, xrl, yrl, rl
 
 PRI Swerve1Debug(no, pspeeds, pangles, p1, p2)
   if debugoutput(UTILITIES.DEBUGOUT3)
-    serial.fstr4(string("Swerve %s speed/angle %d %d(%.1f)\r"), @@sptr[no], long[pspeeds][p1],  long[pangles][p2],  long[pangles][p2])
+    debug("Swerve ", zstr_(@@sptr[no]), " speed/angle ", sdec_(long[pspeeds][p1],  long[pangles][p2]),  fdec_(long[pangles][p2]))
 
 CON
   ACCINTERVAL   = 20                                    ' acceleration limiting interval, ms
@@ -259,7 +259,7 @@ PRI limitacceleration(x, y, r) : lx, ly, lr, changed, notcomplete | lcx, lcy, lc
 
 PRI Swerve2Debug(type, last, in, out)
   if debugoutput(UTILITIES.DEBUGOUT3)
-    serial.fstr4(string("Swerve %c limit l:%d i:%d n:%d\r"), type, last, in, out)
+    debug("Swerve ", lstr_(@type,1), sdec_(last, in, out))
 
 PRI minspeeds(x, y, r) : retv
   if (abs(x) < MINSPEEDX) and (abs(y) < MINSPEEDY) and (abs(r) < MINSPEEDR)
@@ -269,14 +269,14 @@ PUB update(x, y, r, off) : notcomplete | changed, newoffstate, previousoffstate,
 '' return true if needs calling again, either not fully update to speed or swerve angle not in position
 
   if debugoutput(UTILITIES.DEBUGOUT4)
-    serial.fstr4(string("Swerve updating x:%d, y:%d, r:%d off: %d\r"), x, y, r, off)
+    debug("Swerve updating ", sdec_(x, y, r, off))
 
   newoffstate, previousoffstate := motorsoff(off)
   ifnot newoffstate
     x, y, r, changed, notcomplete := limitacceleration(x, y, r)
     if(changed == true)
       if debugoutput(UTILITIES.DEBUGOUT3)
-        serial.fstr3(string("Swerve updating after limiting x:%d, y:%d, r:%d\r"), x, y, r)
+        debug("Swerve updating after limiting ", sdec_(x, y, r))
 
       calculate(x, y, r, @speeders, @angles)            ' calculate speed/angle for each swerve wheel
 
@@ -300,7 +300,7 @@ PUB update(x, y, r, off) : notcomplete | changed, newoffstate, previousoffstate,
     encodertime := getms()
   notcomplete |= fan.checkfan()                         ' check fan for updates, need to return notcomplete if timer is running
   if debugoutput(UTILITIES.DEBUGOUT4)
-    serial.fstr3(string("Swerve updated %d %d %d\r"), changed, notcomplete, motorsareoff)
+    debug("Swerve updated ", sdec_(changed, notcomplete, motorsareoff))
 
 PRI motorsoff(off) : retv, previous
 ' return true if motors should be off, was off

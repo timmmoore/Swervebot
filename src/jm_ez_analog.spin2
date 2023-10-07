@@ -18,7 +18,7 @@
 }
 
 OBJ
-  serial        : "isp_serial_singleton_tmm"
+  'serial        : "isp_serial_singleton_tmm"
 
 var
 

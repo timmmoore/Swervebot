@@ -33,7 +33,7 @@ VAR
   long lastreadtime
 
 OBJ
-  serial        : "isp_serial_singleton_tmm"
+  'serial        : "isp_serial_singleton_tmm"
   i2c           : "jm_i2c_tmm"
   utilities     : "utilities"
 
@@ -83,9 +83,7 @@ PUB gps() : hour, min, sec, northdeg, westdeg, speed, alt, prelease, Fixret, Sat
 
 PUB Print() | hour, min, sec, pmr, northdeg, westdeg, speed, alt, prelease, Fixval, SatNoval, Hdopval
   hour, min, sec, northdeg, westdeg, speed, alt, prelease, Fixval, SatNoval, Hdopval := gps()
-  serial.fstr4(string("GPS (%s) %2.2d:%2.2d:%+4.8g "), prelease, hour, min, sec)
-  serial.fstr2(string("%8.5g %10.5g "), northdeg, westdeg)
-  serial.fstr5(string("%.4g %.4g %d %d %.2g\r"), speed, alt, Fixval, SatNoval, Hdopval)
+  debug("GPS ", zstr_(prelease), sdec_(hour), ":", sdec_(min), ":", fdec_(sec), " ", fdec_(northdeg, westdeg), " ", fdec_(speed, alt, Fixval, SatNoval, Hdopval))
 
 PRI sendCommand(str) : retv | startt
 ' max string length is 255 chars

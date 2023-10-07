@@ -14,7 +14,7 @@ VAR
   long  index
 
 OBJ
-  serial        : "isp_serial_singleton_tmm"
+  'serial        : "isp_serial_singleton_tmm"
   analog        : "jm_ez_analog"                               ' A2D to read motor driver temperature sensors
 
 pub null()

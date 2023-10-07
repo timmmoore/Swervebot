@@ -25,7 +25,7 @@ VAR
   long minencoder[NOPWMIN], maxencoder[NOPWMIN]
 
 OBJ
-  serial        : "isp_serial_singleton_tmm"
+  'serial        : "isp_serial_singleton_tmm"
   utilities     : "utilities"
 
 PUB null()
@@ -63,7 +63,7 @@ PUB read(ch, display) : out | raw, map, dout
   if (out <> lastvalues[ch]\out)
     dout := debugoutput(UTILITIES.DEBUGOUT2)            ' if changed see if we want debug output
   if display or dout                                    ' output offset value assuming current position is 0
-    serial.fstr8(string("encoder%d/%d raw:%u map:%d out:%d offset:%.2g min:%u max:%u\r"), ch, pinoffsets[ch], raw>>1, map, out, (float((maxv - map)//maxv)*.360.0)/.1024.0, minencoder[ch]>>1, maxencoder[ch]>>1)
+    debug("encoder ", sdec_(ch, pinoffsets[ch]), udec_(raw>>1), sdec_(map, out), fdec_((float((maxv - map)//maxv)*.360.0)/.1024.0), udec_(minencoder[ch]>>1, maxencoder[ch]>>1))
 
 PUB updatedebug(tdebug)
   debug1 := tdebug
