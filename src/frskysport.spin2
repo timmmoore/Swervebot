@@ -38,6 +38,7 @@ CON
   DATA_ID_ACC                   = 5                     '        5 used for Acc X, Y, Z, SP2UART(Host)
   DATA_ID_FLOW                  = 7                     '        7 used for optical flow x and y
   DATA_ID_TEMP                  = 8                     '        8 used for motor driver temperatures
+  DATA_ID_LIDAR                 = 9                     '        9 used for lidar distances
 
   SPORT_MIN_TELEMETRY_DELAY_US = 500
 
@@ -75,7 +76,7 @@ CON
   FSSP_DATAID_RPM7       = $0507
   FSSP_DATAID_RPM8       = $0508
   FSSP_DATAID_FUEL       = $0600
-  FSSP_DATAID_ADC1       = $F102
+  FSSP_DATAID_ADC1       = $F102                        ' dont use it, some receivers use it
   FSSP_DATAID_ADC2       = $F103
   FSSP_DATAID_VARIO      = $0110                        ' height cm from baro sensor
   FSSP_DATAID_CELLS      = $0300                        ' voltage cells from frsky battery sensor
@@ -119,6 +120,15 @@ CON
   FSSP_ACTUAL3           = $5102
   FSSP_ACTUAL4           = $5103
 
+  FSSP_LIDARL            = $5104                        ' Lidar distance
+  FSSP_LIDARFL           = $5105
+  FSSP_LIDARF            = $5106
+  FSSP_LIDARFR           = $5107
+  FSSP_LIDARR            = $5108
+  FSSP_LIDARBR           = $5109
+  FSSP_LIDARB            = $510A
+  FSSP_LIDARBL           = $510B
+
   SENSOR_APPL_ID_GSATS   = $5111                        ' GPS no satellites
   SENSOR_APPL_ID_GHDOP   = $5112                        ' GPS HDOP
 
@@ -132,11 +142,14 @@ CON
   DATA_ID_TEMP_ID3       = $5118
   DATA_ID_TEMP_ID4       = $5119
 
-  MAXNOSENSORS           = 50
+  MAXNOSENSORS           = 25
   MAXCELLS               = 6
 
+  STACK_SIZE_LONGS       = 100                          ' Need to test how much we need!
+
 VAR
-  long rxp
+  long rxp, pgsensors, gsensorcount
+  long gsensorCountEntries
   long cognum, clkx
   long s_commandPrim, s_applicationId, s_value
   long r_commandId, r_commandPrim, r_applicationId, r_value
@@ -147,18 +160,23 @@ VAR
   long heading, pitch, roll, pressure                   ' from imu
   long actualspeeds[4], actualaspeeds[4], actualangles[4], maxangle ' from swerve modules
   long flow[2], temps[4]
-  long voltage
+  long voltage, current1, current2
   long batterycount, battery[MAXCELLS]
-  long StkAddr[1000]
+  long lidar[8]
+  long StkAddr[STACK_SIZE_LONGS]
 
 OBJ
-  serial        : "isp_serial_singleton_tmm"
-  utilities     : "utilities"
+  'serial        : "isp_serial_singleton_tmm"
 
 pub null()
 
 PUB start(pin) : retv | x
-  rxp := pin
+  startEx(pin, @_sensors, _sensorCount)
+
+PUB startEx(pin, pgsensors_, gsensorcount_) : retv | x
+' allow caller to specify sensor table
+  longmove(@rxp, @pin, 3)
+  gsensorCountEntries := gsensorcount * _sensornoentries
 
   pinclear(rxp)                                                                 ' remove old settings
 
@@ -167,13 +185,14 @@ PUB start(pin) : retv | x
 
   setpinrx()                                                                    ' start smart pin rx for S.PORT
 
-  retv := cognum := COGSPIN(newcog, runsport(), @StkAddr)
+  retv := cognum := COGSPIN(newcog, runsport(), @StkAddr) + 1
 
 PUB stop()
   if (cognum)                                                                   ' if running
     cogstop(cognum-1)                                                           '  stop the cog
     cognum := 0                                                                 '  mark stopped
   pinclear(rxp)                                                                 ' remove old settings
+
 
 pub setgps(tlatitude, tlongitude, tspeed, talt, tfix, tsatno, thdop)
   longmove(@latitude, @tlatitude, 7)
@@ -187,11 +206,17 @@ pub setactuals(pspeeds, paspeeds, pangles, tmax)
   longmove(@actualangles, pangles, 4)
   maxangle := tmax
 
+pub setlidar(plidar)
+  longmove(@lidar, plidar, 8)
+
 pub setflow(pflows)
   longmove(@flow, pflows, 2)
 
 pub setvoltage(tvoltage)
   voltage := tvoltage
+
+pub setcurrent(tcurrent1, tcurrent2)
+  current1, current2 := tcurrent1, tcurrent2
 
 pub settemperature(ptemps)                                                      ' temperature telemetry
   longmove(@temps, ptemps, 4)
@@ -201,6 +226,7 @@ pub setcells(count, pcells)
   longmove(@battery, pcells, count<#MAXCELLS)
 
 '' rethink this, the response needs to be called from the poll
+{
 pub setCommand(command)
 ' specify a command for us
 ' need to poll readrecCommand to get the incoming command
@@ -223,11 +249,12 @@ pub setSendCommand(prim, applicationIdt, valuet)
   s_commandPrim := prim
   s_applicationId := applicationIdt
   s_value := valuet
+'}
 
 PRI SendCommand() : retv
 ' have command saved ready for poll?
   if retv := (s_commandPrim > 0)
-    serial.fstr0(string("sport SendCommand\r"))
+    'serial.fstr0(string("sport SendCommand\r"))
     SendData(s_commandPrim\0, s_applicationId, s_value)
 
 PRI runsport() | rx, byte buffer[10], valid, index, physicalId
@@ -259,10 +286,6 @@ PRI runsport() | rx, byte buffer[10], valid, index, physicalId
           valid~
           'serial.fstr6(string("sport command received %x %x %x %x %x %x\r"), buffer[0], buffer[1], buffer[2], word[@buffer+3], long[@buffer+5], buffer[9])
           'commandReceived(buffer[2], word[@buffer+3], long[@buffer+5])
-
-pri validid(physicalId) : sensorid
-' is it one of our physical sensors?
-  sensorid := lookdown(physicalId: DATA_ID_FAS, DATA_ID_GPS, DATA_ID_ACTUALS, DATA_ID_ACC, DATA_ID_FLOW, DATA_ID_TEMP) ', DATA_ID_FLVSS, DATA_ID_VARIO)
 
 pri rxcheck() : rxbyte | o1
 '' Check for serial input
@@ -312,7 +335,13 @@ pri acc_getData(applicationIdt, subindex) : valuet
       valuet := round(pressure *. 100.0)                                        ' 0.01hPa
 
 pri fas_getData(applicationIdt, subindex) : valuet
-  valuet := round(voltage*.100.0)                                               ' in 0.01V
+  case applicationIdt
+    FSSP_DATAID_VFAS:
+      valuet := round(voltage*.100.0)                                           ' in 0.01V
+    FSSP_DATAID_CURRENT1:
+      valuet := current1                                                        ' in 0.1mA, smartport spec is 0.1A but can override unit in tx
+    FSSP_DATAID_CURRENT2:
+      valuet := current2                                                        ' in 0.1mA
 
 pri actual(value) : valuet
 ' make 32bit signed value into 16bit unsigned and msb 1 if -ve
@@ -324,6 +353,9 @@ pri actual(value) : valuet
 pri actuals_getData(applicationIdt, subindex) : valuet
   valuet := actual(actualspeeds[applicationIdt-FSSP_ACTUAL1])
   valuet |= (actual(muldiv64(actualangles[applicationIdt-FSSP_ACTUAL1], 36000, maxangle)) << 16) ' 0-360.00 * 100 in upper word
+
+pri lidar_getData(applicationIdt, subindex) : valuet
+  valuet := lidar[applicationIdt-FSSP_LIDARL]
 
 pri flow_getData(index) : valuet
   valuet := flow[index]
@@ -348,6 +380,8 @@ pri sensor_getData(physicalId, applicationIdt, subindex) : valuet
     ' not enabled in validid
     DATA_ID_FLVSS:                                                              ' applicationId == FSSP_DATAID_CELLS
       valuet := flv_getData(applicationIdt, subindex)                           ' voltage per cell, 0.002V
+    DATA_ID_LIDAR:                                                              ' applicationId == FSSP_LIDARL-FSSP_LIDARR               '
+      valuet := lidar_getData(applicationIdt, subindex)
 
 pri querysensorsent(Index) : retv
   return lastsensorindex[Index/_sensornoentries] == 0
@@ -358,30 +392,30 @@ pri updatesensorsent(Index, physicalId) | i, clear
 ' we cant send the 500ms sensor twice while waiting for the 1000ms sensors to be sent.
   lastsensorindex[Index/_sensornoentries] := 1
   clear~~
-  repeat i from 0 to _sensorCount-1
+  repeat gsensorcount with i
     ' is there a sensor for the physical id that hasn't been sent yet
-    if (word[@_sensors][i*_sensornoentries] == physicalId) and (lastsensorindex[i] == 0)
+    if (word[pgsensors][i*_sensornoentries] == physicalId) and (lastsensorindex[i] == 0)
       clear~                                                                    ' then we dont want to reset the lastsensorindex array
       quit
   if clear                                                                      ' all sensors for this physicalid have been sent
-    repeat i from 0 to _sensorCount-1                                           ' so reset lastsensorindex array
-      if (word[@_sensors][i*_sensornoentries] == physicalId)
+    repeat gsensorcount with i                                                  ' so reset lastsensorindex array
+      if (word[pgsensors][i*_sensornoentries] == physicalId)
         lastsensorindex[i]~
 
 pri sendtime(Index) : retv
-  if (getms() - lastsensortime[Index/_sensornoentries]) > word[@_sensors][Index+3] ' send sensor value every 500ms
+  if (getms() - lastsensortime[Index/_sensornoentries]) > word[pgsensors][Index+3] ' send sensor value every 500ms
     lastsensortime[Index/_sensornoentries] := getms()
     retv := true
 
 PRI SendSensor(physicalId) : retv | Index, applicationIdt, valuet, data
-  repeat _sensorCount                                                           ' loop through known sensors, 1 sensor per poll
+  repeat gsensorcount                                                           ' loop through known sensors, 1 sensor per poll
     Index := _sensorIndex
-    _sensorIndex := (_sensorIndex+_sensornoentries) // _sensorCountEntries      ' next entry, increment by amount of sensor info per entry
-    'serial.fstr5(string("sport Sensorindex %d %d %x %x %x\r"), Index, _sensorIndex, physicalId, word[@_sensors][Index], word[@_sensors][Index+1])
-    if (word[@_sensors][Index] == physicalId) and querysensorsent(Index)        ' have a sensor
+    _sensorIndex := (_sensorIndex+_sensornoentries) // gsensorCountEntries      ' next entry, increment by amount of sensor info per entry
+    'serial.fstr5(string("sport Sensorindex %d %d %x %x %x\r"), Index, _sensorIndex, physicalId, word[pgsensors][Index], word[pgsensors][Index+1])
+    if (word[pgsensors][Index] == physicalId) and querysensorsent(Index)        ' have a sensor
       updatesensorsent(Index, physicalId)
-      valuet := sensor_getData(physicalId, applicationIdt := word[@_sensors][Index+1], word[@_sensors][Index+2]) ' have sensor data to send?
-      'serial.fstr6(string("sport Sensor %d %x %x %x %d %d\r"), Index, physicalId, applicationIdt, valuet, word[@_sensors][Index+2], word[@_sensors][Index+3])
+      valuet := sensor_getData(physicalId, applicationIdt := word[pgsensors][Index+1], word[pgsensors][Index+2]) ' have sensor data to send?
+      'serial.fstr6(string("sport Sensor %d %x %x %x %d %d\r"), Index, physicalId, applicationIdt, valuet, word[pgsensors][Index+2], word[pgsensors][Index+3])
       setpintx()                                                                ' switch pin to transmit
       'waitus(100)
       if sendtime(Index)                                                        ' enough time since last time sent sensor?
@@ -423,14 +457,14 @@ pri SendData(prim, applicationIdt, valuet) | byte frame[8], i
   frame[7] := GetChecksum(@frame, 7)
 
   ' Send the frame
-  repeat i from 0 to (8-1)
+  repeat 8 with i
     SendByte(frame[i], i==0)
 
   'serial.fstr0(string("\r"))
 
 pri GetChecksum(pdata, len) : total | i
 ' calculate CRC
-  repeat i from 0 to (len - 1)
+  repeat len with i
     total += byte[pdata][i]
     total += (total >> 8)
     total &= $ff
@@ -460,15 +494,19 @@ wait   rdpin x, rp              wc                                              
   if_c jmp #wait
     end
 
+pri validid(physicalId) : sensorid
+' is it one of our physical sensors?
+  sensorid := lookdown(physicalId: DATA_ID_FAS, DATA_ID_ACC, DATA_ID_LIDAR) ', DATA_ID_GPS, DATA_ID_ACTUALS, DATA_ID_FLOW, DATA_ID_TEMP)
+
 con
   _sensornoentries              = 4                                             ' number entries for each sensor info
 
 dat
-' maximum of 50 sensors
-_sensorCountEntries  long      (@_sensorsend - @_sensors)/2                     ' count of info, not count of sensors
+' maximum of 25 sensors
 _sensorCount  long      (@_sensorsend - @_sensors)/(2*_sensornoentries)         ' count of info, not count of sensors
 '                       physical id            sensor id     subindex  delay(ms)
-_sensors      word      DATA_ID_GPS,     FSSP_DATAID_LATLONG,     0,   1000     ' $0800, lat
+_sensors
+              word      DATA_ID_GPS,     FSSP_DATAID_LATLONG,     0,   1000     ' $0800, lat
               word      DATA_ID_GPS,     FSSP_DATAID_LATLONG,     1,   1000     ' $0800, long
               word      DATA_ID_GPS,     FSSP_DATAID_SPEED,       0,   1000     ' $0830
               word      DATA_ID_GPS,     SENSOR_APPL_ID_GSATS,    0,   1000     ' $5111, no satellites
@@ -484,6 +522,8 @@ _sensors      word      DATA_ID_GPS,     FSSP_DATAID_LATLONG,     0,   1000     
               word      DATA_ID_ACC,     FSSP_DATAID_ROLL,        0,   1000     ' $5240, given in deg *10
               word      DATA_ID_ACC,     SENSOR_APPL_ID_PRESSURE, 0,   1000     ' $5113, hPa *100
               word      DATA_ID_FAS,     FSSP_DATAID_VFAS,        0,   1000     ' $0210, given in 0.01V *100
+              word      DATA_ID_FAS,     FSSP_DATAID_CURRENT1,    0,   1000     ' $0201, in 0.1mA
+              word      DATA_ID_FAS,     FSSP_DATAID_CURRENT2,    0,   1000     ' $0202, in 0.1mA
               word      DATA_ID_TEMP,    DATA_ID_TEMP_ID1,        0,   1000     ' $5116, motor driver temps, 0,01C *100
               word      DATA_ID_TEMP,    DATA_ID_TEMP_ID2,        0,   1000     ' $5117, motor driver temps, 0,01C *100
               word      DATA_ID_TEMP,    DATA_ID_TEMP_ID3,        0,   1000     ' $5118, motor driver temps, 0,01C *100
