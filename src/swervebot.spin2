@@ -42,7 +42,8 @@ TODO
 
 con { timing }
 
-  CLK_FREQ = 200_000_000                                                        ' system freq as a constant
+  CLK_FREQ = 270_000_000                                        ' system freq as a constant
+'  CLK_FREQ = 200_000_000                                                        ' system freq as a constant
   MS_001   = CLK_FREQ / 1_000                                                   ' ticks in 1ms
   US_001   = CLK_FREQ / 1_000_000                                               ' ticks in 1us
 
@@ -146,13 +147,8 @@ con { fixed io pins }
   USFSMAX_RESET                 = -1                                            ' reset pin is optional
 
   BATTERY_ANALOG                = 31                                            ' battery via resistor divider, 8K2 + 3K3
-  BATTERY_LOW                   = 0
-  BATTERY_HIGH                  = 33750 '33482                                  ' 8K2 + 3K resistor divider, max voltage is 12.6V * 3000/11200 -> 3.375
-  BATTERY_DIVIDER               = 2673.534 '2678.56                             ' 33750/2678.56 -> 12.6, absolute max is 4.2V per cell (total 12.6V)
                                                                                 ' 33750/2673.534 -> 12.624
-  BATTERY_MINIMUM               = 9.9                                           ' minimum voltage, absolute min is 3.2V per cell (total 9.6V)
-  BATTERYDELTA                  = 0.2
-  BATTERY_MIN_STOP              = true                                          ' stop the bot if battery is too low
+  BATTERYDELTA                  = 0.4
 
   TEMP_ANALOG1                  = 26                                            ' pin 26-29, TMP36,  0.5 + 25 * 0.01 -> .75V = 25C
   TEMP_ANALOG2                  = 27                                            ' pin 26-29, TMP36,  0.5 + 25 * 0.01 -> .75V = 25C
@@ -162,6 +158,8 @@ con { fixed io pins }
   TEMP_HIGH                     = 28000                                         ' 3.3V -> 280C
   TEMP_MAX                      = 12000                                         ' TB6612 thermal shutdown is at 150C, though sensor is external so lower
   TEMP_MIN                      = 9000
+  TEMP_VALID_MIN                = 1000
+  TEMP_VALID_MAX                = 20000
   TEMPDELTA                     = 100                                           ' * 0.01deg
   TEMP_MAX_STOP                 = true                                          ' stop motors if temp is too high
 
@@ -219,25 +217,28 @@ con { fixed io pins }
   SHAREDGPS                     = 11                                            ' ogpst, ohour, omin, osec, onorthdeg, owestdeg, ospeed, oalt, ofix, osatno, ohdop
   SHAREVOLTAGE                  = 1
   SHARETEMP                     = 4
-  SHAREDVARIABLES               = 1+NOCHANNELS+SHAREDIMU+SHAREDPMW+SHAREDGPS+SHAREVOLTAGE+SHARETEMP+LIDARNOCHANNELS
+  SHAREDVARIABLES               = 1+1+NOCHANNELS+SHAREDIMU+SHAREDPMW+SHAREDGPS+SHAREVOLTAGE+SHARETEMP+LIDARNOCHANNELS
 
   NO_SWERVE_MODULES             = 4
 
   LIDARTX_PIN                   = 56
   LIDARRX_PIN                   = 57
   LIDARCTL_PIN                  = 4
-  LIDARNOCHANNELS               = 8
+  LIDARNOCHANNELS               = 8                                             ' number of lidar output from checkdistance
+  LIDAR_YAW                     = 270                                           ' angle offset if lidar not pointing directly to front of bot, in degree
+
+  NN_TEST                       = true
 
 VAR
   ' shared variables
   long synclock, printlock
 
-  long sharedupdate, channels[NOCHANNELS], output[SHAREDIMU], deltax_l, deltax_h, deltay_l, deltay_h, deltat
+  long sharedupdate, incupdate, channels[NOCHANNELS], output[SHAREDIMU], deltax_l, deltax_h, deltay_l, deltay_h, deltat
   long gpst, hour, min, sec, northdeg, westdeg, speed, alt, fix, satno, hdop, voltage, temps[SHARETEMP]
   long lidardistance[LIDARNOCHANNELS]
 
   ' swerve cog
-  long swerveupdate, swervechannels[NOCHANNELS], oswerve[SHAREDIMU], xswerve_l, xswerve_h, yswerve_l, yswerve_h, tswerve   ' swerve cog locals
+  long swerveupdate, incswerve, swervechannels[NOCHANNELS], oswerve[SHAREDIMU], xswerve_l, xswerve_h, yswerve_l, yswerve_h, tswerve   ' swerve cog locals
   long sgpst, shour, smin, ssec, snorthdeg, swestdeg, sspeed, salt, sfix, ssatno, shdop, svoltage, stemps[SHARETEMP]
   long slidardistance[LIDARNOCHANNELS]
 
@@ -245,7 +246,7 @@ VAR
   long debug1
 
   ' sensor cog
-  long sensorupdate, sbuschannels[NOCHANNELS], osensor[SHAREDIMU], xsensor_l, xsensor_h, ysensor_l, ysensor_h, tsensor     ' sensor cog locals
+  long sensorupdate, oincupdate, sbuschannels[NOCHANNELS], osensor[SHAREDIMU], xsensor_l, xsensor_h, ysensor_l, ysensor_h, tsensor     ' sensor cog locals
   long ogpst, ohour, omin, osec, onorthdeg, owestdeg, ospeed, oalt, ofix, osatno, ohdop, ovoltage, otemps[SHARETEMP]
   long olidardistance[LIDARNOCHANNELS]
 
@@ -253,7 +254,7 @@ VAR
   long qt[4]
   long stopped                                                  ' stop bot if true
   long motorstopped                                             ' stop motors if true
-  long StkAddr[1000]
+  long StkAddr[2000]
 
 OBJ
                                                                 '  main cog - swerve system
@@ -263,6 +264,7 @@ OBJ
   sport         : "frskysport"                                  ' 1 cog - handling polling from receiver for telemetry
   swerve        : "swervemotor" | MAX_SWERVE_MODULES=NO_SWERVE_MODULES
   utilities     : "utilities"
+  batteryconf   : "batteryconfig"
   pmw           : "pmw3901"                                     ' Optical flow
   usfsmax       : "usfsmax"                                     ' IMU
   gps           : "gps_pa1010d"                                 ' GPS
@@ -271,7 +273,7 @@ OBJ
   lidar         : "rplidar"                                     ' 1 cog - read lidar
   nn            : "nn_drive"
 
-PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_time, again, temp, temp1, speeds[NO_SWERVE_MODULES], aspeeds[NO_SWERVE_MODULES], angles[NO_SWERVE_MODULES], havenn, lidaroutput[2]
+PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_time, again, temp, temp1, speeds[NO_SWERVE_MODULES], aspeeds[NO_SWERVE_MODULES], angles[NO_SWERVE_MODULES], havenn, lidaroutput[2], update
   debug1, debug2, debug3 := INIT_DEBUG, INIT_DEBUG, INIT_DEBUG
   longfill(@lastchannels, -1, NOCHANNELS)
   waitms(1000)
@@ -293,8 +295,11 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
   swerve.debugconfig(debug2, debug3)
   dopidconstants()
 
-  if havenn := nn.start()
+  if (havenn := nn.start()) <> 0
     debug("NN failed to start: ", udec_(havenn))
+
+  if !havenn and NN_TEST
+    nn.test_nn()
 
   ' initialize swerve modules and motors
   if (havemotors := swerve.start(MOTOR_SCL, MOTOR_SDA, ENCODERPIN1, MOTOR_FAN_PIN, @bot, @pinoffsets, @angleoffsets, @minencoder, @maxencoder, @invert, @motoroffsets, @driveencoders))
@@ -323,34 +328,38 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
     longmove(@swerveupdate, @sharedupdate, SHAREDVARIABLES) ' copy shared variables to local copy
     releasesynclock()
 
-    if swerveupdate & CHANNELCHANGE || again            ' use local cog variables and see if any channel changes or swerve modules need updating again
+    if (swerveupdate & CHANNELCHANGE and (update <> incswerve)) || again ' use local cog variables and see if any channel changes or swerve modules need updating again
       if debugo := (debugoutput(UTILITIES.DEBUGOUT1) || utilities.debugoutput(debug2, UTILITIES.DEBUGOUT1) || utilities.debugoutput(debug3, UTILITIES.DEBUGOUT1))
         takeprintlock()                                 ' take the print lock if any debug level is on
       delaystart := getms()                             ' delay from after motors updated, debug print delays part of processing time
 
-      if swerveupdate & CHANNELCHANGE                   ' dont need to do this unless channels have changed
+      if swerveupdate & CHANNELCHANGE and update <> incswerve ' dont need to do this unless channels have changed
         ' update local debug variable before using it
         debug1, debug2, debug3 := swervechannels[CHANNEL_DEBUG1], swervechannels[CHANNEL_DEBUG2], swervechannels[CHANNEL_DEBUG3]
         swerve.debugconfig(debug2, debug3)              ' update remaining debug values through system
         dopidconstants()
 
-      if swerveupdate & LIDARCHANGE                     ' dont need to do this unless lidar has changed
-        nn.drive_nn(@slidardistance, @lidaroutput)
+      if swerveupdate & LIDARCHANGE and update <> incswerve ' dont need to do this unless lidar has changed
+        nn.drive_nn(@slidardistance, @lidaroutput, -swerve.MAXSPEED, swerve.MAXSPEED)
 
       if havemotors <> (swerve.NO_MOTOR1|swerve.NO_MOTOR2) ' update swerve modules with updated movements
         if TEMP_MAX_STOP and motorstopped == true       ' 1 or more temp sensors have reached max temp
           swerve.stopmotors()                           ' disable all motors
-        elseif swervechannels[CHANNEL_AUTO] > MIDDEFAULT ' autoroam switch is on
-          again := swerve.update(lidaroutput[0], lidaroutput[1], lidaroutput[2], swervechannels[CHANNEL_OFF])
-        else
-          again := swerve.update(swervechannels[CHANNEL_Y], swervechannels[CHANNEL_X], swervechannels[CHANNEL_R], swervechannels[CHANNEL_OFF])
+        elseif swervechannels[CHANNEL_OFF] <> 0
+          if swervechannels[CHANNEL_AUTO] > MIDDEFAULT  ' autoroam switch is on
+            debug("auto ", sdec_(swervechannels[CHANNEL_AUTO]))
+            again := swerve.update(lidaroutput[0], lidaroutput[1], lidaroutput[2], swervechannels[CHANNEL_OFF])
+          else
+            'debug("drive ", sdec_long_array_(@swervechannels[CHANNEL_Y], 4))
+            again := swerve.update(swervechannels[CHANNEL_Y], swervechannels[CHANNEL_X], swervechannels[CHANNEL_R], swervechannels[CHANNEL_OFF])
       swerve.getactuals(@speeds, @aspeeds, @angles)
       sport.setactuals(@speeds, @aspeeds, @angles, swerve.MAXANGLE) ' swerve speeds/angles telemetry
       if debugo
-        if debugoutput(UTILITIES.DEBUGOUT4)
-          debug("Swerve period ", udec_(temp1 := getms()-acq_time), udec_(temp))
+        'if debugoutput(UTILITIES.DEBUGOUT4)
+        '  debug("Swerve period ", udec_(temp1 := getms()-acq_time), udec_(temp))
         releaseprintlock()                              ' release lock soon as we have finished printing
       swerveupdate &= CHANNELCHANGE                     ' dont update from channels until sensor cog changes it
+      update := incswerve                               ' count of sensor update
     else
       delaystart := getms()                             ' delay from after motors updated, debug print delays still part of processing time
                                                         ' swerve cog is stopping
@@ -367,6 +376,9 @@ PRI updatepidconstants(pKp, pKi, pKd) | i
     long[pKi][i] := long[pKi][i] +. float(swervechannels[CHANNEL_KI])/.PIDCONSTANTSDIVIDER100
     long[pKd][i] := long[pKd][i] +. float(swervechannels[CHANNEL_KD])/.PIDCONSTANTSDIVIDER1000
 
+VAR
+  long ltSkp[NO_SWERVE_MODULES], ltSki[NO_SWERVE_MODULES], ltSkd[NO_SWERVE_MODULES], ltDkp[NO_SWERVE_MODULES], ltDki[NO_SWERVE_MODULES], ltDkd[NO_SWERVE_MODULES]
+
 PRI dopidconstants() | tSkp[NO_SWERVE_MODULES], tSki[NO_SWERVE_MODULES], tSkd[NO_SWERVE_MODULES], tDkp[NO_SWERVE_MODULES], tDki[NO_SWERVE_MODULES], tDkd[NO_SWERVE_MODULES], omax[2]
   ' update pid constants
   longmove(@tSkp, @defaultSteerKp, NO_SWERVE_MODULES)   ' start with defaults
@@ -379,14 +391,16 @@ PRI dopidconstants() | tSkp[NO_SWERVE_MODULES], tSki[NO_SWERVE_MODULES], tSkd[NO
     updatepidconstants(@tSkp, @tSki, @tSkd)
   else
     updatepidconstants(@tDkp, @tDki, @tDkd)
-  if debugoutput(UTILITIES.DEBUGOUT3)
-    debug("radio steer pid: ", fdec_(tSkp[0], tSki[0], tSkd[0]), ", drive pid: ", fdec_(tDkp[0], tDki[0], tDkd[0]))
+
+  if utilities.longcompf(@ltSkp, @tSkp, NO_SWERVE_MODULES, 0.2, true) or utilities.longcompf(@ltSki, @tSki, NO_SWERVE_MODULES, 0.2, true)  or utilities.longcompf(@ltSkd, @tSkd, NO_SWERVE_MODULES, 0.2, true) or utilities.longcompf(@ltDkp, @tDkp, NO_SWERVE_MODULES, 0.2, true) or utilities.longcompf(@ltDki, @tDki, NO_SWERVE_MODULES, 0.2, true)  or utilities.longcompf(@ltDkd, @tDkd, NO_SWERVE_MODULES, 0.2, true)
+    if debugoutput(UTILITIES.DEBUGOUT3)
+      debug("radio steer pid: ", fdec_(tSkp[0], tSki[0], tSkd[0]), ", drive pid: ", fdec_(tDkp[0], tDki[0], tDkd[0]))
   omax[0] := omax[1] := swervechannels[CHANNEL_OFF]     ' set override max output speed
   swerve.setpidconstants(@tSkp, @tSki, @tSkd, @tDkp, @tDki, @tDkd, @omax)
 
 PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_time, compute_time1, havepmw, haveusfsmax, havegps, sbusstatus, lsbusstatus, ch, lastx_l, lastx_h, lasty_l, lasty_h, lasto[4], debugo, delaystart, gpsret, gpsrel, xl, yl, oldvoltage, volt, s, lasttemps[4], temp, temphigh, templow, lasttemp, lastimu, llidardistance[LIDARNOCHANNELS], havelidar, tlidar[LIDARNOCHANNELS]
 
-  ifnot pmw.begin(PMW_CS, PMW_SCK, PMW_SDO, PMW_SDI) == false ' init optical flow sensor
+  ifnot pmw.start(PMW_CS, PMW_SCK, PMW_SDO, PMW_SDI) == false ' init optical flow sensor
     havepmw := true
   if debugoutput(havepmw?UTILITIES.DEBUGOUT3:UTILITIES.DEBUGOUT1)
     debug("PMW3901", zstr_(havepmw?@" ":@" not "), "found")
@@ -418,12 +432,12 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
   if debugoutput(havegps?UTILITIES.DEBUGOUT3:UTILITIES.DEBUGOUT1)
     debug("GPS", zstr_(havegps?@" ":@" not "), "found ", uhex_(Acq_time))
 
-  battery.start(BATTERY_ANALOG, BATTERY_LOW, BATTERY_HIGH)
+  battery.start(BATTERY_ANALOG, BATTERYCONF.BATTERY_LOW, BATTERYCONF.BATTERY_HIGH)
 
-  repeat ch from 0 to SHARETEMP-1                       ' temperature sensors 1 per motor driver TB6612
-    temperature[ch].start(TEMP_ANALOG1+ch, TEMP_LOW, TEMP_HIGH)
+  repeat SHARETEMP with ch                              ' temperature sensors 1 per motor driver TB6612
+    temperature[ch].start(TEMP_ANALOG1+ch, TEMP_LOW, TEMP_HIGH, TEMP_VALID_MIN, TEMP_VALID_MAX)
 
-  lidar.start(LIDARTX_PIN, LIDARRX_PIN, LIDARCTL_PIN)
+  havelidar := lidar.start(LIDARTX_PIN, LIDARRX_PIN, LIDARCTL_PIN) <> 0
 
   lasttemp := delaystart := getms()
   repeat
@@ -442,13 +456,13 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
       lsbusstatus := OK
     'takeprintlock()
     'serial.fstr0(string("radio raw: "))
-    repeat ch from 0 to NOCHANNELS-1
+    repeat NOCHANNELS with ch
       if lsbusstatus == OK
         sbuschannels[ch] := utilities.map(s := sbus.read(ch+1), MINSBUSCHANNEL, MAXSBUSCHANNEL, minmap[ch], maxmap[ch])
         'serial.fstr1(string("%d "), s)
       else
         sbuschannels[ch] := Defaults[ch]                ' use defaults if not ok, defaults are post-mapped
-    if utilities.longcomp(@lastchannels, @sbuschannels, NOCHANNELS, 2, false) ' not updating lastchannels since we use them later
+    if utilities.longcomp(@lastchannels, @sbuschannels, NOCHANNELS, 5, false) ' not updating lastchannels since we use them later
       sensorupdate |= CHANNELCHANGE                     ' radio channel changed
     if lsbusstatus <> sbusstatus\lsbusstatus
       sbustime := getms()
@@ -470,14 +484,14 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
     if haveusfsmax                                      ' IMU
       'takeprintlock()
       Acq_time1 := getct()
-      _, qt[0], qt[1], qt[2], qt[3] := usfsmax.getMin() ' 239us (3.0MHz)
+      _, qt[0], qt[1], qt[2], qt[3] := usfsmax.getMin() ' 223us (3.0MHz)
       Acq_time1 := getct() - Acq_time1 - 40
       'compute_time1 := getct()
       ' 89us (200MHz)
       'osensor1[YAW], osensor1[PITCH], osensor1[ROLL], osensor1[PRESSURE] := usfsmax.computeIMUFloat(qt[0], qt[1], qt[2], qt[3])
       'compute_time1 := getct() - compute_time1 - 40
       compute_time := getct()
-      ' 56us (200MHz)
+      ' 39us (270MHz)
       osensor[YAW], osensor[PITCH], osensor[ROLL], osensor[PRESSURE] := usfsmax.computeIMUFixed(qt[0], qt[1], qt[2], qt[3])
       compute_time := getct() - compute_time - 40
       'releaseprintlock()                                ' release lock soon as we have finished printing
@@ -494,23 +508,24 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
 
     if havelidar
       updatelidar()
-      if utilities.longcomp(@llidardistance, @olidardistance, LIDARNOCHANNELS, 0, true)
+      if utilities.longcompf(@llidardistance, @olidardistance, LIDARNOCHANNELS, 0.1, true)
         sensorupdate |= LIDARCHANGE                     ' lidar changed
 
     if (getms() - lasttemp) > 20                        ' ADCs needs 164us to take a reading
-      ovoltage := float(battery.read())/.BATTERY_DIVIDER
+      ovoltage := float(battery.read())/.BATTERYCONF.BATTERY_DIVIDER
       sport.setvoltage(ovoltage)                        ' battery voltage telemetry
       if fabs(ovoltage -. oldvoltage) >. BATTERYDELTA
         oldvoltage := ovoltage
         sensorupdate |= VOLTAGECHANGE
 
-      repeat ch from 0 to SHARETEMP-1
+      repeat SHARETEMP with ch
         otemps[ch] := temperature[tempoffsets[ch]].read() ' use temp offset to get temp in FL, FR, BL, BR order
       sport.settemperature(@otemps)                     ' temperature telemetry, 0.01C * 100
       if utilities.longcomp(@lasttemps, @otemps, SHARETEMP, TEMPDELTA, true)
         sensorupdate |= TEMPCHANGE
       lasttemp := getms()
 
+    oincupdate++
     takesynclock()
     longmove(@sharedupdate, @sensorupdate, SHAREDVARIABLES) ' copy local to shared variables
     releasesynclock()
@@ -538,22 +553,22 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
             other: debug("Unknown", sdec_(count, sbustime, sbus.count()))
       if sensorupdate & CHANNELCHANGE                   ' channel values change
         if debugoutput(UTILITIES.DEBUGOUT3)
-          debug("Radio ", sdec_(count), ": ", sdec_long_array_(sbuschannels[ch], NOCHANNELS, sbuschannels[ch]-lastchannels[ch], NOCHANNELS)) ' channel value and delta from previous value
+          debug("Radio ", sdec_(count), ": ", sdec_long_array_(@sbuschannels, NOCHANNELS, @lastchannels, NOCHANNELS)) ' channel value and delta from previous value
       if sensorupdate & GPSCHANGE                       ' gps change
         if debugoutput(fix == 0?UTILITIES.DEBUGOUT3:UTILITIES.DEBUGOUT4)
           debug("GPS ", zstr_(gpsrel), uhex_(ogpst), sdec_(ohour), ":", sdec_(omin), ":", fdec_(osec), fdec_(onorthdeg), fdec_(owestdeg), fdec_(ospeed), fdec_(oalt), sdec_(fix), sdec_(satno))
       if sensorupdate & VOLTAGECHANGE                   ' battery voltage change
         if debugoutput(UTILITIES.DEBUGOUT3)
           debug("Voltage ", fdec_(ovoltage))
-        if ovoltage <. BATTERY_MINIMUM
+        if ovoltage <. BATTERYCONF.BATTERY_MINIMUM
           debug("Minimum Voltage reached ", fdec_(ovoltage))
-          if BATTERY_MIN_STOP                           ' if stop on battery min enabled
+          if BATTERYCONF.BATTERY_STOP                   ' if stop on battery min enabled
             quit                                        ' breakout the repeat, so this cog stops
       if sensorupdate & TEMPCHANGE                      ' temperature sensor change
         if debugoutput(UTILITIES.DEBUGOUT3)
           debug("Temp ", sdec_(lasttemp), " FL:", sdec_(otemps[0]), " FR:", sdec_(otemps[1]), " BL:", sdec_(otemps[2]), " BR:", sdec_(otemps[3]))
         temphigh := templow := 0
-        repeat ch from 0 to 3                           ' count number of drivers above max or below min
+        repeat 4 with ch                                ' count number of drivers above max or below min
           if (otemps[ch] > TEMP_MAX)
             temphigh++                                  ' driver too high
             debug("Max Temperature ", sdec_(ch), " reached ", fdec_(otemps[ch]))
@@ -570,13 +585,13 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
 
       if sensorupdate & LIDARCHANGE                     ' lidar sensor change
         if debugoutput(UTILITIES.DEBUGOUT3)
-          debug("Lidar ", fdec_array_(olidardistance, LIDARNOCHANNELS))
+          debug("Lidar (", zstr_(nn.updatedisplaylidar(@olidardistance, false)), ") ", fdec_array_(@olidardistance, LIDARNOCHANNELS))
         repeat LIDARNOCHANNELS with ch               ' convert to mm for telemetry
           tlidar[ch] := round((1.0 -. olidardistance[ch]) *. float(MAXDISTANCE-MINDISTANCE)) + MINDISTANCE
         sport.setlidar(@tlidar)
 
-      if debugoutput(UTILITIES.DEBUGOUT4)
-        debug("Sensor period %d", sdec_(getms()-period_time))
+      'if debugoutput(UTILITIES.DEBUGOUT4)
+      '  debug("Sensor period ", sdec_(getms()-period_time))
       releaseprintlock()                                ' release lock soon as we have finished printing
 
     if sensorupdate & CHANNELCHANGE                     ' need to update lastchannels since we didn't when we did the compare
@@ -590,19 +605,20 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
   waitms(100)                                           ' wait to make sure everything is completed
 
 CON
-  INITANGLE     = 90
+  INITANGLE     = 90+LIDAR_YAW
   INCANGLE      = 45
-  DELTAANGLE    = 23                                                            ' +- angle when checking distance
-  MINDISTANCE   = 150                                                           ' min distance in mm, 150mm is min lidar can do
-  MAXDISTANCE   = 800
+  DELTAANGLE    = 23                                    ' +- angle when checking distance
+  MINDISTANCE   = 150                                   ' min distance in mm, 150mm is min lidar can do
+  MAXDISTANCE   = 300
 
 PRI updatelidar() | i, angle
   angle := INITANGLE
   repeat LIDARNOCHANNELS with i
+    angle := (angle > 360)?angle-360:angle
+    angle := (angle < 0)?angle+360:angle
     olidardistance[i] := lidar.checkdistance(angle, DELTAANGLE, MINDISTANCE, MAXDISTANCE)
+    'debug("lidar", sdec_(angle), " ", fdec(olidardistance[i]))
     angle -= INCANGLE
-    if angle < 0
-      angle := 360
 
 PRI debugoutput(type) : retv
   retv := utilities.debugoutput(debug1, type)
