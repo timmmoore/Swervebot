@@ -142,10 +142,10 @@ CON
   DATA_ID_TEMP_ID3       = $5118
   DATA_ID_TEMP_ID4       = $5119
 
-  MAXNOSENSORS           = 25
+  MAXNOSENSORS           = 40
   MAXCELLS               = 6
 
-  STACK_SIZE_LONGS       = 100                          ' Need to test how much we need!
+  STACK_SIZE_LONGS       = 200                          ' Need to test how much we need!
 
 VAR
   long rxp, pgsensors, gsensorcount
@@ -496,13 +496,13 @@ wait   rdpin x, rp              wc                                              
 
 pri validid(physicalId) : sensorid
 ' is it one of our physical sensors?
-  sensorid := lookdown(physicalId: DATA_ID_FAS, DATA_ID_ACC, DATA_ID_LIDAR) ', DATA_ID_GPS, DATA_ID_ACTUALS, DATA_ID_FLOW, DATA_ID_TEMP)
+  sensorid := lookdown(physicalId: DATA_ID_FAS, DATA_ID_GPS, DATA_ID_ACTUALS, DATA_ID_ACC, DATA_ID_FLOW, DATA_ID_TEMP, DATA_ID_LIDAR)
 
 con
   _sensornoentries              = 4                                             ' number entries for each sensor info
 
 dat
-' maximum of 25 sensors
+' maximum of 40 sensors
 _sensorCount  long      (@_sensorsend - @_sensors)/(2*_sensornoentries)         ' count of info, not count of sensors
 '                       physical id            sensor id     subindex  delay(ms)
 _sensors
@@ -530,6 +530,14 @@ _sensors
               word      DATA_ID_TEMP,    DATA_ID_TEMP_ID4,        0,   1000     ' $5119, motor driver temps, 0,01C *100
               word      DATA_ID_FLVSS,   FSSP_DATAID_CELLS,       0,   1000     ' $0300, battery cell 0, 1
               word      DATA_ID_FLVSS,   FSSP_DATAID_CELLS,       1,   1000     ' $0300, battery cell 2
+              word      DATA_ID_LIDAR,   FSSP_LIDARL,             0,    500     ' $5104
+              word      DATA_ID_LIDAR,   FSSP_LIDARFL,            0,    500     ' $5105
+              word      DATA_ID_LIDAR,   FSSP_LIDARF,             0,    500     ' $5106
+              word      DATA_ID_LIDAR,   FSSP_LIDARFR,            0,    500     ' $5107
+              word      DATA_ID_LIDAR,   FSSP_LIDARR,             0,    500     ' $5108
+              word      DATA_ID_LIDAR,   FSSP_LIDARBR,            0,    500     ' $5109
+              word      DATA_ID_LIDAR,   FSSP_LIDARB,             0,    500     ' $510A
+              word      DATA_ID_LIDAR,   FSSP_LIDARBL,            0,    500     ' $510B
 _sensorsend
 '
 con { license }
