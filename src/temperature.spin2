@@ -11,7 +11,7 @@ CON
 
 VAR
   long  history[HISTORY_SIZE]
-  long  index
+  long  index, mint, maxt
 
 OBJ
   'serial        : "isp_serial_singleton_tmm"
@@ -20,14 +20,16 @@ OBJ
 pub null()
   ' This is not a top-level object
 
-pub start(pin, lo, hi) | i
+pub start(pin, lo, hi, min_, max_) | i
 
   stop()
-  longfill(@history, 0, HISTORY_SIZE)
+  longfill(@history, min_, HISTORY_SIZE)
+  mint := min_
+  maxt := max_
   analog.start(pin, lo, hi)
 
   ' fill history buffer with initial values
-  repeat i from 0 to HISTORY_SIZE-1
+  repeat HISTORY_SIZE with i
     waitus(250)
     read()
 
@@ -35,14 +37,18 @@ pub stop()
 
   analog.stop()
 
-pub read() : result | max, i
+pub read() : result | max, i, t
 ' keep last HISTORY_SIZE in array and return largest of these values
-  max := history[index] := analog.read()
-  index := (index+1) // HISTORY_SIZE
+  t := analog.read()
+  if t >= mint and t <= maxt
+    history[index] := analog.read()
+    index := (index+1) // HISTORY_SIZE
+  max := maxt
 
-  repeat i from 0 to HISTORY_SIZE-1
+  repeat HISTORY_SIZE with i
     if max < history[i]
       max := history[i]
+  max := mint #> max <# maxt
   return max
 '
 con { license }
