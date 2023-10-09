@@ -14,9 +14,9 @@
 
 CON
 ' needs to match training data and generated weights
-InputNodes      = 8                                                             ' input nodes, 1 per lidar input
-HiddenNodes     = 6                                                             ' hidden nodes
-OutputNodes     = 2                                                             ' output nodes, X, Y, rotate
+InputNodes      = 11                                                            ' input nodes, 1 per lidar input, plus X, Y, rotation
+HiddenNodes     = 12                                                            ' hidden nodes
+OutputNodes     = 3                                                             ' output nodes, X, Y, rotate
 
 OBJ
   utilities     : "utilities"
@@ -33,163 +33,218 @@ DAT
 ' The second are weights for the output nodes: (HiddenNodes+1) * OutputNodes
 '
 ' from spin2 trainer: nn_train.spin2
+' no weights = (InputNodes+1) * HiddenNodes + (HiddenNodes+1) * OutputNodes
 '{
 fHiddenWeights
-long 1.074378e-01
-long -2.618973e+00
-long -8.017249e-01
-long -1.605691e+00
-long -5.438482e-01
-long 9.610894e-01
+long -0.176513671875
+long  -0.153564453125
+long  0.423828125
+long  -0.4658203125
+long  0.091796875
+long  -0.02783203125
+long  -0.15869140625
+long  -0.3173828125
+long  -0.215576171875
+long  0.1865234375
+long  0.3603515625
+long  0.3623046875
 
-long -8.995779e-01
-long -1.199365e+00
-long -2.046993e+00
-long 1.571164e+00
-long -2.932147e-01
-long 3.554947e-01
+long  -0.30419921875
+long  -0.44580078125
+long  0.41015625
+long  0.177734375
+long  0.4716796875
+long  0.4541015625
+long  -0.100830078125
+long  -0.25927734375
+long  0.48291015625
+long  0.5
+long  0.25830078125
+long  -0.3740234375
 
-long 7.862390e-01
-long -6.490445e-01
-long 9.057328e+00
-long 6.127009e-01
-long 7.133089e-01
-long -1.634628e+00
+long  0.55712890625
+long  -0.455322265625
+long  0.1304931640625
+long  0.332275390625
+long  1.568359375
+long  0.72314453125
+long  0.160400390625
+long  -0.51416015625
+long  -1.1005859375
+long  -0.2484130859375
+long  0.74853515625
+long  0.50390625
 
-long -7.902029e-01
-long -1.308742e+00
-long -2.093864e+00
-long 6.883631e-01
-long -5.588447e-01
-long 2.617458e-01
+long  0.228515625
+long  -0.1846923828125
+long  0.38427734375
+long  0.169189453125
+long  0.392578125
+long  0.1610107421875
+long  -0.3681640625
+long  0.360107421875
+long  -0.12396240234375
+long  -0.32421875
+long  -0.1923828125
+long  0.1826171875
 
-long -3.925641e-01
-long -2.150220e+00
-long -2.860991e-01
-long -2.183831e+00
-long -1.059482e+00
-long 9.454644e-01
+long  -4.69140625
+long  -0.1983642578125
+long  -0.6259765625
+long  -4.5390625
+long  0.49951171875
+long  0.043792724609375
+long  -0.28564453125
+long  -1.23828125
+long  1.626953125
+long  -1.2021484375
+long  0.42529296875
+long  -1.3623046875
 
-long 7.786440e-01
-long 5.583652e+00
-long -1.932532e+00
-long -9.387718e-01
-long 9.730888e-01
-long 6.240403e-01
+long  0.9775390625
+long  -0.191650390625
+long  0.25146484375
+long  0.869140625
+long  0.6591796875
+long  0.2783203125
+long  -0.2476806640625
+long  0.495849609375
+long  0.10430908203125
+long  -0.27294921875
+long  0.130859375
+long  0.40673828125
 
-long 7.786440e-01
-long 5.583652e+00
-long -1.932532e+00
-long -9.387718e-01
-long 9.730888e-01
-long 6.240403e-01
+long  0.70361328125
+long  0.37939453125
+long  -0.43603515625
+long  0.91845703125
+long  1.7109375
+long  0.51416015625
+long  0.164306640625
+long  -1.1669921875
+long  -1.1279296875
+long  -0.390869140625
+long  0.5
+long  0.7998046875
 
-long 7.786440e-01
-long 5.583652e+00
-long -1.932532e+00
-long -9.387718e-01
-long 9.730888e-01
-long 6.240403e-01
+long  0.1845703125
+long  0.44287109375
+long  -0.2353515625
+long  -0.244384765625
+long  -0.35302734375
+long  -0.098876953125
+long  -0.0458984375
+long  -0.013916015625
+long  -0.23046875
+long  0.43603515625
+long  0.3828125
+long  -0.20751953125
 
-long 7.786440e-01
-long 5.583652e+00
-long -1.932532e+00
-long -9.387718e-01
-long 9.730888e-01
-long 6.240403e-01
-fEndHiddenWeights
-
-fOutputWeights
-long 3.028817e-01
-long 2.604457e+00
-
-long 4.724762e+00
-long 4.384694e+00
-
-long -6.097480e+00
-long -5.727854e+00
-
-long 3.511851e+00
-long -1.085837e+00
-
-long 1.460946e+00
-long 2.221208e+00
-
-long -2.188089e+00
-long -2.902344e+00
-
-long -5.984973e-01
-long -6.601086e-01
-fEndOutputWeights
-'}
-{
-' from PC trainer
-fHiddenWeights
-long -1.8837890625
-long  0.5009765625
+long  0.884765625
+long  -0.07122802734375
+long  0.4677734375
+long  0.2724609375
 long  -0.5
-long  0.3486328125
-long  -0.5068359375
-long  -1.484375
+long  -0.361328125
+long  -0.46875
+long  0.08294677734375
+long  -1.1318359375
+long  -0.279296875
+long  0.1400146484375
+long  1.0
 
-long  0.806640625
-long  -2.666015625
-long  1.537109375
-long  -2.0625
-long  1.0087890625
-long  -2.05078125
-
-long  2.40625
-long  6.71484375
-long  -0.6962890625
-long  6.171875
-long  -1.00390625
-long  -0.77587890625
-
-long  0.036773681640625
-long  -1.625
-long  1.69921875
-long  -1.578125
-long  1.0673828125
-long  -2.05078125
-
-long  -1.7978515625
-long  0.5361328125
-long  -0.771484375
-long  0.3486328125
-long  -0.77099609375
-long  -1.51953125
-
-long  -1.9599609375
-long  -1.0107421875
-long  -2.07421875
+long  -1.2705078125
+long  -0.0924072265625
+long  -1.0673828125
+long  -0.888671875
+long  -1.451171875
+long  -0.50830078125
+long  -0.64794921875
+long  -0.30615234375
+long  2.0078125
+long  -0.2252197265625
 long  -0.845703125
-long  -0.732421875
-long  5.859375
+long  -0.72314453125
+
+long  0.393798828125
+long  -0.42626953125
+long  -0.16259765625
+long  0.4951171875
+long  -0.86376953125
+long  0.035491943359375
+long  -0.3544921875
+long  -0.07928466796875
+long  -1.4404296875
+long  0.0224761962890625
+long  0.2320556640625
+long  0.779296875
+
+long  0.99755859375
+long  -0.322265625
+long  0.66064453125
+long  0.94091796875
+long  -1.2451171875
+long  -0.286865234375
+long  -0.119140625
+long  0.2386474609375
+long  -2.046875
+long  -0.45947265625
+long  -0.31298828125
+long  1.1533203125
 
 fEndHiddenWeights
-
 fOutputWeights
-long 3.767578125
-long  2.69140625
+long -0.106689453125
+long  4.0
+long  -1.4111328125
 
-long  -4.05078125
-long  -3.6484375
+long  -0.1680908203125
+long  0.1898193359375
+long  0.0302886962890625
 
-long  0.0048370361328125
-long  -2.58984375
+long  -0.41455078125
+long  -0.63623046875
+long  1.3984375
 
-long  -3.466796875
-long  -3.580078125
+long  0.125
+long  3.705078125
+long  -1.900390625
 
-long  0.4833984375
-long  -2.775390625
+long  -0.0211181640625
+long  -3.109375
+long  -0.275146484375
 
-long  4.47265625
-long  4.8515625
+long  -0.1826171875
+long  -1.4921875
+long  -0.11065673828125
 
-long  1.0703125
-long  2.134765625
+long  0.40087890625
+long  -0.6064453125
+long  0.322021484375
+
+long  0.4423828125
+long  1.0
+long  2.00390625
+
+long  0.0226287841796875
+long  3.87109375
+long  -0.97021484375
+
+long  -0.322998046875
+long  0.67724609375
+long  1.005859375
+
+long  0.42724609375
+long  -1.3671875
+long  -0.61962890625
+
+long  0.06964111328125
+long  -2.205078125
+long  0.568359375
+
+long  -0.1107177734375
+long  0.61572265625
+long  -0.02301025390625
 
 fEndOutputWeights
 '}
@@ -207,27 +262,29 @@ pub start() : result
     return 2
   return 0
 
-pub drive_nn(pInput, pOutput) | index, pout
+pub drive_nn(pInput, pOutput, minspeed, maxspeed) | index, pout, mid, range
 ' translate between demo_dual_motor_rc input/output
-'   input: 0.0-1.0, lidar detection range (L, FL, F, FR, R)
-'   output: -100 to 100, left/right motor speed
-' 137-168us with log_w_approx_exp_no_overflow16_clamped sigmoid
+'   input: 0.0-1.0, lidar detection range (B, BL, L, FL, F, FR, R, BR, Speed, Direction, Rotation)
+'   output: -100 to 100, speed, direction, rotation speed
+' 137-168us with 5 input, 6 hidden, 2 output and log_w_approx_exp_no_overflow16_clamped sigmoid
+' 329us-392us with 11 input, 12 hidden, 3 output
   pout := InputToOutput(pInput)                                                 ' input to NN to obtain output
-
+  range := float(maxspeed - minspeed)
+  mid := range /. 2.0
   repeat OutputNodes with index
-    long[pOutput][index] := round(long[pout][index] *. 200.0) - 100             ' convert 0 -> +1 to -100 to 100
+    long[pOutput][index] := round(long[pout][index] *. range -. mid)            ' convert 0 -> +1 to -100 to 100
 
 pri InputToOutput(pfTestInput) : poutput | tempindex, outer
 ' core of the neutral network
-' input nodes are  8: 0.0-1.0 higher number is closer: back, back-left, left, front-left, front, front-right, right, back-right
-' output nodes are 2: 0.0-1.0 speed/direction
-'   speed: 0 is full speed backwards, 0.5 is stopped, 1.0 is full speed forwards
-'   direction: 0 , 1.0
-' hidden nodes are 6
+' input nodes are  11: 0.0-1.0 higher number is closer: back, back-left, left, front-left, front, front-right, right, back-right
+' output nodes are  3: 0.0-1.0 x/y/rotation
+'   x/y: 0 is full speed backwards, 0.5 is stopped, 1.0 is full speed forwards
+'     r: 0 is full speed anti-clockwise, 0.5 is stopped, 1.0 is full speed clockwise
+' hidden nodes are 12
 '
 ' cordic operations (1 multiply)*(inputnodes + outputnodes)*hiddennodes
 '                   (hiddennodes+outputnode) * sigmoid(4 multiply, 2 divide)
-' total approx = (42+32) 74 multiply, 16 divide, ~60us, so 36-44% of excution time
+' total approx = (168+60) 228 multiply, 30 divide, ~181us, so 46-55% of excution time
 '
   ' Compute hidden layer activations
   ' float HiddenWeights[InputNodes + 1][HiddenNodes]                            ' weight per input node per hidden node
@@ -271,32 +328,36 @@ PUB updatedisplaylidar(pfin, bfront) : result | i, maxlid
 '
 ' set of tests that run the Lidar simultated inputs through the neutral network and prints the results
 '
+CON
+  testvectorsize = 11                                                           ' number of elements in a test
+
 DAT
 ftestinputs
-        long 0.0,  0.0,  0.0,  0.0,  0.0        ' test1
-        long 1.0,  1.0,  1.0,  1.0,  1.0        ' test2
-        long 0.0,  0.0,  1.0,  0.0,  0.0        ' test3
-        long 0.0,  1.0,  1.0,  1.0,  0.0        ' test4
-        long 1.0,  0.0,  1.0,  0.0,  1.0        ' test5
-        long 1.0,  1.0,  1.0,  0.0,  0.0        ' test6
-        long 0.0,  0.0,  1.0,  1.0,  1.0        ' test7
-        long 1.0,  1.0,  1.0,  1.0,  0.0        ' test8
-        long 0.5,  0.5,  0.5,  0.5,  0.5        ' test9
-        long 0.0,  0.0,  0.5,  0.0,  0.0        ' test10
-        long 0.25, 0.25, 0.5,  0.25, 0.25       ' test11
-        long 0.0,  0.4,  0.5,  0.4,  0.0        ' test12
+        long 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.5,  0.5,  0.5    ' test1
+        long 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.5,  1.0,  0.5    ' test2
+        long 1.0,  1.0,  1.0,  1.0,  1.0,  0.0,  0.0,  0.0,  0.5,  1.0,  0.5    ' test3
+        long 0.0,  0.0,  1.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.5,  0.6,  0.5    ' test4
+        long 0.0,  1.0,  1.0,  1.0,  0.0,  0.0,  0.0,  0.0,  0.5,  0.7,  0.5    ' test5
+        long 1.0,  0.0,  1.0,  0.0,  1.0,  0.0,  0.0,  0.0,  0.5,  0.8,  0.5    ' test6
+        long 1.0,  1.0,  1.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.5,  0.5,  0.5    ' test7
+        long 0.0,  0.0,  1.0,  1.0,  1.0,  0.0,  0.0,  0.0,  0.5,  0.5,  0.5    ' test8
+        long 1.0,  1.0,  1.0,  1.0,  0.0,  0.0,  0.0,  0.0,  0.5,  1.0,  0.5    ' test9
+        long 0.5,  0.5,  0.5,  0.5,  0.5,  0.0,  0.0,  0.0,  0.5,  1.0,  0.5    ' test10
+        long 0.0,  0.0,  0.5,  0.0,  0.0,  0.0,  0.0,  0.0,  0.5,  1.0,  0.5    ' test11
+        long 0.25, 0.25, 0.5,  0.25, 0.25, 0.0,  0.0,  0.0,  0.5,  0.8,  0.5    ' test12
+        long 0.0,  0.4,  0.5,  0.4,  0.0,  0.0,  0.0,  0.0,  0.5,  0.8,  0.5    ' test13
 endftestinputs
 
-pub test_nn() | pftest, nout[2], i, t, clk
+pub test_nn() | pftest, nout[3], i, t, clk
 ' run set of tests on nn
 '
   clk := clkfreq/1_000_000
-  repeat ((@endftestinputs - @ftestinputs)/(4*5)) with i
-    pftest := @long[@ftestinputs][5*i]
+  repeat ((@endftestinputs - @ftestinputs)/(4*testvectorsize)) with i
+    pftest := @long[@ftestinputs][testvectorsize*i]
     t := getct()
-    drive_nn(pftest, @nout)
+    drive_nn(pftest, @nout, -100, 100)
     t := getct() - t
-    debug("test", udec_(i+1), " ", udec_(t/clk), "us lidar=(", zstr_(updatedisplaylidar(pftest, true)), ") motors= ", sdec_long_array_(@nout, 2))
+    debug("test", udec_(i+1), " ", udec_(t/clk), "us lidar=(", zstr_(updatedisplaylidar(pftest, false)), ") motors= ", sdec_long_array_(@nout, 3))
 '
 con { license }
 {{
