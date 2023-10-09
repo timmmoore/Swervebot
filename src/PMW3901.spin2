@@ -72,10 +72,8 @@ VAR
 
 PUB null()
 
-PUB begin(tcs, tsck, tso, tsi) : retv
+PUB start(tcs, tsck, tso, tsi) : retv
   cs := tcs
-
-  spi.start(tsi, tso, tsck, SPI.MODE_3, SPI_CLK_SPEED) ' Setup SPI bus
 
   ' Make sure the PMW3901 is reset on the SPI bus
   disableCS()
@@ -85,6 +83,9 @@ PUB begin(tcs, tsck, tso, tsi) : retv
   disableCS()
   waitms(1)
 
+  spi.start(tsi, tso, tsck, SPI.MODE_3, SPI_CLK_SPEED) ' Setup SPI bus
+
+  waitms(5)
   registerWrite(POWER_UP_RESET, $5A)                    ' Power on reset
   waitms(5)
   ' Test the SPI communication, checking chipId and inverse chipId
