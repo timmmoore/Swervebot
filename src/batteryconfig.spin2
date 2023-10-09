@@ -1,0 +1,12 @@
+{ Battery Config
+        Allow different bots to change battery monitoring
+}
+
+CON
+  BATTERY_LOW                   = 0
+  BATTERY_HIGH                  = 33750 '33482                                  ' 8K2 + 3K resistor divider, max voltage is 12.6V * 3000/11200 -> 3.375
+  BATTERY_DIVIDER               = 2673.534 '2678.56                             ' 33750/2678.56 -> 12.6, absolute max is 4.2V per cell (total 12.6V)
+  BATTERY_MINIMUM               = 9.9                                           ' minimum voltage, absolute min is 3.2V per cell (total 9.6V)
+  BATTERY_STOP                  = true                                          ' shutdown if min battery reached
+
+PUB null()
