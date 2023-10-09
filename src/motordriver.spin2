@@ -70,12 +70,12 @@ PUB stop()
   stopmotors()
 
 PUB stopmotors() | ch
-  repeat ch from 0 to 15                                ' all pins off, motor output is high impedance, coast mode
+  repeat 16 with ch                                     ' all pins off, motor output is high impedance, coast mode
     setPWM(MOTOR1<<1, ch+LED0_ON_L, 0)
     setPWM(MOTOR2<<1, ch+LED0_ON_L, 0)
 
 PUB brakemotors() | ch
-  repeat ch from 0 to 7
+  repeat 8 with ch
     brakemotor(ch)
 
 PUB brakemotor(m)
@@ -148,7 +148,7 @@ PRI setPWMAll(addr, num3, num2, num1, value1, value2, value3) : retv
   retv := !!(i2c.wr_block(@num1.word[1], 14) == i2c.NAK)
   i2c.stop()                                            ' pins are updated on I2C stop so write order for one batch doesn't matter
   if debugoutput(UTILITIES.DEBUGOUT4)
-    debug("setpwmall done ", uhex_(addr, num1, value1, num2, value2, num3, value3), sdec_(retv))
+    debug("setpwmall done ", uhex_(addr, num3, num2, num1, value1, value2, value3), sdec_(retv))
 
 PUB run(motor, speed) : retv | addr, pwm, in1, in2, in2v, pwmv, temp
 '' set speed of 1 motor of a swerve module
@@ -175,11 +175,11 @@ PUB run(motor, speed) : retv | addr, pwm, in1, in2, in2v, pwmv, temp
     in1, in2 := in2, in1
 
   temp := getct()
-  ' 185-186us
+  ' 169-170us
   retv := setPWMAll(addr := addrs[motor>>2], pwm, in2, in1, 0, in2v, pwmv)
   temp := getct() - temp - 40
   if debugoutput(UTILITIES.DEBUGOUT3)
-    debug("run motor ", uhex_(addr), sdec_(motor), uhex_(pwm, in2, in1), sdec_(speed, retv, temp/uscount))
+    debug("run motor ", sdec_(motor), uhex_(addr), uhex_(pwm, in1, in2), sdec_(speed, retv, temp/uscount))
 
 PRI debugoutput(type) : retv
   retv := utilities.debugoutput(debug2, type)
