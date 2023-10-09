@@ -72,10 +72,12 @@ pub start(sdi, sdo, sck, mode, khz)
 
   if (sdo >= 0)                                                 ' if sdo used
     pinclear(sdo)
-    pinl(sdo)                                                   ' make output low
+    pinf(sdo)
+'    pinl(sdo)                                                   ' make output low
 
   if ((sdi >= 0) && (sdi <> sdo))                               ' if sdi used
     pinclear(sdi)                                               '  clear and make input
+    pinf(sdi)
 
   clktix := (clkfreq / (khz * 1_000)) >> 2 - 4                  ' 1/4 period
 
