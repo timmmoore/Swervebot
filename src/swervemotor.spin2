@@ -88,7 +88,7 @@ PUB start(scl, sda, epin, tfpin, pbot, ppinoffsets, pangleoffsets, pminencoder, 
     debug("Swerve starting ", fdec_(long[pbot][BOT_WIDTH], long[pbot][BOT_LENGTH], rad))
 
   longmove(@motors, pmotor, MAX_SWERVE_MODULES*2)       ' conversion between swerve motor number and motor driver motor number
-  repeat ch from 0 to 7                                 ' switch invert flags to match order of motordrivers, not swerve modules
+  repeat 9 with ch                                      ' switch invert flags to match order of motordrivers, not swerve modules
     inverts[long[pmotor][ch]] := word[pinvert][ch]
   retv := motor.start(scl, sda, @inverts)
 
@@ -96,7 +96,7 @@ PUB start(scl, sda, epin, tfpin, pbot, ppinoffsets, pangleoffsets, pminencoder, 
 
   fan.startfan(tfpin)                                   ' config fan
 
-  repeat ch from 0 to MAX_SWERVE_MODULES-1
+  repeat MAX_SWERVE_MODULES with ch
     pid[ch].init(ch, MAXANGLE, MAXSPEED)                ' 0-MAXANGLE input, +- MAXSPEED output
     pid[ch].currentposition(actualangles[ch] := encoder.read(ch, false)) ' current angle of swerve
     pid[ch].setposition(0)                              ' start angle
@@ -115,7 +115,7 @@ PUB stop()
 PUB setpidconstants(pSKp, pSKi, pSKd, pDKp, pDKi, pDKd, povermax) | ch
   longmove(@overridemax, povermax, 2)
   '' config pid constants for steering pids
-  repeat ch from 0 to MAX_SWERVE_MODULES-1
+  repeat MAX_SWERVE_MODULES with ch
     pid[ch].setconstants(ch, long[pSKp][ch], long[pSKi][ch], long[pSKd][ch])
     dpid[ch].setconstants(ch, long[pDKp][ch], long[pDKi][ch], long[pDKd][ch])
 
@@ -135,7 +135,7 @@ PRI setmotorspeeds(pspeeds) : retv | ch, speed, drive, off
   ' set all motor speeds, drive and angle
   ' swerve modules on 1st and 2nd motor driver
   ' return true if any motor is above min speed
-  repeat ch from 0 to 7
+  repeat 8 with ch
     speed := long[pspeeds][ch]
     if (drive := ch & 1) == 0
       actualspeeds[ch>>1] := speed                      ' update drive telemetry
@@ -144,7 +144,7 @@ PRI setmotorspeeds(pspeeds) : retv | ch, speed, drive, off
     retv |= off
 
 PRI drivespeeds(pspeeds) : retv | ch, ponespeed, delta, dpido, denc, ct, dt
-  repeat ch from 0 to MAX_SWERVE_MODULES-1
+  repeat MAX_SWERVE_MODULES with ch
     ponespeed := @long[pspeeds][ch<<1]                  ' index for this swerve's motor speeds
     driveencodercount[ch], driveencodervelocity[ch] := driveencoders[ch].read() ' current quadrature count
     ct := getms()
@@ -155,13 +155,13 @@ PRI drivespeeds(pspeeds) : retv | ch, ponespeed, delta, dpido, denc, ct, dt
     dpido, delta := dpid[ch].output()                   ' update drive motor speed
     if debugoutput(UTILITIES.DEBUGOUT3)
       debug("drivespeeds ", zstr_(@@sptr[ch]), sdec_(dt, driveencodervelocity[ch], denc, long[ponespeed], dpido))
-    'long[ponespeed] := dpido
+    'long[ponespeed] := dpido                           ' dont use drive encoder
     retv |= delta <> 0                                  ' current and set drive speeds not same
 
 PRI angletospeed(pspeeds, pangles) : retv | rawangle, requestangle, ch, wrappedangle, ponespeed, delta
   ' convert required angle to motor speed to get there
   ' return false if all swerves are at correct angle
-  repeat ch from 0 to MAX_SWERVE_MODULES-1
+  repeat MAX_SWERVE_MODULES with ch
     ponespeed := @long[pspeeds][ch<<1]                  ' index for this swerve's motor speeds
     actualangles[ch] := rawangle := encoder.read(ch, false) ' current angular position, encoder handles encoder offset
     pid[ch].currentposition(rawangle)                   ' current angle of swerve
@@ -223,7 +223,7 @@ PRI calculate(x, y, r, pspeeds, pangles) | a, b, c, d, xrl, yrl, rl
 
 PRI Swerve1Debug(no, pspeeds, pangles, p1, p2)
   if debugoutput(UTILITIES.DEBUGOUT3)
-    debug("Swerve ", zstr_(@@sptr[no]), " speed/angle ", sdec_(long[pspeeds][p1],  long[pangles][p2]),  fdec_(long[pangles][p2]))
+    debug("Swerve ", zstr_(@@sptr[no]), " speed/angle*10 ", sdec_(long[pspeeds][p1],  long[pangles][p2]))
 
 CON
   ACCINTERVAL   = 20                                    ' acceleration limiting interval, ms
@@ -263,6 +263,8 @@ PRI Swerve2Debug(type, last, in, out)
 
 PRI minspeeds(x, y, r) : retv
   if (abs(x) < MINSPEEDX) and (abs(y) < MINSPEEDY) and (abs(r) < MINSPEEDR)
+    if debugoutput(UTILITIES.DEBUGOUT3)
+      debug("MinSpeeds under ", sdec_(x, y, r))
     return true
 
 PUB update(x, y, r, off) : notcomplete | changed, newoffstate, previousoffstate, ch, temp
@@ -295,7 +297,7 @@ PUB update(x, y, r, off) : notcomplete | changed, newoffstate, previousoffstate,
     setmotorspeeds(@zerospeeds)
     fan.fanoff()                                        ' turn off fan on timer
   elseif (getms() - encodertime) > 1000
-    repeat ch from 0 to MAX_SWERVE_MODULES-1
+    repeat MAX_SWERVE_MODULES with ch
       encoder.read(ch, true)                            ' read encoder when motors off, so can manually adjust encoder offsets
     encodertime := getms()
   notcomplete |= fan.checkfan()                         ' check fan for updates, need to return notcomplete if timer is running
@@ -318,7 +320,7 @@ PUB debugconfig(tdebug2, tdebug3) | ch
     olddebug3 := tdebug3
     encoder.updatedebug(tdebug3)
     motor.updatedebug(tdebug3)
-    repeat ch from 0 to MAX_SWERVE_MODULES-1
+    repeat MAX_SWERVE_MODULES with ch
       pid[ch].updatedebug(tdebug3)
 
 PRI debugoutput(type) : retv
