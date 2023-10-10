@@ -43,13 +43,10 @@ TODO
 con { timing }
 
   CLK_FREQ = 270_000_000                                        ' system freq as a constant
-'  CLK_FREQ = 200_000_000                                                        ' system freq as a constant
   MS_001   = CLK_FREQ / 1_000                                                   ' ticks in 1ms
   US_001   = CLK_FREQ / 1_000_000                                               ' ticks in 1us
 
   DEBUG_LOG_SIZE = 500_000
-
-  'BR_SERIAL = 115_200                                                           ' terminal baud rate
 
   _clkfreq = CLK_FREQ                                                           ' set system clock
 
@@ -227,7 +224,8 @@ con { fixed io pins }
   LIDARNOCHANNELS               = 8                                             ' number of lidar output from checkdistance
   LIDAR_YAW                     = 270                                           ' angle offset if lidar not pointing directly to front of bot, in degree
 
-  NN_TEST                       = true
+  NN_TEST                       = true                                          ' run tests on nn
+  TRAINING                      = false 'true                                   ' use training data to generate model weights
 
 VAR
   ' shared variables
@@ -259,7 +257,6 @@ VAR
 OBJ
                                                                 '  main cog - swerve system
                                                                 '  2nd cog - query sensors
-  'serial        : "isp_serial_singleton_tmm"
   sbus          : "jm_sbus_rx"                                  ' 1 cog - read sbus from receiver
   sport         : "frskysport"                                  ' 1 cog - handling polling from receiver for telemetry
   swerve        : "swervemotor" | MAX_SWERVE_MODULES=NO_SWERVE_MODULES
@@ -272,14 +269,13 @@ OBJ
   temperature[4] : "temperature"                                ' A2D to read motor driver temperature sensors
   lidar         : "rplidar"                                     ' 1 cog - read lidar
   nn            : "nn_drive"
+  nn_training   : "nn_training"
 
 PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_time, again, temp, temp1, speeds[NO_SWERVE_MODULES], aspeeds[NO_SWERVE_MODULES], angles[NO_SWERVE_MODULES], havenn, lidaroutput[2], update
+
+  pinhigh(PMW_CS)                                       ' seems to help PMW initialize, would a pull up resistor be better
   debug1, debug2, debug3 := INIT_DEBUG, INIT_DEBUG, INIT_DEBUG
   longfill(@lastchannels, -1, NOCHANNELS)
-  waitms(1000)
-  'serial.startx(WIFI_DO_PIN, WIFI_DI_PIN, BR_SERIAL)
-
-  waitms(1000)
   if debugoutput(UTILITIES.DEBUGOUT3)
     debug("Swerve Controller")
 
@@ -298,6 +294,11 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
   if (havenn := nn.start()) <> 0
     debug("NN failed to start: ", udec_(havenn))
 
+  if TRAINING                                                             ' train the nn model
+    nn_training.train_nn()
+    repeat
+      waitms(1000)
+
   if !havenn and NN_TEST
     nn.test_nn()
 
@@ -315,6 +316,7 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
   sport.setactuals(@speeds, @aspeeds, @angles, swerve.MAXANGLE) ' swerve speeds/angles telemetry
 
   cognum := COGSPIN(newcog, runsensors(), @StkAddr)     ' initialize sensors
+  pinf(PMW_CS)                                          ' float pin for sensor cog to takeover
 
   delaystart := getms()
 
@@ -398,8 +400,9 @@ PRI dopidconstants() | tSkp[NO_SWERVE_MODULES], tSki[NO_SWERVE_MODULES], tSkd[NO
   omax[0] := omax[1] := swervechannels[CHANNEL_OFF]     ' set override max output speed
   swerve.setpidconstants(@tSkp, @tSki, @tSkd, @tDkp, @tDki, @tDkd, @omax)
 
-PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_time, compute_time1, havepmw, haveusfsmax, havegps, sbusstatus, lsbusstatus, ch, lastx_l, lastx_h, lasty_l, lasty_h, lasto[4], debugo, delaystart, gpsret, gpsrel, xl, yl, oldvoltage, volt, s, lasttemps[4], temp, temphigh, templow, lasttemp, lastimu, llidardistance[LIDARNOCHANNELS], havelidar, tlidar[LIDARNOCHANNELS]
+PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_time, compute_time1, havepmw, haveusfsmax, havegps, sbusstatus, lsbusstatus, ch, lastx_l, lastx_h, lasty_l, lasty_h, lasto[4], debugo, delaystart, gpsret, gpsrel, xl, yl, oldvoltage, volt, s, lasttemps[4], temp, temphigh, templow, lasttemp, lastimu, llidardistance[LIDARNOCHANNELS], maylidar, havelidar, tlidar[LIDARNOCHANNELS]
 
+  'waitms(10)                                            ' give time for main cog to float PMW_CS
   ifnot pmw.start(PMW_CS, PMW_SCK, PMW_SDO, PMW_SDI) == false ' init optical flow sensor
     havepmw := true
   if debugoutput(havepmw?UTILITIES.DEBUGOUT3:UTILITIES.DEBUGOUT1)
@@ -437,7 +440,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
   repeat SHARETEMP with ch                              ' temperature sensors 1 per motor driver TB6612
     temperature[ch].start(TEMP_ANALOG1+ch, TEMP_LOW, TEMP_HIGH, TEMP_VALID_MIN, TEMP_VALID_MAX)
 
-  havelidar := lidar.start(LIDARTX_PIN, LIDARRX_PIN, LIDARCTL_PIN) <> 0
+  maylidar := lidar.start(LIDARTX_PIN, LIDARRX_PIN, LIDARCTL_PIN) <> 0
 
   lasttemp := delaystart := getms()
   repeat
@@ -462,7 +465,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
         'serial.fstr1(string("%d "), s)
       else
         sbuschannels[ch] := Defaults[ch]                ' use defaults if not ok, defaults are post-mapped
-    if utilities.longcomp(@lastchannels, @sbuschannels, NOCHANNELS, 5, false) ' not updating lastchannels since we use them later
+    if utilities.longcomp(@lastchannels, @sbuschannels, NOCHANNELS, 12, false) ' not updating lastchannels since we use them later
       sensorupdate |= CHANNELCHANGE                     ' radio channel changed
     if lsbusstatus <> sbusstatus\lsbusstatus
       sbustime := getms()
@@ -496,8 +499,10 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
       compute_time := getct() - compute_time - 40
       'releaseprintlock()                                ' release lock soon as we have finished printing
       sport.setimu(osensor[YAW], osensor[PITCH], osensor[ROLL], osensor[PRESSURE]) ' imu telemetry
-      if utilities.longcompf(@lasto, @osensor, SHAREDIMU, 0.11, true)
-        sensorupdate |= IMUCHANGE                       ' imu changed
+      if utilities.longcompf(@lasto, @osensor, SHAREDIMU, 0.5, false)
+        if fabs(lasto[PRESSURE] - osensor[PRESSURE]) >. 2.0
+          longmove(@lasto, @osensor, SHAREDIMU)
+          sensorupdate |= IMUCHANGE                     ' imu changed
 
     if havegps                                          ' gps
       if (gpsret := gps.input()) <> 0
@@ -510,6 +515,8 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
       updatelidar()
       if utilities.longcompf(@llidardistance, @olidardistance, LIDARNOCHANNELS, 0.1, true)
         sensorupdate |= LIDARCHANGE                     ' lidar changed
+    elseif maylidar
+      havelidar := lidar.haveLidar()                    ' see if lidat detected
 
     if (getms() - lasttemp) > 20                        ' ADCs needs 164us to take a reading
       ovoltage := float(battery.read())/.BATTERYCONF.BATTERY_DIVIDER
@@ -585,7 +592,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
 
       if sensorupdate & LIDARCHANGE                     ' lidar sensor change
         if debugoutput(UTILITIES.DEBUGOUT3)
-          debug("Lidar (", zstr_(nn.updatedisplaylidar(@olidardistance, false)), ") ", fdec_array_(@olidardistance, LIDARNOCHANNELS))
+          debug("Lidar (", zstr_(nn.updatedisplaylidar(@olidardistance, 0, 8)), ") ", fdec_array_(@olidardistance, LIDARNOCHANNELS))
         repeat LIDARNOCHANNELS with ch               ' convert to mm for telemetry
           tlidar[ch] := round((1.0 -. olidardistance[ch]) *. float(MAXDISTANCE-MINDISTANCE)) + MINDISTANCE
         sport.setlidar(@tlidar)
@@ -728,7 +735,6 @@ DAT
                 byte QUAT_DIV, 0, 0, 0
 '
 con { license }
-
 {{
 
   Terms of Use: MIT License
