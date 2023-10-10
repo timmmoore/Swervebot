@@ -514,6 +514,9 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
     if havelidar
       updatelidar()
       if utilities.longcompf(@llidardistance, @olidardistance, LIDARNOCHANNELS, 0.1, true)
+        repeat LIDARNOCHANNELS with ch               ' convert to mm for telemetry
+          tlidar[ch] := round((1.0 -. olidardistance[ch]) *. float(MAXDISTANCE-MINDISTANCE)) + MINDISTANCE
+        sport.setlidar(@tlidar)
         sensorupdate |= LIDARCHANGE                     ' lidar changed
     elseif maylidar
       havelidar := lidar.haveLidar()                    ' see if lidat detected
@@ -593,9 +596,6 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
       if sensorupdate & LIDARCHANGE                     ' lidar sensor change
         if debugoutput(UTILITIES.DEBUGOUT3)
           debug("Lidar (", zstr_(nn.updatedisplaylidar(@olidardistance, 0, 8)), ") ", fdec_array_(@olidardistance, LIDARNOCHANNELS))
-        repeat LIDARNOCHANNELS with ch               ' convert to mm for telemetry
-          tlidar[ch] := round((1.0 -. olidardistance[ch]) *. float(MAXDISTANCE-MINDISTANCE)) + MINDISTANCE
-        sport.setlidar(@tlidar)
 
       'if debugoutput(UTILITIES.DEBUGOUT4)
       '  debug("Sensor period ", sdec_(getms()-period_time))
@@ -616,7 +616,7 @@ CON
   INCANGLE      = 45
   DELTAANGLE    = 23                                    ' +- angle when checking distance
   MINDISTANCE   = 150                                   ' min distance in mm, 150mm is min lidar can do
-  MAXDISTANCE   = 300
+  MAXDISTANCE   = 1000
 
 PRI updatelidar() | i, angle
   angle := INITANGLE
@@ -624,7 +624,7 @@ PRI updatelidar() | i, angle
     angle := (angle > 360)?angle-360:angle
     angle := (angle < 0)?angle+360:angle
     olidardistance[i] := lidar.checkdistance(angle, DELTAANGLE, MINDISTANCE, MAXDISTANCE)
-    'debug("lidar", sdec_(angle), " ", fdec(olidardistance[i]))
+    'debug("lidar ", sdec_(angle), " ", sdec_(i), " ", fdec_(olidardistance[i]))
     angle -= INCANGLE
 
 PRI debugoutput(type) : retv
