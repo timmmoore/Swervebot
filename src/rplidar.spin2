@@ -94,7 +94,7 @@ OBJ
 VAR
   long txpin, rxpin, motorpin                                                   ' start configuration
   long Cog, notstopped
-
+  long lidarfound
                                                                                 ' buffers to send/receive various messages
   byte cmd_packet[MAX_CMD_PACKET_SIZE]
   byte ans_header[MAX_ANS_HEADER_SIZE]
@@ -129,6 +129,7 @@ PUB start(txpin_, rxpin_, motorpin_) : ok | clkx
   pinstart(rxpin, LIDARRX, clkx, 0)                                             ' config rx pin
   pinstart(txpin, LIDARTX, clkx, 0)                                             ' config tx pin
 
+  lidarfound := false
   notstopped := true
   ok := Cog := cogspin(NEWCOG, lidarInfo(), @taskStack) + 1                     ' start cog that configures and reads the lidar
 
@@ -146,6 +147,9 @@ PUB stop()
   motoroff()                                                                    ' make sure motor stopped
   pinclear(txpin)                                                               ' clear pins
   pinclear(rxpin)
+
+PUB haveLidar() : retv
+  retv := lidarfound
 
 PUB checkdistance(angle, deltaangle, mindistance_, maxdistance_) : fresult | index, temp, temp1, temp2, ta
 ' check distances +- delta
@@ -333,6 +337,7 @@ PRI lidarInfo() | ldistance, langle, startBit, quality, display
       motoroff()                                                                ' need to turn off motor to detect
       ' detect RPLIDAR
       ifnot getDeviceInfo(@response_device, RPLIDAR_DEFAULT_TIMEOUT) & RESULT_FAIL_BIT ' succeeded
+        lidarfound := true
         startScan(false, RPLIDAR_DEFAULT_TIMEOUT)                               ' detected, so start scanning
         motoron()                                                               ' and turn motor on
         waitms(1000)                                                            ' dont reduce this, continous error if not ready
