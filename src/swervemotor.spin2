@@ -67,7 +67,6 @@ VAR
   long actualspeeds[MAX_SWERVE_MODULES]                 ' swerve angle from encoder
 
 OBJ
-  'serial        : "isp_serial_singleton_tmm"
   encoder       : "pwm_in" | NOPWMIN = MAX_ENCODERS     ' angle position of each swerve
   pid[MAX_ENCODERS] : "pid"                             ' pid for controling angle of each swerve
   driveencoders[MAX_SWERVE_MODULES] : "jm_quadrature_tmm"

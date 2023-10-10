@@ -17,9 +17,6 @@
    -- At 200MHz samples available every 40.1 microseconds
 }
 
-OBJ
-  'serial        : "isp_serial_singleton_tmm"
-
 var
 
   long  ap                                                      ' analog pin

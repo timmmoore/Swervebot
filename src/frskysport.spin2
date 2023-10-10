@@ -165,9 +165,6 @@ VAR
   long lidar[8]
   long StkAddr[STACK_SIZE_LONGS]
 
-OBJ
-  'serial        : "isp_serial_singleton_tmm"
-
 pub null()
 
 PUB start(pin) : retv | x
@@ -541,7 +538,6 @@ _sensors
 _sensorsend
 '
 con { license }
-
 {{
 
   Terms of Use: MIT License

@@ -63,7 +63,6 @@ CON
 OBJ
   spi           : "jm_spi_tmm"
   utilities     : "utilities"
-  'serial        : "isp_serial_singleton_tmm"
 
 VAR
   long CS
@@ -77,7 +76,7 @@ PUB start(tcs, tsck, tso, tsi) : retv
 
   ' Make sure the PMW3901 is reset on the SPI bus
   disableCS()
-  waitms(1)
+  waitms(20)
   enableCS()
   waitms(1)
   disableCS()

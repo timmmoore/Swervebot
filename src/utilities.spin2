@@ -2,9 +2,6 @@
                 timmoore
 }
 
-OBJ
-'  serial        : "isp_serial_singleton_tmm"
-
 PUB null()
   ' This is not a top-level object
 

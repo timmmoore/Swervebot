@@ -9,7 +9,6 @@ CON
   DEBUG_OUTPUT      =           500
 
 OBJ
-  'serial        : "isp_serial_singleton_tmm"
   utilities     : "utilities"
 
 VAR

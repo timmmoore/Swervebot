@@ -12,8 +12,6 @@
 CON
   NOPWMIN       = 1
 
-  DEBUG_OUTPUT  = 500
-
 VAR
   long setup
   long pp, minv, maxv                                   ' start pin, min/max values
@@ -25,7 +23,6 @@ VAR
   long minencoder[NOPWMIN], maxencoder[NOPWMIN]
 
 OBJ
-  'serial        : "isp_serial_singleton_tmm"
   utilities     : "utilities"
 
 PUB null()

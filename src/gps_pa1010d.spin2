@@ -33,7 +33,6 @@ VAR
   long lastreadtime
 
 OBJ
-  'serial        : "isp_serial_singleton_tmm"
   i2c           : "jm_i2c_tmm"
   utilities     : "utilities"
 
@@ -262,7 +261,6 @@ PGCMD_NOANTENNA                 byte "$PGCMD,33,0*6D", 13, 10, 0                
 PMTK_Q_RELEASE                  byte "$PMTK605*31", 13, 19, 0                   ' ask for the release and version
 '
 con { license }
-
 {{
 
   Terms of Use: MIT License

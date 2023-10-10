@@ -173,7 +173,6 @@ VAR
   byte quatdiv
 
 OBJ
-  'serial        : "isp_serial_singleton_tmm"
   i2c           : "jm_i2c_tmm"
   utilities     : "utilities"
 

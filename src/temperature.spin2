@@ -14,7 +14,6 @@ VAR
   long  index, mint, maxt
 
 OBJ
-  'serial        : "isp_serial_singleton_tmm"
   analog        : "jm_ez_analog"                               ' A2D to read motor driver temperature sensors
 
 pub null()
@@ -37,13 +36,13 @@ pub stop()
 
   analog.stop()
 
-pub read() : result | max, i, t
+pub read() : max | i
 ' keep last HISTORY_SIZE in array and return largest of these values
-  t := analog.read()
-  if t >= mint and t <= maxt
-    history[index] := analog.read()
+  i := analog.read()
+  if i >= mint and i <= maxt
+    history[index] := i
     index := (index+1) // HISTORY_SIZE
-  max := maxt
+  max := mint
 
   repeat HISTORY_SIZE with i
     if max < history[i]
