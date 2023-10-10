@@ -1,0 +1,542 @@
+{
+  NN Config for swervebot
+}
+
+CON
+' needs to match training data and generated weights
+InputNodes      = 11                                                            ' input nodes, 1 per lidar input, plus X, Y, rotation
+HiddenNodes     = 12                                                            ' hidden nodes
+OutputNodes     = 3                                                             ' output nodes, X, Y, rotate
+
+PUB null()
+
+PUB getWeights() : phidden, pehidden, poutput, peoutput
+  phidden := @fHiddenWeights
+  pehidden := @fEndHiddenWeights
+  poutput := @fOutputWeights
+  peoutput := @fEndOutputWeights
+
+PUB getTests() : ptest, petest, size
+  ptest := @ftestinputs
+  petest := @endftestinputs
+  size := testvectorsize
+
+DAT
+' training data from Spin2_weight_trainer
+' run the training data using the Spin2_weight_trainer. Copy and paste the results here
+'
+' The first are weights for the hidden nodes:  (InputNodes+1)  * HiddenNodes
+' The second are weights for the output nodes: (HiddenNodes+1) * OutputNodes
+' number of weights = (InputNodes+1) * HiddenNodes + (HiddenNodes+1) * OutputNodes
+'
+' from keras trainer: nn.ipynb
+'{
+fHiddenWeights
+long 0.462890625
+long  0.5068359375
+long  0.39501953125
+long  -0.30810546875
+long  0.2353515625
+long  0.48095703125
+long  0.4189453125
+long  -0.362060546875
+long  0.193359375
+long  0.29052734375
+long  0.15380859375
+long  -0.02880859375
+
+long  0.28125
+long  0.35498046875
+long  0.4580078125
+long  -0.328125
+long  0.11181640625
+long  0.07373046875
+long  -0.076904296875
+long  -0.181640625
+long  -0.30908203125
+long  -0.232421875
+long  0.01806640625
+long  -0.493896484375
+
+long  0.06640625
+long  -0.50439453125
+long  0.9365234375
+long  -0.91455078125
+long  0.264404296875
+long  0.99853515625
+long  -0.319580078125
+long  0.390869140625
+long  -0.64111328125
+long  0.311279296875
+long  -0.62841796875
+long  -1.001953125
+
+long  -0.487548828125
+long  0.001178741455078125
+long  0.419921875
+long  -0.77685546875
+long  0.30029296875
+long  1.1943359375
+long  -1.00390625
+long  0.06939697265625
+long  -0.560546875
+long  0.72509765625
+long  0.51416015625
+long  -0.85009765625
+
+long  1.0009765625
+long  -0.274169921875
+long  0.50146484375
+long  -0.8681640625
+long  -4.07421875
+long  0.658203125
+long  -1.2451171875
+long  1.0
+long  -0.01277923583984375
+long  0.330322265625
+long  -1.62890625
+long  -1.8603515625
+
+long  0.258544921875
+long  -0.147216796875
+long  0.39990234375
+long  -0.403564453125
+long  0.41552734375
+long  1.173828125
+long  -1.0068359375
+long  0.376708984375
+long  -0.3388671875
+long  0.85400390625
+long  0.62353515625
+long  -1.015625
+
+long  0.708984375
+long  -0.95166015625
+long  0.9296875
+long  -0.62353515625
+long  0.1259765625
+long  0.955078125
+long  -0.1380615234375
+long  0.77978515625
+long  -0.481689453125
+long  -0.09405517578125
+long  -1.0966796875
+long  -0.5263671875
+
+long  -0.423828125
+long  0.02099609375
+long  0.11572265625
+long  -0.39697265625
+long  -0.21337890625
+long  0.15576171875
+long  0.17041015625
+long  0.140625
+long  -0.357177734375
+long  -0.2265625
+long  0.48193359375
+long  -0.30029296875
+
+long  0.61669921875
+long  -0.31298828125
+long  -0.87451171875
+long  0.591796875
+long  0.287353515625
+long  -0.64306640625
+long  0.19970703125
+long  0.329833984375
+long  0.2900390625
+long  0.30029296875
+long  0.09210205078125
+long  1.0087890625
+
+long  -2.3359375
+long  -1.0
+long  -1.3037109375
+long  2.044921875
+long  0.82958984375
+long  -1.599609375
+long  -2.041015625
+long  -2.5
+long  -1.48828125
+long  -1.78125
+long  1.732421875
+long  -1.888671875
+
+long  0.70849609375
+long  -0.2276611328125
+long  -0.1654052734375
+long  0.626953125
+long  0.038848876953125
+long  -0.69873046875
+long  0.65087890625
+long  0.386474609375
+long  -0.1519775390625
+long  0.716796875
+long  -0.01361083984375
+long  1.0029296875
+
+long  0.56396484375
+long  -0.05279541015625
+long  -1.0302734375
+long  0.2158203125
+long  -0.327392578125
+long  -1.7666015625
+long  0.419677734375
+long  0.41845703125
+long  0.391845703125
+long  0.2666015625
+long  0.01255035400390625
+long  2.126953125
+
+fEndHiddenWeights
+fOutputWeights
+long -0.47021484375
+long  -2.546875
+long  -0.7373046875
+
+long  -0.336669921875
+long  -0.89794921875
+long  0.751953125
+
+long  0.254150390625
+long  -1.67578125
+long  -0.296142578125
+
+long  0.135498046875
+long  3.173828125
+long  -0.433349609375
+
+long  -0.1436767578125
+long  3.20703125
+long  -2.701171875
+
+long  -0.251708984375
+long  -2.111328125
+long  0.36279296875
+
+long  0.324951171875
+long  -1.7587890625
+long  -2.005859375
+
+long  0.245849609375
+long  -2.822265625
+long  -0.1334228515625
+
+long  -0.17333984375
+long  -1.677734375
+long  0.1876220703125
+
+long  0.12384033203125
+long  -1.7060546875
+long  1.2236328125
+
+long  -0.08416748046875
+long  2.03515625
+long  1.62109375
+
+long  0.061737060546875
+long  -2.279296875
+long  2.232421875
+
+long  0.068115234375
+long  1.294921875
+long  -0.78369140625
+
+fEndOutputWeights
+'}
+' from spin2 trainer: nn_train.spin2
+{
+fHiddenWeights
+long -4.531250e-01
+long -4.765625e-01
+long -2.578125e-01
+long -3.437500e-01
+long -3.359375e-01
+long 2.500000e-01
+long -2.734375e-01
+long -7.812500e-03
+long -1.171875e-01
+long -2.890625e-01
+long -4.687500e-02
+long -3.906250e-02
+
+long -2.421875e-01
+long 1.562500e-01
+long -1.015625e-01
+long -2.109375e-01
+long 2.968750e-01
+long -1.015625e-01
+long 3.750000e-01
+long -4.062500e-01
+long -3.046875e-01
+long -2.343750e-01
+long 2.265625e-01
+long 4.453125e-01
+
+long 6.055515e-01
+long 2.439812e-01
+long 2.680793e-01
+long -1.017738e-01
+long -9.131492e-01
+long 9.450434e-01
+long -4.683470e-02
+long -3.464220e-01
+long -9.752179e-01
+long 2.104297e+00
+long 9.003748e-01
+long -9.950753e-01
+
+long -2.769187e-01
+long 1.170312e+00
+long -4.482292e-01
+long 1.107452e-01
+long 4.913642e-01
+long 2.789419e-01
+long 4.231936e-01
+long 1.916807e-01
+long -2.985248e-01
+long 1.253097e+00
+long 2.211441e-01
+long -3.317219e-01
+
+long -1.204956e+00
+long -7.058899e+00
+long -3.642264e-01
+long -6.100433e-01
+long -2.538989e-01
+long -5.908629e-01
+long -2.351375e+00
+long -1.038245e+00
+long -1.321519e+00
+long 2.927001e-01
+long -5.107639e+00
+long 1.746861e+00
+
+long -1.362926e-01
+long 1.662496e+00
+long -2.915968e-03
+long -3.345681e-01
+long 7.882327e-01
+long 4.820662e-01
+long 1.731962e-01
+long -1.051945e-01
+long 3.108506e-01
+long 7.062251e-01
+long 5.883307e-01
+long 9.796771e-02
+
+long 3.164890e-01
+long 2.439812e-01
+long -1.316838e-02
+long -5.861525e-01
+long -1.085030e+00
+long 1.007543e+00
+long -4.921481e-01
+long -1.002680e+00
+long -3.580251e-01
+long 2.252735e+00
+long 1.001929e+00
+long -1.041950e+00
+
+long 3.046875e-01
+long 3.750000e-01
+long 1.171875e-01
+long 3.671875e-01
+long 3.984375e-01
+long -2.187500e-01
+long 1.875000e-01
+long 4.765625e-01
+long 7.812500e-03
+long 3.515625e-01
+long 2.187500e-01
+long 1.328125e-01
+
+long -9.642196e-02
+long 8.414640e-02
+long 1.387665e-02
+long -7.536296e-01
+long 3.858389e-01
+long 1.181330e-02
+long -4.437534e-01
+long -9.053952e-03
+long -2.002477e-01
+long -1.364781e+00
+long 3.835669e-01
+long -7.843482e-01
+
+long -5.993479e-01
+long -3.452441e-01
+long -8.601599e-01
+long 4.908611e-01
+long -9.870378e-01
+long -7.625461e-01
+long -6.667803e-01
+long 1.718992e-01
+long 1.319540e-01
+long -1.437013e+00
+long -4.526842e-01
+long 1.026101e+00
+
+long -3.932968e-01
+long 7.169539e-01
+long 2.168917e-02
+long -3.864408e-01
+long 3.427794e-02
+long -1.162432e-02
+long -2.796911e-01
+long -6.374186e-02
+long -3.643116e-01
+long -7.866471e-01
+long -1.242446e-01
+long -7.687233e-01
+
+long -7.240939e-01
+long 8.323570e-01
+long -5.113112e-01
+long -5.775679e-01
+long -3.689456e-01
+long -2.576239e-01
+long -7.234435e-01
+long -2.290463e-01
+long 4.041937e-01
+long -2.362377e+00
+long 6.401093e-02
+long -1.443696e+00
+fEndHiddenWeights
+
+fOutputWeights
+long 3.641636e-01
+long -2.666946e-01
+long -3.185592e-01
+
+long 1.163654e-01
+long 5.284624e+00
+long -1.133760e+00
+
+long -1.888165e-01
+long -8.106711e-01
+long 1.746003e-01
+
+long 2.530410e-01
+long 3.787514e-01
+long 4.782140e-01
+
+long 9.330635e-02
+long 2.223346e-01
+long 1.618957e+00
+
+long -1.930266e-01
+long -2.298193e+00
+long -7.582879e-03
+
+long 1.167331e-01
+long 1.041445e+00
+long 2.391406e-01
+
+long -3.144341e-01
+long -4.445776e-03
+long 1.388554e+00
+
+long -6.561606e-02
+long -2.310547e-01
+long 1.523395e+00
+
+long 3.645355e-02
+long -4.591107e+00
+long 1.450191e-01
+
+long -2.180313e-01
+long 2.691112e+00
+long -1.866521e+00
+
+long -1.058666e-01
+long 3.148078e+00
+long -7.553508e-01
+
+long 1.224997e-01
+long -6.955996e-01
+long -3.009018e-01
+fEndOutputWeights
+'}
+CON
+  testvectorsize = 11                                                           ' number of elements in a test
+
+DAT
+ftestinputs
+        long 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.5,  0.5,  0.5    ' test1
+        long 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.5,  1.0,  0.5    ' test2
+        long 1.0,  1.0,  1.0,  1.0,  1.0,  0.0,  0.0,  0.0,  0.5,  1.0,  0.5    ' test3
+        long 0.0,  0.0,  1.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.5,  0.6,  0.5    ' test4
+        long 0.0,  1.0,  1.0,  1.0,  0.0,  0.0,  0.0,  0.0,  0.5,  0.7,  0.5    ' test5
+        long 1.0,  0.0,  1.0,  0.0,  1.0,  0.0,  0.0,  0.0,  0.5,  0.8,  0.5    ' test6
+        long 1.0,  1.0,  1.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.5,  0.5,  0.5    ' test7
+        long 0.0,  0.0,  1.0,  1.0,  1.0,  0.0,  0.0,  0.0,  0.5,  0.5,  0.5    ' test8
+        long 1.0,  1.0,  1.0,  1.0,  0.0,  0.0,  0.0,  0.0,  0.5,  1.0,  0.5    ' test9
+        long 0.5,  0.5,  0.5,  0.5,  0.5,  0.0,  0.0,  0.0,  0.5,  1.0,  0.5    ' test10
+        long 0.0,  0.0,  0.5,  0.0,  0.0,  0.0,  0.0,  0.0,  0.5,  1.0,  0.5    ' test11
+        long 0.25, 0.25, 0.5,  0.25, 0.25, 0.0,  0.0,  0.0,  0.5,  0.8,  0.5    ' test12
+        long 0.0,  0.4,  0.5,  0.4,  0.0,  0.0,  0.0,  0.0,  0.5,  0.8,  0.5    ' test13
+endftestinputs
+
+CON
+PatternCount    = 7
+
+PUB TrainingConfig() : learning, momentum, initialweight, success
+
+  learning := fLearningRate
+  momentum := fMomentum
+  initialweight := fInitialWeightMax
+  success := fSuccess
+
+DAT
+fLearningRate            long 0.5                                               ' how much to follow the gradient
+fMomentum                long 0.9                                               ' how much to keep the current weights
+fInitialWeightMax        long 0.5                                               ' adjustment ot random for initial weights
+fSuccess                 long 0.0001                                            ' MSE error < this to complete
+
+PUB TrainingData() : pinput, pTarget
+  pinput := @fInput
+  pTarget := @fTarget
+
+DAT
+fInput {[PatternCount][InputNodes]}
+  long 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.5
+  long 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 1.0, 0.5
+  long 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.5, 1.0, 0.5
+  long 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.5, 1.0, 0.5
+  long 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.5, 1.0, 0.5
+  long 0.0, 0.0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.0, 0.5, 0.8, 0.5
+  long 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.5, 0.8, 0.5
+
+fTarget {[PatternCount][OutputNodes]}
+  long 0.5, 0.5, 0.5
+  long 0.5, 1.0, 0.5
+  long 0.5, 0.0, 0.5
+  long 0.5, 0.7, 0.6
+  long 0.5, 0.6, 0.7
+  long 0.5, 0.4, 0.5
+  long 0.5, 0.6, 0.7
+'
+con { license }
+{{
+
+  Terms of Use: MIT License
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this
+  software and associated documentation files (the "Software"), to deal in the Software
+  without restriction, including without limitation the rights to use, copy, modify,
+  merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to the following
+  conditions:
+
+  The above copyright notice and this permission notice shall be included in all copies
+  or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+  PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+  CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+  OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+}}

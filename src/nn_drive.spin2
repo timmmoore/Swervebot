@@ -12,253 +12,26 @@
         https://github.com/timmoore/propbot/trainer
 }
 
-CON
-' needs to match training data and generated weights
-InputNodes      = 11                                                            ' input nodes, 1 per lidar input, plus X, Y, rotation
-HiddenNodes     = 12                                                            ' hidden nodes
-OutputNodes     = 3                                                             ' output nodes, X, Y, rotate
-
 OBJ
   utilities     : "utilities"
+  nn_config     : "nn_config"
 
 VAR
-  long fHidden[HiddenNodes]                                                     ' hidden values
-  long fOutput[OutputNodes]                                                     ' output values
-
-DAT
-' training data from Spin2_weight_trainer
-' run the training data using the Spin2_weight_trainer. Copy and paste the results here
-'
-' The first are weights for the hidden nodes:  (InputNodes+1)  * HiddenNodes
-' The second are weights for the output nodes: (HiddenNodes+1) * OutputNodes
-'
-' from spin2 trainer: nn_train.spin2
-' no weights = (InputNodes+1) * HiddenNodes + (HiddenNodes+1) * OutputNodes
-'{
-fHiddenWeights
-long -0.176513671875
-long  -0.153564453125
-long  0.423828125
-long  -0.4658203125
-long  0.091796875
-long  -0.02783203125
-long  -0.15869140625
-long  -0.3173828125
-long  -0.215576171875
-long  0.1865234375
-long  0.3603515625
-long  0.3623046875
-
-long  -0.30419921875
-long  -0.44580078125
-long  0.41015625
-long  0.177734375
-long  0.4716796875
-long  0.4541015625
-long  -0.100830078125
-long  -0.25927734375
-long  0.48291015625
-long  0.5
-long  0.25830078125
-long  -0.3740234375
-
-long  0.55712890625
-long  -0.455322265625
-long  0.1304931640625
-long  0.332275390625
-long  1.568359375
-long  0.72314453125
-long  0.160400390625
-long  -0.51416015625
-long  -1.1005859375
-long  -0.2484130859375
-long  0.74853515625
-long  0.50390625
-
-long  0.228515625
-long  -0.1846923828125
-long  0.38427734375
-long  0.169189453125
-long  0.392578125
-long  0.1610107421875
-long  -0.3681640625
-long  0.360107421875
-long  -0.12396240234375
-long  -0.32421875
-long  -0.1923828125
-long  0.1826171875
-
-long  -4.69140625
-long  -0.1983642578125
-long  -0.6259765625
-long  -4.5390625
-long  0.49951171875
-long  0.043792724609375
-long  -0.28564453125
-long  -1.23828125
-long  1.626953125
-long  -1.2021484375
-long  0.42529296875
-long  -1.3623046875
-
-long  0.9775390625
-long  -0.191650390625
-long  0.25146484375
-long  0.869140625
-long  0.6591796875
-long  0.2783203125
-long  -0.2476806640625
-long  0.495849609375
-long  0.10430908203125
-long  -0.27294921875
-long  0.130859375
-long  0.40673828125
-
-long  0.70361328125
-long  0.37939453125
-long  -0.43603515625
-long  0.91845703125
-long  1.7109375
-long  0.51416015625
-long  0.164306640625
-long  -1.1669921875
-long  -1.1279296875
-long  -0.390869140625
-long  0.5
-long  0.7998046875
-
-long  0.1845703125
-long  0.44287109375
-long  -0.2353515625
-long  -0.244384765625
-long  -0.35302734375
-long  -0.098876953125
-long  -0.0458984375
-long  -0.013916015625
-long  -0.23046875
-long  0.43603515625
-long  0.3828125
-long  -0.20751953125
-
-long  0.884765625
-long  -0.07122802734375
-long  0.4677734375
-long  0.2724609375
-long  -0.5
-long  -0.361328125
-long  -0.46875
-long  0.08294677734375
-long  -1.1318359375
-long  -0.279296875
-long  0.1400146484375
-long  1.0
-
-long  -1.2705078125
-long  -0.0924072265625
-long  -1.0673828125
-long  -0.888671875
-long  -1.451171875
-long  -0.50830078125
-long  -0.64794921875
-long  -0.30615234375
-long  2.0078125
-long  -0.2252197265625
-long  -0.845703125
-long  -0.72314453125
-
-long  0.393798828125
-long  -0.42626953125
-long  -0.16259765625
-long  0.4951171875
-long  -0.86376953125
-long  0.035491943359375
-long  -0.3544921875
-long  -0.07928466796875
-long  -1.4404296875
-long  0.0224761962890625
-long  0.2320556640625
-long  0.779296875
-
-long  0.99755859375
-long  -0.322265625
-long  0.66064453125
-long  0.94091796875
-long  -1.2451171875
-long  -0.286865234375
-long  -0.119140625
-long  0.2386474609375
-long  -2.046875
-long  -0.45947265625
-long  -0.31298828125
-long  1.1533203125
-
-fEndHiddenWeights
-fOutputWeights
-long -0.106689453125
-long  4.0
-long  -1.4111328125
-
-long  -0.1680908203125
-long  0.1898193359375
-long  0.0302886962890625
-
-long  -0.41455078125
-long  -0.63623046875
-long  1.3984375
-
-long  0.125
-long  3.705078125
-long  -1.900390625
-
-long  -0.0211181640625
-long  -3.109375
-long  -0.275146484375
-
-long  -0.1826171875
-long  -1.4921875
-long  -0.11065673828125
-
-long  0.40087890625
-long  -0.6064453125
-long  0.322021484375
-
-long  0.4423828125
-long  1.0
-long  2.00390625
-
-long  0.0226287841796875
-long  3.87109375
-long  -0.97021484375
-
-long  -0.322998046875
-long  0.67724609375
-long  1.005859375
-
-long  0.42724609375
-long  -1.3671875
-long  -0.61962890625
-
-long  0.06964111328125
-long  -2.205078125
-long  0.568359375
-
-long  -0.1107177734375
-long  0.61572265625
-long  -0.02301025390625
-
-fEndOutputWeights
-'}
+  long fHidden[nn_config.HiddenNodes]                                           ' hidden values
+  long fOutput[nn_config.OutputNodes]                                           ' output values
 
 pub null()
 
-pub start() : result
+pub start() : result | phidden, pehidden, poutput, peoutput
 ' 0 is ok
   ' size of weight table must match expected based on node sizes
-  if (@fEndHiddenWeights-@fHiddenWeights)/4 <> (InputNodes+1)*HiddenNodes
-    debug(" Hidden weight size mis-match ", udec((fEndHiddenWeights-fHiddenWeights)/4), " ", udec((InputNodes+1)*HiddenNodes))
+  phidden, pehidden, poutput, peoutput := nn_config.getWeights()
+
+  if (pehidden-phidden)/4 <> (nn_config.InputNodes+1)*nn_config.HiddenNodes
+    debug(" Hidden weight size mis-match ", udec((pehidden-phidden)/4), " ", udec((nn_config.InputNodes+1)*nn_config.HiddenNodes))
     return 1
-  if (@fEndOutputWeights-@fOutputWeights)/4 <> (HiddenNodes + 1)*OutputNodes
-    debug(" Output weight size mis-match ", udec((fEndOutputWeights-fOutputWeights)/4), " ", udec((HiddenNodes + 1)*OutputNodes))
+  if (peoutput-poutput)/4 <> (nn_config.HiddenNodes + 1)*nn_config.OutputNodes
+    debug(" Output weight size mis-match ", udec((peoutput-poutput)/4), " ", udec((nn_config.HiddenNodes + 1)*nn_config.OutputNodes))
     return 2
   return 0
 
@@ -271,10 +44,10 @@ pub drive_nn(pInput, pOutput, minspeed, maxspeed) | index, pout, mid, range
   pout := InputToOutput(pInput)                                                 ' input to NN to obtain output
   range := float(maxspeed - minspeed)
   mid := range /. 2.0
-  repeat OutputNodes with index
+  repeat nn_config.OutputNodes with index
     long[pOutput][index] := round(long[pout][index] *. range -. mid)            ' convert 0 -> +1 to -100 to 100
 
-pri InputToOutput(pfTestInput) : poutput | tempindex, outer
+pri InputToOutput(pfTestInput) : poutputret | tempindex, outer, phidden, pehidden, poutput, peoutput
 ' core of the neutral network
 ' input nodes are  11: 0.0-1.0 higher number is closer: back, back-left, left, front-left, front, front-right, right, back-right
 ' output nodes are  3: 0.0-1.0 x/y/rotation
@@ -288,15 +61,16 @@ pri InputToOutput(pfTestInput) : poutput | tempindex, outer
 '
   ' Compute hidden layer activations
   ' float HiddenWeights[InputNodes + 1][HiddenNodes]                            ' weight per input node per hidden node
-  tempindex := InputNodes*HiddenNodes                                           ' bias is handled as an extra input node
-  repeat HiddenNodes with outer
-    fHidden[outer] := utilities.sigmoid(utilities.SumMultiply(long[@fHiddenWeights][tempindex++], outer, pfTestInput, @fHiddenWeights, InputNodes, HiddenNodes))                                 ' total per hidden node, curve flattened using logistic function
+  phidden, pehidden, poutput, peoutput := nn_config.getWeights()
+  tempindex := nn_config.InputNodes*nn_config.HiddenNodes                       ' bias is handled as an extra input node
+  repeat nn_config.HiddenNodes with outer
+    fHidden[outer] := utilities.sigmoid(utilities.SumMultiply(long[phidden][tempindex++], outer, pfTestInput, phidden, nn_config.InputNodes, nn_config.HiddenNodes)) ' total per hidden node, curve flattened using logistic function
 
   ' Compute output layer activations
   ' float OutputWeights[HiddenNodes + 1][OutputNodes];                          ' weight per hidden node per output node
-  tempindex := HiddenNodes*OutputNodes                                          ' bias is handled as an extra hidden node
-  repeat OutputNodes with outer
-    fOutput[outer] := utilities.sigmoid(utilities.SumMultiply(long[@fOutputWeights][tempindex++], outer, @fHidden, @fOutputWeights, HiddenNodes, OutputNodes))                                 ' total per output node, curve flattened using logistic function
+  tempindex := nn_config.HiddenNodes*nn_config.OutputNodes                      ' bias is handled as an extra hidden node
+  repeat nn_config.OutputNodes with outer
+    fOutput[outer] := utilities.sigmoid(utilities.SumMultiply(long[poutput][tempindex++], outer, @fHidden, poutput, nn_config.HiddenNodes, nn_config.OutputNodes)) ' total per output node, curve flattened using logistic function
 
   return @fOutput
 '
@@ -306,20 +80,15 @@ VAR
 DAT
 lidardisp   byte "B#L#F#R#", 0
 
-PUB updatedisplaylidar(pfin, bfront) : result | i, maxlid
+PUB updatedisplaylidar(pfin, off, size) : result | i
 ' convert lidar detection into displayable string
 '   value 0.0 -> " "
 '   value > 0.0 and < 0.5 -> "."
 '   value >= 0.5 -> "LFR#"
 '
-  if bfront
-    maxlid := 5
-    strcopy(@disp, @lidardisp+2, maxlid)
-    byte[@disp][5] := 0
-  else
-    maxlid := 8
-    strcopy(@disp, @lidardisp, maxlid)
-  repeat maxlid with i
+  strcopy(@disp, @lidardisp+off, size)
+  byte[@disp][size] := 0
+  repeat size with i
     if long[pfin][i] ==. 0.0
       disp[i] := " "
     elseif long[pfin][i] <. 0.5
@@ -328,36 +97,17 @@ PUB updatedisplaylidar(pfin, bfront) : result | i, maxlid
 '
 ' set of tests that run the Lidar simultated inputs through the neutral network and prints the results
 '
-CON
-  testvectorsize = 11                                                           ' number of elements in a test
-
-DAT
-ftestinputs
-        long 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.5,  0.5,  0.5    ' test1
-        long 0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.5,  1.0,  0.5    ' test2
-        long 1.0,  1.0,  1.0,  1.0,  1.0,  0.0,  0.0,  0.0,  0.5,  1.0,  0.5    ' test3
-        long 0.0,  0.0,  1.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.5,  0.6,  0.5    ' test4
-        long 0.0,  1.0,  1.0,  1.0,  0.0,  0.0,  0.0,  0.0,  0.5,  0.7,  0.5    ' test5
-        long 1.0,  0.0,  1.0,  0.0,  1.0,  0.0,  0.0,  0.0,  0.5,  0.8,  0.5    ' test6
-        long 1.0,  1.0,  1.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.5,  0.5,  0.5    ' test7
-        long 0.0,  0.0,  1.0,  1.0,  1.0,  0.0,  0.0,  0.0,  0.5,  0.5,  0.5    ' test8
-        long 1.0,  1.0,  1.0,  1.0,  0.0,  0.0,  0.0,  0.0,  0.5,  1.0,  0.5    ' test9
-        long 0.5,  0.5,  0.5,  0.5,  0.5,  0.0,  0.0,  0.0,  0.5,  1.0,  0.5    ' test10
-        long 0.0,  0.0,  0.5,  0.0,  0.0,  0.0,  0.0,  0.0,  0.5,  1.0,  0.5    ' test11
-        long 0.25, 0.25, 0.5,  0.25, 0.25, 0.0,  0.0,  0.0,  0.5,  0.8,  0.5    ' test12
-        long 0.0,  0.4,  0.5,  0.4,  0.0,  0.0,  0.0,  0.0,  0.5,  0.8,  0.5    ' test13
-endftestinputs
-
-pub test_nn() | pftest, nout[3], i, t, clk
+pub test_nn() | pftest, nout[3], i, t, clk, ptest, petest, testvectorsize
 ' run set of tests on nn
 '
   clk := clkfreq/1_000_000
-  repeat ((@endftestinputs - @ftestinputs)/(4*testvectorsize)) with i
-    pftest := @long[@ftestinputs][testvectorsize*i]
+  ptest, petest, testvectorsize := nn_config.getTests()
+  repeat ((petest - ptest)/(4*testvectorsize)) with i
+    pftest := @long[ptest][testvectorsize*i]
     t := getct()
     drive_nn(pftest, @nout, -100, 100)
     t := getct() - t
-    debug("test", udec_(i+1), " ", udec_(t/clk), "us lidar=(", zstr_(updatedisplaylidar(pftest, false)), ") motors= ", sdec_long_array_(@nout, 3))
+    debug("test", udec_(i+1), " ", udec_(t/clk), "us lidar=(", zstr_(updatedisplaylidar(pftest, 0, 8)), ") motors= ", sdec_long_array_(@nout, 3))
 '
 con { license }
 {{

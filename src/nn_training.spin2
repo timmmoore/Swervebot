@@ -1,0 +1,171 @@
+{
+Neural Network
+  port of
+        http://robotics.hobbizine.com/arduinoann.html
+
+  provides training capability for nn_drive
+  can also use https://github.com/timmoore/propbot/trainer
+}
+
+OBJ
+  utilities     : "utilities"
+  nn_config     : "nn_config"
+
+VAR
+  long fError                                                                   ' MSE
+
+  long start                                                                    ' start time of training
+  long fAccum                                                                   ' general sum
+  long p, q                                                                     ' training data indexes
+  long TrainingCycle                                                            ' number of times round the training cycle
+
+  long RandomizedIndex[nn_config.PatternCount]                                  ' random order of training data
+
+  long fHiddenDelta[nn_config.HiddenNodes]                                      ' gradient for hidden weights
+
+  long fOutputDelta[nn_config.OutputNodes]                                      ' gradient for output weights
+
+  long fHiddenWeights[(nn_config.InputNodes + 1)*nn_config.HiddenNodes]         ' current hidden weights
+  long fChangeHiddenWeights[(nn_config.InputNodes + 1)*nn_config.HiddenNodes]   ' change to hidden weights, calculated using gradient
+
+  long fOutputWeights[(nn_config.HiddenNodes + 1)*nn_config.OutputNodes]        ' current output weights
+  long fChangeOutputWeights[(nn_config.HiddenNodes + 1)*nn_config.OutputNodes]  ' change to output weights, calculated using gradient
+
+  long fOutput[nn_config.OutputNodes]                                           ' current output node values
+  long fHidden[nn_config.HiddenNodes]                                           ' current hidden node values
+
+pub null()
+
+pri rand(r) : result
+  case r
+    16:                                                                         ' optimize for a couple of cases
+      result := getrnd() & $0f
+    128:
+      result := getrnd() & $7f
+    other:                                                                      ' and handle the rest
+      result := getrnd() +// r
+
+pub train_nn() | tindex, t1index, t2index, diff, i, j, t3index, t4index, t5index, fLearningRate, fMomentum, fInitialWeightMax, fSuccess, fInput, fTarget
+' trains the network
+  debug("Start training ", sdec(nn_config.HiddenNodes), " ", sdec(nn_config.InputNodes))
+
+  debug(`SCOPE_XY MyXY SIZE 160 COLOR black black RANGE 80_000 SAMPLES 0 'MSE') ' plot MSE for each training cycle
+
+  fLearningRate, fMomentum, fInitialWeightMax, fSuccess := nn_config.TrainingConfig()
+  fInput, fTarget := nn_config.TrainingData()
+
+  repeat nn_config.PatternCount with p                                          ' training data index
+    RandomizedIndex[p] := p
+
+  repeat nn_config.HiddenNodes with i                                           ' Initialize HiddenWeights and ChangeHiddenWeights
+    tindex := i
+    repeat nn_config.InputNodes+1 with j
+      fChangeHiddenWeights[tindex] := 0.0
+      fHiddenWeights[tindex] := float(rand(128)-64) /. 64.0 *. long[@fInitialWeightMax]
+      tindex += nn_config.HiddenNodes
+
+  repeat nn_config.OutputNodes with i                                           ' Initialize OutputWeights and ChangeOutputWeights
+    tindex := i
+    repeat nn_config.HiddenNodes+1 with j
+      fChangeOutputWeights[tindex] := 0.0
+      fOutputWeights[tindex] := float(rand(128)-64) /. 64.0 *. long[@fInitialWeightMax]
+      tindex += nn_config.OutputNodes
+
+  start := getms()
+  t3index := nn_config.InputNodes*nn_config.HiddenNodes                         ' Compute hidden layer activations
+  t4index := nn_config.HiddenNodes*nn_config.OutputNodes                        ' Compute output layer activations and calculate errors
+  repeat TrainingCycle from 1 to POSX-1                                         ' Begin training, approx. 4.3ms per loop
+
+    repeat nn_config.PatternCount with p                                        ' Randomize order of training data
+      q := rand(nn_config.PatternCount)
+      RandomizedIndex[p], RandomizedIndex[q] := RandomizedIndex[q], RandomizedIndex[p]
+
+    fError := 0.0
+    repeat nn_config.PatternCount with q                                        ' Cycle through each training pattern in the randomized order
+      p := RandomizedIndex[q]
+
+      tindex := nn_config.InputNodes*p                                          ' precompute array offset into training data
+      t2index := nn_config.OutputNodes*p                                        ' precompute array offset into output data
+      repeat nn_config.HiddenNodes with i
+        fHidden[i] := utilities.sigmoid(utilities.SumMultiply(long[@fHiddenWeights][t3index+i], i, @long[fInput][tindex], @fHiddenWeights, nn_config.InputNodes, nn_config.HiddenNodes)) ' total per output node, curve flattened using logistic function
+
+      repeat nn_config.OutputNodes with i
+        fOutput[i] := utilities.sigmoid(utilities.SumMultiply(long[@fOutputWeights][t4index+i], i, @fHidden, @fOutputWeights, nn_config.HiddenNodes, nn_config.OutputNodes)) ' total per output node, curve flattened using logistic function
+
+        diff := long[fTarget][t2index+i] -. fOutput[i]                          ' difference between target and output values
+        fOutputDelta[i] := diff *. utilities.sigmoidDer(fOutput[i])             ' gradient/derivative for sigmoid
+        fError := fError +. 0.5 *. diff *. diff                                 ' accum MSE for this time through training data
+
+      t1index := 0
+      repeat nn_config.HiddenNodes with i                                       ' Backpropagate errors to hidden layer
+        fAccum := 0.0
+        repeat nn_config.OutputNodes with j
+          fAccum := fAccum +. fOutputWeights[t1index+j] *. fOutputDelta[j]
+        fHiddenDelta[i] := fAccum *. utilities.sigmoidDer(fHidden[i])           ' gradient/derivative for sigmoid
+        t1index += nn_config.OutputNodes
+
+        fChangeHiddenWeights[t3index+i] := long[@fLearningRate] *. fHiddenDelta[i] +. long[@fMomentum] *. fChangeHiddenWeights[t3index+i]
+        fHiddenWeights[t3index+i] := fHiddenWeights[t3index+i] +. fChangeHiddenWeights[t3index+i]
+        t5index := i
+        repeat nn_config.InputNodes with j
+                                                                                ' update to hidden weights
+          fChangeHiddenWeights[t5index] := long[@fLearningRate] *. long[fInput][tindex+j] *. fHiddenDelta[i] +. long[@fMomentum] *. fChangeHiddenWeights[t5index]
+          fHiddenWeights[t5index] := fHiddenWeights[t5index] +. fChangeHiddenWeights[t5index]
+          t5index += nn_config.HiddenNodes
+
+      repeat nn_config.OutputNodes with i
+                                                                                ' update to output bias
+        fChangeOutputWeights[t4index+i] := long[@fLearningRate] *. fOutputDelta[i] +. long[@fMomentum] *. fChangeOutputWeights[t4index+i]
+        fOutputWeights[t4index+i] := fOutputWeights[t4index+i] +. fChangeOutputWeights[t4index+i]
+        t1index := i
+        repeat nn_config.HiddenNodes with j
+                                                                                ' update to output weights
+          fChangeOutputWeights[t1index] := long[@fLearningRate] *. fHidden[j] *. fOutputDelta[i] +. long[@fMomentum] *. fChangeOutputWeights[t1index]
+          fOutputWeights[t1index] := fOutputWeights[t1index] +. fChangeOutputWeights[t1index]
+          t1index += nn_config.OutputNodes
+
+    ifnot TrainingCycle&3
+      debug(`MyXY `((TrainingCycle*50-80_000),round(fError*.160_000.0)-80_000))
+
+    if fError < long[@fSuccess]                                                 ' If error rate is less than pre-determined threshold then end
+      quit
+
+  start := getms() - start
+  debug("Stop training ", udec(TrainingCycle), " total:", udec_(start), "ms, time:", udec_(start/TrainingCycle), ".", udec_(((start*10)/TrainingCycle)//10), "ms, ", fdec(fError))
+
+  ' print out the weights to paste into nn_drive.spin2
+  debug("fHiddenWeights")
+  repeat ((nn_config.InputNodes + 1)*nn_config.HiddenNodes) with i
+    debug(if((i+//nn_config.HiddenNodes==0) and (i<>0)), " ")
+    debug("long ", fdec_(fHiddenWeights[i]))
+  debug("fEndHiddenWeights")
+  debug(" ")
+  debug("fOutputWeights")
+  repeat ((nn_config.HiddenNodes + 1)*nn_config.OutputNodes) with i
+    debug(if((i+//nn_config.OutputNodes==0) and (i<>0)), " ")
+    debug("long ", fdec_(fOutputWeights[i]))
+  debug("fEndOutputWeights")
+'
+con { license }
+{{
+
+  Terms of Use: MIT License
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this
+  software and associated documentation files (the "Software"), to deal in the Software
+  without restriction, including without limitation the rights to use, copy, modify,
+  merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to the following
+  conditions:
+
+  The above copyright notice and this permission notice shall be included in all copies
+  or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+  PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+  CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+  OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+}}
