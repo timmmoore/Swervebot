@@ -10,3 +10,4 @@ CON
   BATTERY_STOP                  = true                                          ' shutdown if min battery reached
 
 PUB null()
+'
