@@ -1,0 +1,177 @@
+{I2C motor driver
+                timmoore
+
+}
+
+CON
+  ADDRESS                       = $04                   ' i2c address board
+
+  ESC_MIN_LIMIT_USEC            = 600
+  ESC_MAX_LIMIT_USEC            = 2400
+
+  ' motor drive configuration
+  PCA9685_MODE1                 = $0                    ' register to configure
+  PCA9685_MODE2                 = $01
+  PCA9685_PRESCALE              = $FE                   ' prescaler register
+  LED0_ON_L                     = $6                    ' start of led configuration registers
+                                                        ' per led: on low, on high, off low, off high
+  LED_ALWAYS_ON                 = (1<<(8+4))            ' bit 12 set means always on
+  LED_ALWAYS_OFF                = (1<<(16+8+4))         ' bit 12+16 set means always off
+
+  PCA9685_DESIRED_FREQ_IN_HZ    = 121                   ' desired Servo PWM Freq 125 Hz (better than 50 Hz and 250 Hz)
+  PCA9685_PWM_FREQ_DIVISOR      = $35                   ' Adjusted to be accurate
+  PCA9685_ACTUAL_FREQ_IN_HZ_x10 = 1205                  ' MEASURED at 120.5 Hz x 10
+
+  MODE2_OUTNE_NOT_ENABLED       = $00
+  MODE2_OUTDRV_TOTEM_POLE       = $04
+  MODE2_OUTCHANGE_ON_ACK        = $08
+  MODE2_INVRT_NOT               = $00
+
+  MODE1_RESTART                 = $80
+  MODE1_SLEEP                   = $10
+  MODE1_AUTOINCREMENT_ENABLE    = $20
+
+  PCA9685_I2C_SPEED             = 1000
+  PCA9685_CONFIG_SPEED          = 100
+
+  DEBUG_OUTPUT                  = 500
+
+VAR
+  word debug2
+  long pinvert
+  long uscount
+  long maxspeed, minout, maxout
+
+OBJ
+  i2c           : "jm_i2c_tmm"
+  utilities     : "utilities"
+
+PUB null()
+  ' This is not a top-level object
+
+PUB start(scl, sda, ppinvert, maxspeed_, minout_, maxout_) : retv | ch
+  pinvert := ppinvert
+  longmove(@maxspeed, @maxspeed_, 3)
+  uscount := clkfreq /1_000_000
+  ifnot i2c.setup(scl, sda, PCA9685_CONFIG_SPEED, i2c.PU_3K3, -1)               ' i2c @ 100kHz, 3K3 pull-ups
+    return $01
+
+  if(i2c.present(ADDRESS<<1) == true)
+    if debugoutput(UTILITIES.DEBUGOUT4)
+      debug("Swerve found board")
+  else
+    if debugoutput(UTILITIES.DEBUGOUT1)
+      debug("Swerve not found board")
+    retv |= $2
+  i2c.stop()
+  ifnot retv
+    initpwm(ADDRESS)
+  ifnot i2c.setup(scl, sda, PCA9685_I2C_SPEED, i2c.PU_3K3, -1)                  ' i2c @ 1000kHz, 3K3 pull-ups
+    return $04
+  stopmotors()
+
+PUB stop()
+  stopmotors()
+
+PUB stopmotors() | ch
+  repeat 16 with ch                                     ' all pins off, motor output is high impedance, coast mode
+    setPWM(ADDRESS<<1, ch, 0)
+
+PUB brakemotors() | ch
+  repeat 8 with ch
+    brakemotor(ch)
+
+PUB brakemotor(m) | ch
+' brake motor, m is motor driver no
+  repeat 16 with ch                                     ' all pins off, motor output is high impedance, coast mode
+    setPWM(ADDRESS<<1, ch, 0)
+
+PRI initpwm(addr) | oldmode
+  '' init pwm on motor driver board
+  if debugoutput(UTILITIES.DEBUGOUT4)
+    debug("initpwm ", uhex_(addr))
+  write8(addr, PCA9685_MODE1, $0)
+  oldmode := read8(addr, PCA9685_MODE1)
+  write8(addr, PCA9685_MODE1, (oldmode & !MODE1_RESTART) | MODE1_SLEEP)         ' go to sleep
+  write8(addr, PCA9685_PRESCALE, PCA9685_PWM_FREQ_DIVISOR)                      ' set prescale 125Hz
+  write8(addr, PCA9685_MODE1, oldmode & !MODE1_SLEEP)                           ' disable sleep
+  waitus(500)
+  write8(addr, PCA9685_MODE1, oldmode | MODE1_RESTART | MODE1_AUTOINCREMENT_ENABLE) ' Restart and turn on auto increment.
+  write8(addr, PCA9685_MODE2, MODE2_OUTNE_NOT_ENABLED | MODE2_OUTDRV_TOTEM_POLE | MODE2_OUTCHANGE_ON_ACK | MODE2_INVRT_NOT)
+  if debugoutput(UTILITIES.DEBUGOUT4)
+    debug("initpwm done ", uhex_(addr))
+
+PRI read8(addr, adr) : ret1
+  '' read byte from motor driver
+  i2c.start()
+  i2c.write(addr<<1)
+  i2c.write(adr)
+
+  i2c.start()
+  i2c.write(addr<<1|1)
+  ret1 := i2c.read(i2c.NAK)
+  i2c.stop()
+
+PRI write8(addr, adr, d) | byte values[3]
+  '' write byte to motor driver
+  i2c.start()
+  values[0] := addr<<1
+  values[1] := adr
+  values[2] := d
+  i2c.wr_block(@values, 3)
+  i2c.stop()
+
+PRI setPWM(addr, num, value) : retv | byte values[6]
+  '' set PWM on/off for single motor pin on motor driver board
+  ' addr must be already shifted
+  values[0] := addr
+  values[1] := num * 4 + LED0_ON_L
+  long[@values[2]] := ((value * 1_000) / (10_000_000 / PCA9685_ACTUAL_FREQ_IN_HZ_x10 * 1000 / 4096))
+  'debug("setPWM ", uhex_byte_array_(@values, 6))
+  i2c.start()
+  retv := !!(i2c.wr_block(@values, 6) == i2c.NAK)
+  i2c.stop()
+  if debugoutput(UTILITIES.DEBUGOUT4)
+    debug("setpwm done ", uhex_(addr), sdec_(num), " ", shex_byte_array_(@values[3], 4), " ", uhex_(retv))
+
+PUB run(motor, speed) : retv | pwm, temp
+'' set speed of 1 motor of a swerve module
+  ' speed 0 is coast rather than brake
+  pwm := utilities.map(word[pinvert][motor]?-speed:speed, -maxspeed, maxspeed, minout, maxout)
+
+  temp := getct()
+  ' 169-170us
+  retv := setPWM(ADDRESS<<1, motor, pwm)
+  temp := getct() - temp - 40
+  if debugoutput(UTILITIES.DEBUGOUT3)
+    debug("run motor ", sdec_(motor, speed, pwm, temp/uscount))
+
+PRI debugoutput(type) : retv
+  retv := utilities.debugoutput(debug2, type)
+
+PUB updatedebug(tdebug)
+  debug2 := tdebug
+
+con { license }
+{{
+
+  Terms of Use: MIT License
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this
+  software and associated documentation files (the "Software"), to deal in the Software
+  without restriction, including without limitation the rights to use, copy, modify,
+  merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to the following
+  conditions:
+
+  The above copyright notice and this permission notice shall be included in all copies
+  or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+  PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+  CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+  OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+}}
