@@ -25,8 +25,10 @@ CON
                                                         ' adjust drive encoder ticks/sec to match +-MAXSPEED
   DRIVEENCODERTICKS             = 6                     ' quadratue encoder: max a ticks per motor revolution in 100ms
 
-  NO_MOTOR1         =           MOTOR.NO_MOTOR1
-  NO_MOTOR2         =           MOTOR.NO_MOTOR2
+'  NO_MOTOR1         =           MOTOR.NO_MOTOR1
+'  NO_MOTOR2         =           MOTOR.NO_MOTOR2
+  ESC_MIN_LIMIT_USEC          = 1000                    ' 600,   900 ESC
+  ESC_MAX_LIMIT_USEC          = 2000                    ' 2400, 2100 ESC
 
   BOT_WIDTH                     = 0
   BOT_LENGTH                    = 1
@@ -73,12 +75,11 @@ OBJ
   dpid[MAX_ENCODERS] : "pid"                            ' pid for controling speed from drive motors of each swerve
   utilities     : "utilities"
   motor         : "motordriver"                         ' motor drivers for drive and steering motors
-  fan           : "motorfan"                            ' fan to cool motor drivers
 
 PUB null()
   ' This is not a top-level object
 
-PUB start(scl, sda, epin, tfpin, pbot, ppinoffsets, pangleoffsets, pminencoder, pmaxencoder, pinvert, pmotor, pdencoders) : retv | ch, t1, t2, rad
+PUB start(scl, sda, epin, pbot, ppinoffsets, pangleoffsets, pminencoder, pmaxencoder, pinvert, pmotor, pdencoders) : retv | ch, t1, t2, rad
   '' start 4 swerve modules
   rad := fsqrt(long[pbot][BOT_WIDTH]*.long[pbot][BOT_WIDTH] +. long[pbot][BOT_LENGTH]*.long[pbot][BOT_LENGTH])/.2.0 ' diag of bot
   cosbot[BOT_WIDTH], cosbot[BOT_LENGTH] := long[pbot][BOT_WIDTH]/.rad, long[pbot][BOT_LENGTH]/.rad
@@ -87,13 +88,11 @@ PUB start(scl, sda, epin, tfpin, pbot, ppinoffsets, pangleoffsets, pminencoder, 
     debug("Swerve starting ", fdec_(long[pbot][BOT_WIDTH], long[pbot][BOT_LENGTH], rad))
 
   longmove(@motors, pmotor, MAX_SWERVE_MODULES*2)       ' conversion between swerve motor number and motor driver motor number
-  repeat 9 with ch                                      ' switch invert flags to match order of motordrivers, not swerve modules
+  repeat 8 with ch                                      ' switch invert flags to match order of motordrivers, not swerve modules
     inverts[long[pmotor][ch]] := word[pinvert][ch]
-  retv := motor.start(scl, sda, @inverts)
+  retv := motor.start(scl, sda, MAXSPEED, ESC_MIN_LIMIT_USEC, ESC_MAX_LIMIT_USEC)
 
   encoder.start(epin, 0, MAXANGLE, ppinoffsets, pangleoffsets, pminencoder, pmaxencoder) ' 0-MAXANGLE output
-
-  fan.startfan(tfpin)                                   ' config fan
 
   repeat MAX_SWERVE_MODULES with ch
     pid[ch].init(ch, MAXANGLE, MAXSPEED)                ' 0-MAXANGLE input, +- MAXSPEED output
@@ -109,7 +108,6 @@ PUB start(scl, sda, epin, tfpin, pbot, ppinoffsets, pangleoffsets, pminencoder, 
 
 PUB stop()
   motor.stop()
-  fan.stopfan()                                         ' stop fan
 
 PUB setpidconstants(pSKp, pSKi, pSKd, pDKp, pDKi, pDKd, povermax) | ch
   longmove(@overridemax, povermax, 2)
@@ -128,19 +126,18 @@ pub stopmotors()
   longfill(@driveencodervelocity, 0, MAX_SWERVE_MODULES)
   longfill(@lastcx, 0, 3)                               ' clear acceleration history
   motor.stopmotors()                                    ' motors into stop/coast
-  fan.fanoff()                                          ' fan stop on timer
 
-PRI setmotorspeeds(pspeeds) : retv | ch, speed, drive, off
+PRI setmotorspeeds(pspeeds) : retv | ch, speed, drive, off, speeds[8]
   ' set all motor speeds, drive and angle
-  ' swerve modules on 1st and 2nd motor driver
   ' return true if any motor is above min speed
   repeat 8 with ch
     speed := long[pspeeds][ch]
     if (drive := ch & 1) == 0
       actualspeeds[ch>>1] := speed                      ' update drive telemetry
-    ' final clamping to max motor speed, convert between swerve motor no to motor driver motor no
-    motor.run(motors[ch], off := (abs(speed) > minmotorspeed[drive]) ? utilities.clamp(speed, overridemax[drive]) : 0)
-    retv |= off
+    retv |= off := abs(speed) > minmotorspeed[drive]    ' final clamping to max motor speed, convert between swerve motor no to motor driver motor no
+    speeds[motors[ch]] := off ? utilities.clamp(inverts[ch]?-speed:speed, overridemax[drive]) : 0
+  'debug("setmotorspeeds")
+  motor.run(@speeds)
 
 PRI drivespeeds(pspeeds) : retv | ch, ponespeed, delta, dpido, denc, ct, dt
   repeat MAX_SWERVE_MODULES with ch
@@ -288,18 +285,14 @@ PUB update(x, y, r, off) : notcomplete | changed, newoffstate, previousoffstate,
 
       notcomplete |= drivespeeds(@speeders)             ' match drive speeds to motor encoders
 
-      if setmotorspeeds(@speeders)                      ' set speeds of drive and steering motors
-        fan.fanon()                                     ' turn on fan if any motor is driven
-      else
-        fan.fanoff()                                    ' turn off fan on timer if all motors are off
+      setmotorspeeds(@speeders)                         ' set speeds of drive and steering motors
+
   elseifnot previousoffstate                            ' if not already off, make sure motors are off
     setmotorspeeds(@zerospeeds)
-    fan.fanoff()                                        ' turn off fan on timer
   elseif (getms() - encodertime) > 1000
     repeat MAX_SWERVE_MODULES with ch
       encoder.read(ch, true)                            ' read encoder when motors off, so can manually adjust encoder offsets
     encodertime := getms()
-  notcomplete |= fan.checkfan()                         ' check fan for updates, need to return notcomplete if timer is running
   if debugoutput(UTILITIES.DEBUGOUT4)
     debug("Swerve updated ", sdec_(changed, notcomplete, motorsareoff))
 
