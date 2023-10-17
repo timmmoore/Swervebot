@@ -86,7 +86,7 @@ CON
   RESULT_OPERATION_TIMEOUT      = ($8002 | RESULT_FAIL_BIT)
   RPLIDAR_DEFAULT_TIMEOUT       = 500
 
-  MAXROTATIONS                  = 5                                             'measurements older than this are ignored
+  MAXROTATIONS                  = 10                                            'measurements older than this are ignored
 
 OBJ
   utilities     : "utilities"
