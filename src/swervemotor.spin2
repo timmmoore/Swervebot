@@ -25,8 +25,6 @@ CON
                                                         ' adjust drive encoder ticks/sec to match +-MAXSPEED
   DRIVEENCODERTICKS             = 6                     ' quadratue encoder: max a ticks per motor revolution in 100ms
 
-'  NO_MOTOR1         =           MOTOR.NO_MOTOR1
-'  NO_MOTOR2         =           MOTOR.NO_MOTOR2
   ESC_MIN_LIMIT_USEC          = 1000                    ' 600,   900 ESC
   ESC_MAX_LIMIT_USEC          = 2000                    ' 2400, 2100 ESC
 
@@ -136,7 +134,6 @@ PRI setmotorspeeds(pspeeds) : retv | ch, speed, drive, off, speeds[8]
       actualspeeds[ch>>1] := speed                      ' update drive telemetry
     retv |= off := abs(speed) > minmotorspeed[drive]    ' final clamping to max motor speed, convert between swerve motor no to motor driver motor no
     speeds[motors[ch]] := off ? utilities.clamp(inverts[ch]?-speed:speed, overridemax[drive]) : 0
-  'debug("setmotorspeeds")
   motor.run(@speeds)
 
 PRI drivespeeds(pspeeds) : retv | ch, ponespeed, delta, dpido, denc, ct, dt

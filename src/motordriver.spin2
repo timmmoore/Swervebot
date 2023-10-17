@@ -6,33 +6,8 @@
 CON
   ADDRESS                       = $04                   ' i2c address board
 
-  ESC_MIN_LIMIT_USEC            = 600
-  ESC_MAX_LIMIT_USEC            = 2400
-
-  ' motor drive configuration
-  PCA9685_MODE1                 = $0                    ' register to configure
-  PCA9685_MODE2                 = $01
-  PCA9685_PRESCALE              = $FE                   ' prescaler register
-  LED0_ON_L                     = $6                    ' start of led configuration registers
-                                                        ' per led: on low, on high, off low, off high
-  LED_ALWAYS_ON                 = (1<<(8+4))            ' bit 12 set means always on
-  LED_ALWAYS_OFF                = (1<<(16+8+4))         ' bit 12+16 set means always off
-
-  PCA9685_DESIRED_FREQ_IN_HZ    = 121                   ' desired Servo PWM Freq 125 Hz (better than 50 Hz and 250 Hz)
-  PCA9685_PWM_FREQ_DIVISOR      = $35                   ' Adjusted to be accurate
-  PCA9685_ACTUAL_FREQ_IN_HZ_x10 = 1205                  ' MEASURED at 120.5 Hz x 10
-
-  MODE2_OUTNE_NOT_ENABLED       = $00
-  MODE2_OUTDRV_TOTEM_POLE       = $04
-  MODE2_OUTCHANGE_ON_ACK        = $08
-  MODE2_INVRT_NOT               = $00
-
-  MODE1_RESTART                 = $80
-  MODE1_SLEEP                   = $10
-  MODE1_AUTOINCREMENT_ENABLE    = $20
-
-  PCA9685_I2C_SPEED             = 3400
-  PCA9685_CONFIG_SPEED          = 3400
+  I2C_SPEED                     = 3400
+  CONFIG_SPEED                  = 3400
 
   DEBUG_OUTPUT                  = 500
 
@@ -51,7 +26,7 @@ PUB null()
 PUB start(scl, sda, maxspeed_, minout_, maxout_) : retv | ch
   longmove(@maxspeed, @maxspeed_, 3)
   uscount := clkfreq /1_000_000
-  ifnot i2c.setup(scl, sda, PCA9685_CONFIG_SPEED, i2c.PU_3K3, -1)               ' i2c @ 100kHz, 3K3 pull-ups
+  ifnot i2c.setup(scl, sda, CONFIG_SPEED, i2c.PU_3K3, -1)                       ' i2c @ 3400kHz, 3K3 pull-ups
     return $01
 
   if(i2c.present(ADDRESS<<1) == true)
@@ -62,7 +37,7 @@ PUB start(scl, sda, maxspeed_, minout_, maxout_) : retv | ch
       debug("Swerve not found motor board")
     retv |= $2
   i2c.stop()
-  ifnot i2c.setup(scl, sda, PCA9685_I2C_SPEED, i2c.PU_3K3, -1)                  ' i2c @ 1000kHz, 3K3 pull-ups
+  ifnot i2c.setup(scl, sda, I2C_SPEED, i2c.PU_3K3, -1)                          ' i2c @ 3400kHz, 3K3 pull-ups
     return $04
   stopmotors()
 

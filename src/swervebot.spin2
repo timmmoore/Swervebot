@@ -249,7 +249,6 @@ OBJ
   usfsmax       : "usfsmax"                                     ' IMU
   gps           : "gps_pa1010d"                                 ' GPS
   battery       : "jm_ez_analog"                                ' A2D to read battery voltage
-  'temperature[4] : "temperature"                                ' A2D to read motor driver temperature sensors
   lidar         : "rplidar"                                     ' 1 cog - read lidar
   nn            : "nn_drive"
   nn_training   : "nn_training"
