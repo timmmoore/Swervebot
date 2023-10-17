@@ -1,14 +1,7 @@
-// Wire Slave Receiver
-// by Nicholas Zambetti <http://www.zambetti.com>
-
-// Demonstrates use of the Wire library
-// Receives data as an I2C/TWI slave device
-// Refer to the "Wire Master Writer" example for use with this
-
-// Created 29 March 2006
-
-// This example code is in the public domain.
-
+// Wire Slave Receiver for supplying 8 pwm output on
+//   https://www.seeedstudio.com/Seeeduino-XIAO-Arduino-Microcontroller-SAMD21-Cortex-M0+-p-4426.html?queryID=2927a4497d7d4ec24c09a0fecad8cd9f&objectID=4426&indexName=bazaar_retailer_products
+// 
+// Based on example by Nicholas Zambetti <http://www.zambetti.com>
 
 #include <Wire.h>
 #include <Servo.h>
