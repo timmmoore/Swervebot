@@ -75,13 +75,14 @@ PUB debugoutput(debug1, type) : retv
 dat
   debugtypes long  DEBUG1_OUTPUT, DEBUG2_OUTPUT, DEBUG3_OUTPUT, DEBUG4_OUTPUT
 
-PUB add64(xl, xh, x) : rxl, rxh
+PUB add64(xl, xh, x) : rxl, rxh | h
 ' 64bit + 32bit signed add
   longmove(@rxl, @xl, 2)
-
+  if x < 0
+    h~~                                                 ' sign extend x
   org
     add   rxl, x                  wc
-    addsx rxh, #0
+    addsx rxh, h
   end
 
 pub cart_pol(x, y) : r, t
