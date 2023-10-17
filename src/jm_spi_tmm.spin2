@@ -72,8 +72,7 @@ pub start(sdi, sdo, sck, mode, khz)
 
   if (sdo >= 0)                                                 ' if sdo used
     pinclear(sdo)
-    pinf(sdo)
-'    pinl(sdo)                                                   ' make output low
+    pinl(sdo)                                                   ' make output low
 
   if ((sdi >= 0) && (sdi <> sdo))                               ' if sdi used
     pinclear(sdi)                                               '  clear and make input
