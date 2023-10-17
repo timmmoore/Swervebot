@@ -163,7 +163,7 @@ CON
   QUAT_DIV                      =     $07
 
   I2C_CONFIG_SPEED              =     100
-  I2C_FAST_SPEED                =     3000
+  I2C_FAST_SPEED                =     3400
 
 VAR
   long accLIN[3], grav[3]
@@ -301,7 +301,7 @@ PRI BARO_getADC() | BYTE bytes[4]
 
 PUB getMin() : retv, qt0, qt1, qt2, qt3 | BYTE bytes[19]
 ' getQUAT and BARO_getADC
-' 239us (3MHz)
+' 217us (3.4MHz)
   if readBytes(MAX32660ADDR, BARO_XL, 19, @bytes) == false '235us
     return
   bytemove(@qt0, @bytes[3], 16)
@@ -353,7 +353,7 @@ CON
 
 PUB computeIMUFixed(qtw, qtx, qty, qtz) : outputyaw, outputpitch, outputroll, outputpressure | qw, qx, qy, qz, y
 ' MAXUSFS Quaternion is ENU
-' 56us (200MHz)
+' 39us (270MHz)
 ' differs in 2nd decimal place from computeIMUFloat
   ' convert to scaled fixed decimal point
   qtw, qtx, qty, qtz := round(qtw*.floatscale), round(qtx*.floatscale), round(qty*.floatscale), round(qtz*.floatscale)
