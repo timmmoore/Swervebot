@@ -167,13 +167,15 @@ VAR
 
 pub null()
 
-PUB start(pin) : retv | x
-  startEx(pin, @_sensors, _sensorCount)
+PUB start(pin) : retv
+  return startEx(pin, @_sensors, _sensorCount)
 
 PUB startEx(pin, pgsensors_, gsensorcount_) : retv | x
 ' allow caller to specify sensor table
   longmove(@rxp, @pin, 3)
   gsensorCountEntries := gsensorcount * _sensornoentries
+  if gsensorcount > MAXNOSENSORS                                                ' need sensor tables larger than the number of sensors
+    return 0
 
   pinclear(rxp)                                                                 ' remove old settings
 
@@ -189,7 +191,6 @@ PUB stop()
     cogstop(cognum-1)                                                           '  stop the cog
     cognum := 0                                                                 '  mark stopped
   pinclear(rxp)                                                                 ' remove old settings
-
 
 pub setgps(tlatitude, tlongitude, tspeed, talt, tfix, tsatno, thdop)
   longmove(@latitude, @tlatitude, 7)
@@ -519,14 +520,14 @@ _sensors
               word      DATA_ID_ACC,     FSSP_DATAID_ROLL,        0,   1000     ' $5240, given in deg *10
               word      DATA_ID_ACC,     SENSOR_APPL_ID_PRESSURE, 0,   1000     ' $5113, hPa *100
               word      DATA_ID_FAS,     FSSP_DATAID_VFAS,        0,   1000     ' $0210, given in 0.01V *100
-              word      DATA_ID_FAS,     FSSP_DATAID_CURRENT1,    0,   1000     ' $0201, in 0.1mA
-              word      DATA_ID_FAS,     FSSP_DATAID_CURRENT2,    0,   1000     ' $0202, in 0.1mA
-              word      DATA_ID_TEMP,    DATA_ID_TEMP_ID1,        0,   1000     ' $5116, motor driver temps, 0,01C *100
-              word      DATA_ID_TEMP,    DATA_ID_TEMP_ID2,        0,   1000     ' $5117, motor driver temps, 0,01C *100
-              word      DATA_ID_TEMP,    DATA_ID_TEMP_ID3,        0,   1000     ' $5118, motor driver temps, 0,01C *100
-              word      DATA_ID_TEMP,    DATA_ID_TEMP_ID4,        0,   1000     ' $5119, motor driver temps, 0,01C *100
-              word      DATA_ID_FLVSS,   FSSP_DATAID_CELLS,       0,   1000     ' $0300, battery cell 0, 1
-              word      DATA_ID_FLVSS,   FSSP_DATAID_CELLS,       1,   1000     ' $0300, battery cell 2
+'              word      DATA_ID_FAS,     FSSP_DATAID_CURRENT1,    0,   1000     ' $0201, in 0.1mA
+'              word      DATA_ID_FAS,     FSSP_DATAID_CURRENT2,    0,   1000     ' $0202, in 0.1mA
+'              word      DATA_ID_TEMP,    DATA_ID_TEMP_ID1,        0,   1000     ' $5116, motor driver temps, 0,01C *100
+'              word      DATA_ID_TEMP,    DATA_ID_TEMP_ID2,        0,   1000     ' $5117, motor driver temps, 0,01C *100
+'              word      DATA_ID_TEMP,    DATA_ID_TEMP_ID3,        0,   1000     ' $5118, motor driver temps, 0,01C *100
+'              word      DATA_ID_TEMP,    DATA_ID_TEMP_ID4,        0,   1000     ' $5119, motor driver temps, 0,01C *100
+'              word      DATA_ID_FLVSS,   FSSP_DATAID_CELLS,       0,   1000     ' $0300, battery cell 0, 1
+'              word      DATA_ID_FLVSS,   FSSP_DATAID_CELLS,       1,   1000     ' $0300, battery cell 2
               word      DATA_ID_LIDAR,   FSSP_LIDARL,             0,    500     ' $5104
               word      DATA_ID_LIDAR,   FSSP_LIDARFL,            0,    500     ' $5105
               word      DATA_ID_LIDAR,   FSSP_LIDARF,             0,    500     ' $5106
