@@ -68,34 +68,46 @@ VAR
   long CS
   long currentX_L, currentX_H, currentY_L, currentY_H
   long accumtime
+  long speed
 
 PUB null()
 
-PUB start(tcs, tsck, tso, tsi) : retv
+PUB start(tcs, tsck, tso, tsi) : retv | t1, t2
   cs := tcs
-
+  speed := SPI_CLK_SPEED
   ' Make sure the PMW3901 is reset on the SPI bus
-  disableCS()
-  waitms(20)
-  enableCS()
-  waitms(1)
-  disableCS()
-  waitms(1)
-
-  spi.start(tsi, tso, tsck, SPI.MODE_3, SPI_CLK_SPEED) ' Setup SPI bus
-
-  waitms(5)
-  registerWrite(POWER_UP_RESET, $5A)                    ' Power on reset
-  waitms(5)
-  ' Test the SPI communication, checking chipId and inverse chipId
-  ifnot (registerRead(PRODUCT_ID) <> CHIP_ID || registerRead(INVERSE_PRODUCT_ID) <> CHIP_ID_INVERSE)
-    retv := true
-    readMotionCount()                                   ' Reading the motion registers one time
-    waitms(1)
-    initRegisters()
+  repeat 10
+    ' setting these pins high seem to be required to make sure pmw3901 responds correctly
+    waitms(50)
+    spi.start(tsi, tso, tsck, SPI.MODE_3, speed) ' Setup SPI bus
+    waitms(50)
+    disableCS()
+    waitms(10)
+    enableCS()
+    waitms(20)
+    disableCS()
+    waitms(50)
+    registerWrite(POWER_UP_RESET, $5A)                    ' Power on reset
+    waitms(50)
+    ' Test the SPI communication, checking chipId and inverse chipId
+    t1 := registerRead(PRODUCT_ID)
+    registerRead(REVISION_ID)
+    t2 := registerRead(INVERSE_PRODUCT_ID)
+    ifnot (t1 <> CHIP_ID) || (t2 <> CHIP_ID_INVERSE)
+      retv := true
+      readMotionCount()                                   ' Reading the motion registers one time
+      waitms(1)
+      initRegisters()
+      quit
+    else
+      debug("pmw ", uhex_(t1), " ", uhex_(t2))
+      disableCS()
+      waitms(50)
+      spi.stop()
+      waitms(50)
 
 PUB stop()
-  registerWrite(SHUTDOWN, $ff)  ' shutdown pmw3901
+'  registerWrite(SHUTDOWN, $ff)  ' shutdown pmw3901
   disableCS()                   ' make sure pmw3901 is disabled
   spi.stop()                    ' stop and free spi bus
 
@@ -127,6 +139,7 @@ PUB readMotionCountBurstQuick() : retv, deltaX, deltaY | byte values[7]
   ' byte _, dr, obs, word x(l,h), y(l,h)
   values[0] := MOTION_BURST
   pinlow(cs)
+'  waitus(50)
   ' LSB/MSB defines bit endian
   spi.transferbytes(spi.MSBMSBYTE, @values, 7, 8)
   pinhigh(cs)
@@ -144,6 +157,7 @@ PUB readMotionCountBurst() : retv, deltaX, deltaY | byte values[13]
   ' note: first byte read is not useful because the register value is not loaded yet
   values[0] := MOTION_BURST
   pinlow(cs)
+'  waitus(50)
   spi.transferbytes(spi.MSBMSBYTE, @values, 13, 8)
   pinhigh(cs)
   '              dr                        quality              shutter_upper
@@ -220,13 +234,17 @@ PRI registerWrite(regv, value)
 
 PRI registerRead(regv) : value
   enableCS()
+  waitus(50)
   spi.write(spi.MSBLSBYTE, regv&$7f, 8)
+  waitus(50)
   value := spi.read(spi.MSBLSBYTE, 8)
+  waitus(50)
   disableCS()
-
+  waitus(250)
 {
   python lib does the following: is it better than the one from bitcraze?
 }
+{
 PRI initRegisters() | i, c1, c2
   ' Performance optimisation registers
   repeat i from 0 to (@initRegistersValue1 - @initRegistersReg1)-1
@@ -303,10 +321,10 @@ initRegistersReg6
   byte $7f, $6f, $7f
 initRegistersValue6
   byte $14, $1c, $00
-
+}
 DAT
 ' magic register and values, no information on these, copied from bitcraze driver
-{
+
 PRI initRegisters() | i
   ' Performance optimisation registers, from bitcraze driver
   repeat i from 0 to (@initRegistersValue - @initRegistersReg)-1
@@ -314,8 +332,8 @@ PRI initRegisters() | i
   waitms(10) '100)
   repeat i from 0 to (@initRegistersValue2 - @initRegistersReg2)-1
     registerWrite(initRegistersReg2[i], initRegistersValue2[i])
-}
-{
+'}
+'{
 DAT
 initRegistersReg
   BYTE $7F, $61, $7F, $40, $7F, $41, $43, $45, $5B, $5F, $7B, $7F, $44, $40, $4E, $7F
@@ -332,7 +350,7 @@ initRegistersReg2
   BYTE $32, $7F, $40, $7F, $62, $63, $7F, $48, $6F, $7F, $5B, $4E, $5A, $40
 initRegistersValue2
   BYTE $44, $07, $40, $06, $f0, $00, $0D, $C0, $d5, $00, $a0, $A8, $50, $80
-}
+'}
 '
 con { license }
 
