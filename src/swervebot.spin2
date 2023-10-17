@@ -7,9 +7,10 @@
                 -> 1x radio (sbus_in(7), SPORT(6), sbus_out(5), 5V, Gnd)
                       FrSky R-XSR
                       SPORT sends telemetry: GPS, yaw, pitch, roll, speed/angle of each swerve module battery voltage, temperatures, optical flow
-                -> 2x motor driver (SCL(22), SDA(23), Vio, Gnd)
-                      I2C motor drivers with PCA9865 and 2x TN6612
-                      https://www.tindie.com/products/cburgess129/quad-motor-servo-shield-for-wireless-dev-board/
+                -> 4x motor driver
+                      1x https://www.amazon.com/dp/B082QT9D5F
+                                SCL, SDA on 22, 23
+                      4x https://www.amazon.com/gp/product/B0C77ZR4Z9
                       motor is rev HD motor 6000 rpm free speed, quadrature encoder 28 counts/rev
                                 drive :gearing 1:3 planetary, 12:30 to drive leg, 1:2 wheel bevel -> 1:15
                                        400 rpm @ wheel, wheel is 2" diameter -> 2500 in/min -> ground speed is 3.5 ft/sec
@@ -26,8 +27,7 @@
                 -> Battery Voltage (31), 8K2, 3K resistor network
                 -> 4x quadrature encoders (Gnd, 3V3, A (14, 12, 3, 1), B (15, 13, 2, 0)), 1:3, 12:30, 1:2 -> 1:15
                       7 ticks or 28 count/rev
-                -> 4X Temperature sensors TMP36, 1 per motor driver (Gnd, 3V3, 26, 27, 28, 20)
-                -> 1x fan with mosfet (Gnd, 3V3, 30)
+                -> 1x Lidar (Gnd, 5V, 56, 57, 4)
 
 TODO
   Map USFSMax yaw angle to bot rotation
@@ -42,7 +42,7 @@ TODO
 
 con { timing }
 
-  CLK_FREQ = 270_000_000                                        ' system freq as a constant
+  CLK_FREQ = 320_000_000                                                        ' system freq as a constant
   MS_001   = CLK_FREQ / 1_000                                                   ' ticks in 1ms
   US_001   = CLK_FREQ / 1_000_000                                               ' ticks in 1us
 
@@ -147,19 +147,6 @@ con { fixed io pins }
                                                                                 ' 33750/2673.534 -> 12.624
   BATTERYDELTA                  = 0.4
 
-  TEMP_ANALOG1                  = 26                                            ' pin 26-29, TMP36,  0.5 + 25 * 0.01 -> .75V = 25C
-  TEMP_ANALOG2                  = 27                                            ' pin 26-29, TMP36,  0.5 + 25 * 0.01 -> .75V = 25C
-  TEMP_ANALOG3                  = 28                                            ' pin 26-29, TMP36,  0.5 + 25 * 0.01 -> .75V = 25C
-  TEMP_ANALOG4                  = 29                                            ' pin 26-29, TMP36,  0.5 + 25 * 0.01 -> .75V = 25C
-  TEMP_LOW                      = -5000                                         ' 0V -> -50C
-  TEMP_HIGH                     = 28000                                         ' 3.3V -> 280C
-  TEMP_MAX                      = 12000                                         ' TB6612 thermal shutdown is at 150C, though sensor is external so lower
-  TEMP_MIN                      = 9000
-  TEMP_VALID_MIN                = 1000
-  TEMP_VALID_MAX                = 20000
-  TEMPDELTA                     = 100                                           ' * 0.01deg
-  TEMP_MAX_STOP                 = true                                          ' stop motors if temp is too high
-
   ' Bellevue, WA 98008
   M_V                           = 49.4643
   M_H                           = 19.0285
@@ -176,8 +163,6 @@ con { fixed io pins }
 
   #1, OK, FAILSAFE, LOST                                                        ' SBUS states
 
-  MOTOR_FAN_PIN                 = 30                                            ' turn motor driver fan on (high)/off (low)
-
   SENSORPERIOD                  = 50                                            ' ms between sensor query
   SWERVEPERIOD                  = 20                                            ' ms between RC receiver/swerve motor updates
 
@@ -187,8 +172,7 @@ con { fixed io pins }
   IMUCHANGE                     = $08                                           ' imu
   GPSCHANGE                     = $10                                           ' gps
   VOLTAGECHANGE                 = $20
-  TEMPCHANGE                    = $40
-  LIDARCHANGE                   = $80
+  LIDARCHANGE                   = $40
 
   PIDSTEER                      = true
   PIDCONSTANTSDIVIDER10         = 10.0
@@ -213,8 +197,7 @@ con { fixed io pins }
   SHAREDIMU                     = 4                                             ' osensor
   SHAREDGPS                     = 11                                            ' ogpst, ohour, omin, osec, onorthdeg, owestdeg, ospeed, oalt, ofix, osatno, ohdop
   SHAREVOLTAGE                  = 1
-  SHARETEMP                     = 4
-  SHAREDVARIABLES               = 1+1+NOCHANNELS+SHAREDIMU+SHAREDPMW+SHAREDGPS+SHAREVOLTAGE+SHARETEMP+LIDARNOCHANNELS
+  SHAREDVARIABLES               = 1+1+NOCHANNELS+SHAREDIMU+SHAREDPMW+SHAREDGPS+SHAREVOLTAGE+LIDARNOCHANNELS
 
   NO_SWERVE_MODULES             = 4
 
@@ -232,12 +215,12 @@ VAR
   long synclock, printlock
 
   long sharedupdate, incupdate, channels[NOCHANNELS], output[SHAREDIMU], deltax_l, deltax_h, deltay_l, deltay_h, deltat
-  long gpst, hour, min, sec, northdeg, westdeg, speed, alt, fix, satno, hdop, voltage, temps[SHARETEMP]
+  long gpst, hour, min, sec, northdeg, westdeg, speed, alt, fix, satno, hdop, voltage
   long lidardistance[LIDARNOCHANNELS]
 
   ' swerve cog
   long swerveupdate, incswerve, swervechannels[NOCHANNELS], oswerve[SHAREDIMU], xswerve_l, xswerve_h, yswerve_l, yswerve_h, tswerve   ' swerve cog locals
-  long sgpst, shour, smin, ssec, snorthdeg, swestdeg, sspeed, salt, sfix, ssatno, shdop, svoltage, stemps[SHARETEMP]
+  long sgpst, shour, smin, ssec, snorthdeg, swestdeg, sspeed, salt, sfix, ssatno, shdop, svoltage
   long slidardistance[LIDARNOCHANNELS]
 
   long lastchannels[NOCHANNELS]
@@ -245,7 +228,7 @@ VAR
 
   ' sensor cog
   long sensorupdate, oincupdate, sbuschannels[NOCHANNELS], osensor[SHAREDIMU], xsensor_l, xsensor_h, ysensor_l, ysensor_h, tsensor     ' sensor cog locals
-  long ogpst, ohour, omin, osec, onorthdeg, owestdeg, ospeed, oalt, ofix, osatno, ohdop, ovoltage, otemps[SHARETEMP]
+  long ogpst, ohour, omin, osec, onorthdeg, owestdeg, ospeed, oalt, ofix, osatno, ohdop, ovoltage
   long olidardistance[LIDARNOCHANNELS]
 
   long osensor1[SHAREDIMU]
@@ -266,14 +249,13 @@ OBJ
   usfsmax       : "usfsmax"                                     ' IMU
   gps           : "gps_pa1010d"                                 ' GPS
   battery       : "jm_ez_analog"                                ' A2D to read battery voltage
-  temperature[4] : "temperature"                                ' A2D to read motor driver temperature sensors
+  'temperature[4] : "temperature"                                ' A2D to read motor driver temperature sensors
   lidar         : "rplidar"                                     ' 1 cog - read lidar
   nn            : "nn_drive"
   nn_training   : "nn_training"
 
 PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_time, again, temp, temp1, speeds[NO_SWERVE_MODULES], aspeeds[NO_SWERVE_MODULES], angles[NO_SWERVE_MODULES], havenn, lidaroutput[2], update
 
-  pinhigh(PMW_CS)                                       ' seems to help PMW initialize, would a pull up resistor be better
   debug1, debug2, debug3 := INIT_DEBUG, INIT_DEBUG, INIT_DEBUG
   longfill(@lastchannels, -1, NOCHANNELS)
   if debugoutput(UTILITIES.DEBUGOUT3)
@@ -303,11 +285,11 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
     nn.test_nn()
 
   ' initialize swerve modules and motors
-  if (havemotors := swerve.start(MOTOR_SCL, MOTOR_SDA, ENCODERPIN1, MOTOR_FAN_PIN, @bot, @pinoffsets, @angleoffsets, @minencoder, @maxencoder, @invert, @motoroffsets, @driveencoders))
+  if (havemotors := swerve.start(MOTOR_SCL, MOTOR_SDA, ENCODERPIN1, @bot, @pinoffsets, @angleoffsets, @minencoder, @maxencoder, @invert, @motoroffsets, @driveencoders))
     if debugoutput(UTILITIES.DEBUGOUT1)
       if havemotors & $01
         debug("Swerve motors I2C bus error ", uhex_(havemotors))
-      if havemotors & (swerve.NO_MOTOR1|swerve.NO_MOTOR2)
+      if havemotors
         debug("Swerve motors not found ", uhex_(havemotors))
   else
     if debugoutput(UTILITIES.DEBUGOUT4)
@@ -316,7 +298,6 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
   sport.setactuals(@speeds, @aspeeds, @angles, swerve.MAXANGLE) ' swerve speeds/angles telemetry
 
   cognum := COGSPIN(newcog, runsensors(), @StkAddr)     ' initialize sensors
-  pinf(PMW_CS)                                          ' float pin for sensor cog to takeover
 
   delaystart := getms()
 
@@ -344,10 +325,8 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
       if swerveupdate & LIDARCHANGE and update <> incswerve ' dont need to do this unless lidar has changed
         nn.drive_nn(@slidardistance, @lidaroutput, -swerve.MAXSPEED, swerve.MAXSPEED)
 
-      if havemotors <> (swerve.NO_MOTOR1|swerve.NO_MOTOR2) ' update swerve modules with updated movements
-        if TEMP_MAX_STOP and motorstopped == true       ' 1 or more temp sensors have reached max temp
-          swerve.stopmotors()                           ' disable all motors
-        elseif swervechannels[CHANNEL_OFF] <> 0
+      ifnot havemotors                                     ' update swerve modules with updated movements
+        if swervechannels[CHANNEL_OFF] <> 0
           if swervechannels[CHANNEL_AUTO] > MIDDEFAULT  ' autoroam switch is on
             debug("auto ", sdec_(swervechannels[CHANNEL_AUTO]))
             again := swerve.update(lidaroutput[0], lidaroutput[1], lidaroutput[2], swervechannels[CHANNEL_OFF])
@@ -402,7 +381,6 @@ PRI dopidconstants() | tSkp[NO_SWERVE_MODULES], tSki[NO_SWERVE_MODULES], tSkd[NO
 
 PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_time, compute_time1, havepmw, haveusfsmax, havegps, sbusstatus, lsbusstatus, ch, lastx_l, lastx_h, lasty_l, lasty_h, lasto[4], debugo, delaystart, gpsret, gpsrel, xl, yl, oldvoltage, volt, s, lasttemps[4], temp, temphigh, templow, lasttemp, lastimu, llidardistance[LIDARNOCHANNELS], maylidar, havelidar, tlidar[LIDARNOCHANNELS]
 
-  'waitms(10)                                            ' give time for main cog to float PMW_CS
   ifnot pmw.start(PMW_CS, PMW_SCK, PMW_SDO, PMW_SDI) == false ' init optical flow sensor
     havepmw := true
   if debugoutput(havepmw?UTILITIES.DEBUGOUT3:UTILITIES.DEBUGOUT1)
@@ -428,7 +406,8 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
   sbus.start(SBUS_RX, @Defaults)                        ' start s.bus rx
   waitms(50)
   sbus.reset_count()                                    ' reset frames received count
-  sport.start(SBUS_SPORT)                               ' start telemetry channel to transmitter
+  if sport.start(SBUS_SPORT) == 0                       ' start telemetry channel to transmitter
+    debug("Telemetry failed")
 
   if (Acq_time := gps.start(GPS_SCL, GPS_SDA)) == 0
     havegps := true
@@ -436,9 +415,6 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
     debug("GPS", zstr_(havegps?@" ":@" not "), "found ", uhex_(Acq_time))
 
   battery.start(BATTERY_ANALOG, BATTERYCONF.BATTERY_LOW, BATTERYCONF.BATTERY_HIGH)
-
-  repeat SHARETEMP with ch                              ' temperature sensors 1 per motor driver TB6612
-    temperature[ch].start(TEMP_ANALOG1+ch, TEMP_LOW, TEMP_HIGH, TEMP_VALID_MIN, TEMP_VALID_MAX)
 
   maylidar := lidar.start(LIDARTX_PIN, LIDARRX_PIN, LIDARCTL_PIN) <> 0
 
@@ -499,10 +475,9 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
       compute_time := getct() - compute_time - 40
       'releaseprintlock()                                ' release lock soon as we have finished printing
       sport.setimu(osensor[YAW], osensor[PITCH], osensor[ROLL], osensor[PRESSURE]) ' imu telemetry
-      if utilities.longcompf(@lasto, @osensor, SHAREDIMU, 0.5, false)
-        if fabs(lasto[PRESSURE] - osensor[PRESSURE]) >. 2.0
-          longmove(@lasto, @osensor, SHAREDIMU)
-          sensorupdate |= IMUCHANGE                     ' imu changed
+      if utilities.longcompf(@lasto, @osensor, SHAREDIMU-1, 1.0, false) || (fabs(lasto[PRESSURE] - osensor[PRESSURE]) >. 2.0)
+        longmove(@lasto, @osensor, SHAREDIMU)
+        sensorupdate |= IMUCHANGE                       ' imu changed
 
     if havegps                                          ' gps
       if (gpsret := gps.input()) <> 0
@@ -514,7 +489,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
     if havelidar
       updatelidar()
       if utilities.longcompf(@llidardistance, @olidardistance, LIDARNOCHANNELS, 0.1, true)
-        repeat LIDARNOCHANNELS with ch               ' convert to mm for telemetry
+        repeat LIDARNOCHANNELS with ch                  ' convert to mm for telemetry
           tlidar[ch] := round((1.0 -. olidardistance[ch]) *. float(MAXDISTANCE-MINDISTANCE)) + MINDISTANCE
         sport.setlidar(@tlidar)
         sensorupdate |= LIDARCHANGE                     ' lidar changed
@@ -528,13 +503,6 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
         oldvoltage := ovoltage
         sensorupdate |= VOLTAGECHANGE
 
-      repeat SHARETEMP with ch
-        otemps[ch] := temperature[tempoffsets[ch]].read() ' use temp offset to get temp in FL, FR, BL, BR order
-      sport.settemperature(@otemps)                     ' temperature telemetry, 0.01C * 100
-      if utilities.longcomp(@lasttemps, @otemps, SHARETEMP, TEMPDELTA, true)
-        sensorupdate |= TEMPCHANGE
-      lasttemp := getms()
-
     oincupdate++
     takesynclock()
     longmove(@sharedupdate, @sensorupdate, SHAREDVARIABLES) ' copy local to shared variables
@@ -545,7 +513,7 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
       takeprintlock()
       if sensorupdate & PMWCHANGE
         if debugoutput(UTILITIES.DEBUGOUT3)
-          debug("PMW3901 x:", sdec_(xsensor_h), ":", udec_(xsensor_l), " y:", sdec_(ysensor_h), ":", udec_(ysensor_l), " t:", sdec_(tsensor), " a:", sdec_(Acq_time/US_001))
+          debug("PMW3901 x:", sdec_(xsensor_h), ":", udec_(xsensor_l), " ", sdec_(xl), " y:", sdec_(ysensor_h), ":", udec_(ysensor_l), " ", sdec_(yl), " t:", sdec_(tsensor), " a:", sdec_(Acq_time/US_001))
       if sensorupdate & IMUCHANGE                       ' imu changed
         if debugoutput(UTILITIES.DEBUGOUT3) and (getms() - lastimu) > 1000
           lastimu := getms()
@@ -574,24 +542,6 @@ PRI runsensors() | count, sbustime, period_time, Acq_time, Acq_time1, compute_ti
           debug("Minimum Voltage reached ", fdec_(ovoltage))
           if BATTERYCONF.BATTERY_STOP                   ' if stop on battery min enabled
             quit                                        ' breakout the repeat, so this cog stops
-      if sensorupdate & TEMPCHANGE                      ' temperature sensor change
-        if debugoutput(UTILITIES.DEBUGOUT3)
-          debug("Temp ", sdec_(lasttemp), " FL:", sdec_(otemps[0]), " FR:", sdec_(otemps[1]), " BL:", sdec_(otemps[2]), " BR:", sdec_(otemps[3]))
-        temphigh := templow := 0
-        repeat 4 with ch                                ' count number of drivers above max or below min
-          if (otemps[ch] > TEMP_MAX)
-            temphigh++                                  ' driver too high
-            debug("Max Temperature ", sdec_(ch), " reached ", fdec_(otemps[ch]))
-          elseif (otemps[ch] < TEMP_MIN)
-            templow++                                   ' driver ok
-            if motorstopped
-              debug("Min Temperature ", sdec_(ch), " reached ", fdec_(otemps[ch]))
-        if temphigh and !!motorstopped                  ' at least 1 driver above max, stop the motors
-          motorstopped~~
-          debug("Stopping motors, driver temps too high ", sdec_(motorstopped))
-        elseif templow == 4 and motorstopped            ' all drivers are below min, start the motors
-          motorstopped~
-          debug("Starting motors, driver temps ok")
 
       if sensorupdate & LIDARCHANGE                     ' lidar sensor change
         if debugoutput(UTILITIES.DEBUGOUT3)
@@ -712,8 +662,6 @@ DAT
   '                     FL    FR    BL    BR
   '                     D  S  D  S  D  S  D  S
   motoroffsets  long    7, 6, 3, 2, 5, 4, 1, 0
-  '                     FL, FR, BL, BR
-  tempoffsets   long    3,  1,  2,  0
 
   ' whether each motor is inverted
   ' setup so gear on drive wheel are inside on both left and right
