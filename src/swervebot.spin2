@@ -324,14 +324,14 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
       if swerveupdate & LIDARCHANGE and update <> incswerve ' dont need to do this unless lidar has changed
         nn.drive_nn(@slidardistance, @lidaroutput, -swerve.MAXSPEED, swerve.MAXSPEED)
 
-      ifnot havemotors                                     ' update swerve modules with updated movements
-        if swervechannels[CHANNEL_OFF] <> 0
-          if swervechannels[CHANNEL_AUTO] > MIDDEFAULT  ' autoroam switch is on
+      ifnot havemotors                                  ' update swerve modules with updated movements
+        if swervechannels[CHANNEL_AUTO] > MIDDEFAULT    ' autoroam switch is on
+          if swervechannels[CHANNEL_OFF] <> 0
             debug("auto ", sdec_(swervechannels[CHANNEL_AUTO]))
             again := swerve.update(lidaroutput[0], lidaroutput[1], lidaroutput[2], swervechannels[CHANNEL_OFF])
-          else
-            'debug("drive ", sdec_long_array_(@swervechannels[CHANNEL_Y], 4))
-            again := swerve.update(swervechannels[CHANNEL_Y], swervechannels[CHANNEL_X], swervechannels[CHANNEL_R], swervechannels[CHANNEL_OFF])
+        else
+          'debug("drive ", sdec_long_array_(@swervechannels[CHANNEL_Y], 4))
+          again := swerve.update(swervechannels[CHANNEL_Y], swervechannels[CHANNEL_X], swervechannels[CHANNEL_R], swervechannels[CHANNEL_OFF])
       swerve.getactuals(@speeds, @aspeeds, @angles)
       sport.setactuals(@speeds, @aspeeds, @angles, swerve.MAXANGLE) ' swerve speeds/angles telemetry
       if debugo
@@ -657,16 +657,16 @@ DAT
 
   ' 1 per motor, i.e., 2 motors per NO_SWERVE_MODULES
   ' match how motors are connected to the motor driver boards
-  ' motor channels 0-3 on board 1, 4-7 on board 2
+  ' motor channels 0-7 on board
   '                     FL    FR    BL    BR
   '                     D  S  D  S  D  S  D  S
-  motoroffsets  long    7, 6, 3, 2, 5, 4, 1, 0
+  motoroffsets  long    7, 6, 1, 0, 5, 4, 3, 2
 
   ' whether each motor is inverted
   ' setup so gear on drive wheel are inside on both left and right
   '                      FL    FR    BL    BR
   '                     D  S  D  S  D  S  D  S
-  invert        word    0, 1, 1, 1, 0, 1, 1, 1
+  invert        word    0, 1, 1, 0, 0, 1, 1, 1
 
   ' drive motor encoders - speed of drive motors, 7 rises of a pin per motor rotation
   '  plus 1:3 (planetary) * 1:2 (bevel) * 12:30 (center) = 1:15 -> 105 ticks per wheel rotation
