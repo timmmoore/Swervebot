@@ -48,9 +48,6 @@ PUB stopmotors() | byte speeds[8]
   bytefill(@speeds, 0, 8)
   setPWMAll(ADDRESS<<1, @speeds)
 
-PUB brakemotors()
-  stopmotors()
-
 PRI setPWM(addr, num, value) : retv | byte values[3]
   '' set PWM on/off for single motor pin on motor driver board
   ' addr must be already shifted
