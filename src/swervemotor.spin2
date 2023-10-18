@@ -132,7 +132,9 @@ PRI setmotorspeeds(pspeeds) : retv | ch, speed, drive, off, speeds[8]
     speed := long[pspeeds][ch]
     if (drive := ch & 1) == 0
       actualspeeds[ch>>1] := speed                      ' update drive telemetry
-    retv |= off := abs(speed) > minmotorspeed[drive]    ' final clamping to max motor speed, convert between swerve motor no to motor driver motor no
+    retv |= (off := abs(speed) > minmotorspeed[drive])  ' final clamping to max motor speed, convert between swerve motor no to motor driver motor no
+    ifnot off
+      debug("setmotorspeed ", sdec_(ch), " to zero")
     speeds[motors[ch]] := off ? utilities.clamp(inverts[ch]?-speed:speed, overridemax[drive]) : 0
   motor.run(@speeds)
 
