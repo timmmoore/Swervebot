@@ -14,7 +14,7 @@ CON
 VAR
   word debug2
   long uscount
-  long maxspeed, minout, maxout
+  long maxspeed, minout, maxout, maxnum
 
 OBJ
   i2c           : "jm_i2c_tmm"
@@ -23,8 +23,9 @@ OBJ
 PUB null()
   ' This is not a top-level object
 
-PUB start(scl, sda, maxspeed_, minout_, maxout_) : retv | ch
-  longmove(@maxspeed, @maxspeed_, 3)
+PUB start(scl, sda, maxspeed_, minout_, maxout_, maxnum_) : retv | ch
+  waitms(2000)
+  longmove(@maxspeed, @maxspeed_, 4)
   uscount := clkfreq /1_000_000
   ifnot i2c.setup(scl, sda, CONFIG_SPEED, i2c.PU_3K3, -1)                       ' i2c @ 3400kHz, 3K3 pull-ups
     return $01
@@ -45,7 +46,7 @@ PUB stop()
   stopmotors()
 
 PUB stopmotors() | byte speeds[8]
-  bytefill(@speeds, 0, 8)
+  bytefill(@speeds, 128, 8)
   setPWMAll(ADDRESS<<1, @speeds)
 
 PRI setPWM(addr, num, value) : retv | byte values[3]
@@ -65,7 +66,7 @@ PRI setPWMAll(addr, pvalue) : retv | byte values[10]
   ' addr must be already shifted
   values[0] := addr
   values[1] := 0
-  bytemove(@values[2], pvalue, 8)
+  bytemove(@values[2], pvalue, maxnum)
   i2c.start()
   retv := !!(i2c.wr_block(@values, 10) == i2c.NAK)
   i2c.stop()
@@ -87,7 +88,7 @@ PUB runone(motor, speed) : retv | pwm, temp
 PUB run(pspeed) : retv | temp, byte pwm[8]
 '' set speed of all motors
   ' speed 0 is coast rather than brake
-  repeat 8 with temp
+  repeat maxnum with temp
     ' map to usec (1000-2000us) and then to 0-255 (860-2135us)
     pwm[temp] := (utilities.map(long[pspeed][temp], -maxspeed, maxspeed, minout, maxout) - 860)/5
 
@@ -95,7 +96,7 @@ PUB run(pspeed) : retv | temp, byte pwm[8]
   retv := setPWMAll(ADDRESS<<1, @pwm)                                           ' 118-120us
   temp := getct() - temp - 40
   if debugoutput(UTILITIES.DEBUGOUT3)
-    debug("run motor ", sdec_long_array_(pspeed, 8), udec_byte_array_(@pwm, 8), " ", uhex_(retv), " ", udec_(temp/uscount))
+    debug("run motor ", sdec_long_array_(pspeed, maxnum), udec_byte_array_(@pwm, maxnum), " ", uhex_(retv), " ", udec_(temp/uscount))
 
 PRI debugoutput(type) : retv
   retv := utilities.debugoutput(debug2, type)
