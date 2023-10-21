@@ -456,7 +456,7 @@ local function drawEssentials (x,y,font)
 	v2 = rshift(val, 16)
 	v2 = getword(v2)/100.0
 	v2 = fmta(v2)
-	lcd.drawText (x, y, "FB:", font + colorFlags)
+	lcd.drawText (x, y, "FR:", font + colorFlags)
 	lcd.drawText (x + xOffset+5, y, (v1 and v1 ~= 0) and (math.floor(v1 + 0.5)) or "---", font  + colorFlags)
 	lcd.drawText (x + xOffset+50, y, v2, font  + colorFlags)
 	dx = lcd.sizeText(v2, font + colorFlags)
