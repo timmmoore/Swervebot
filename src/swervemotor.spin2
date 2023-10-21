@@ -86,11 +86,11 @@ PUB start(scl, sda, epin, pbot, ppinoffsets, pangleoffsets, pminencoder, pmaxenc
     debug("Swerve starting ", fdec_(long[pbot][BOT_WIDTH], long[pbot][BOT_LENGTH], rad))
 
   longmove(@motors, pmotor, MAX_SWERVE_MODULES*2)       ' conversion between swerve motor number and motor driver motor number
-  repeat 8 with ch                                      ' switch invert flags to match order of motordrivers, not swerve modules
-    inverts[long[pmotor][ch]] := word[pinvert][ch]
-  retv := motor.start(scl, sda, MAXSPEED, ESC_MIN_LIMIT_USEC, ESC_MAX_LIMIT_USEC)
+  longmove(@inverts, pinvert, MAX_SWERVE_MODULES*2)
+  retv := motor.start(scl, sda, MAXSPEED, ESC_MIN_LIMIT_USEC, ESC_MAX_LIMIT_USEC, MAX_SWERVE_MODULES*2)
 
   encoder.start(epin, 0, MAXANGLE, ppinoffsets, pangleoffsets, pminencoder, pmaxencoder) ' 0-MAXANGLE output
+  encodertime := getms()
 
   repeat MAX_SWERVE_MODULES with ch
     pid[ch].init(ch, MAXANGLE, MAXSPEED)                ' 0-MAXANGLE input, +- MAXSPEED output
@@ -133,8 +133,6 @@ PRI setmotorspeeds(pspeeds) : retv | ch, speed, drive, off, speeds[8]
     if (drive := ch & 1) == 0
       actualspeeds[ch>>1] := speed                      ' update drive telemetry
     retv |= (off := abs(speed) > minmotorspeed[drive])  ' final clamping to max motor speed, convert between swerve motor no to motor driver motor no
-    ifnot off
-      debug("setmotorspeed ", sdec_(ch), " to zero")
     speeds[motors[ch]] := off ? utilities.clamp(inverts[ch]?-speed:speed, overridemax[drive]) : 0
   motor.run(@speeds)
 
@@ -294,6 +292,12 @@ PUB update(x, y, r, off) : notcomplete | changed, newoffstate, previousoffstate,
     encodertime := getms()
   if debugoutput(UTILITIES.DEBUGOUT4)
     debug("Swerve updated ", sdec_(changed, notcomplete, motorsareoff))
+
+PUB displayEncoder() | ch
+  if (getms() - encodertime) > 5000
+    repeat MAX_SWERVE_MODULES with ch
+      encoder.read(ch, true)                            ' read encoder when motors off, so can manually adjust encoder offsets
+    encodertime := getms()
 
 PRI motorsoff(off) : retv, previous
 ' return true if motors should be off, was off
