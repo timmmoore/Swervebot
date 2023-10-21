@@ -178,6 +178,7 @@ con { fixed io pins }
   PIDCONSTANTSDIVIDER10         = 10.0
   PIDCONSTANTSDIVIDER100        = 100.0
   PIDCONSTANTSDIVIDER1000       = 1000.0
+  PIDCONSTANTSDIVIDER10000      = 10000.0
   MINPIDCONSTANT                = -1000                                         ' PID constants are in range +-4.0
   MAXPIDCONSTANT                = 1000
 
@@ -341,6 +342,7 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
       swerveupdate &= CHANNELCHANGE                     ' dont update from channels until sensor cog changes it
       update := incswerve                               ' count of sensor update
     else
+      swerve.displayEncoder()
       delaystart := getms()                             ' delay from after motors updated, debug print delays still part of processing time
                                                         ' swerve cog is stopping
   swerve.stopmotors()                                   ' stop all motors
@@ -352,9 +354,9 @@ PUB main() | ch, havemotors, cognum, debug2, debug3, debugo, delaystart, acq_tim
 
 PRI updatepidconstants(pKp, pKi, pKd) | i
   repeat i from 0 to NO_SWERVE_MODULES-1
-    long[pKp][i] := long[pKp][i] +. float(swervechannels[CHANNEL_KP])/.PIDCONSTANTSDIVIDER100
-    long[pKi][i] := long[pKi][i] +. float(swervechannels[CHANNEL_KI])/.PIDCONSTANTSDIVIDER100
-    long[pKd][i] := long[pKd][i] +. float(swervechannels[CHANNEL_KD])/.PIDCONSTANTSDIVIDER1000
+    long[pKp][i] := long[pKp][i] +. float(swervechannels[CHANNEL_KP])/.PIDCONSTANTSDIVIDER1000
+    long[pKi][i] := long[pKi][i] +. float(swervechannels[CHANNEL_KI])/.PIDCONSTANTSDIVIDER1000
+    long[pKd][i] := long[pKd][i] +. float(swervechannels[CHANNEL_KD])/.PIDCONSTANTSDIVIDER10000
 
 VAR
   long ltSkp[NO_SWERVE_MODULES], ltSki[NO_SWERVE_MODULES], ltSkd[NO_SWERVE_MODULES], ltDkp[NO_SWERVE_MODULES], ltDki[NO_SWERVE_MODULES], ltDkd[NO_SWERVE_MODULES]
@@ -600,7 +602,7 @@ DAT
   Defaults      word    0, 0,   0,   0
   '                            Kp                                 Ki                                Kd
   '                            5                                  6                                 7
-                word    trunc(0.0*.PIDCONSTANTSDIVIDER100), trunc(0.0*.PIDCONSTANTSDIVIDER100), trunc(0.0*.PIDCONSTANTSDIVIDER1000)
+                word    trunc(0.0*.PIDCONSTANTSDIVIDER1000), trunc(0.0*.PIDCONSTANTSDIVIDER1000), trunc(0.0*.PIDCONSTANTSDIVIDER10000)
   '                        D1        D2        D3
   '                         8         9        10
                 word    MINDEBUG, MINDEBUG, MINDEBUG
@@ -645,10 +647,10 @@ DAT
   ' encoder pin offsets in order of FL, FR, BL, BR
   pinoffsets    long    3, 2, 1, 0
 
-  '                        FL,    FR     BL     BR
-  defaultSteerKp long     -4.55, -4.55, -4.55, -4.55
-  defaultSteerKi long     -8.53, -8.53, -8.53, -8.53
-  defaultSteerKd long     -0.03, -0.03, -0.03, -0.03
+  '                          FL,     FR      BL      BR
+  defaultSteerKp long       -2.5,   -2.5,   -2.5,   -2.5
+  defaultSteerKi long       -0.1,   -0.1,   -0.1,   -0.1 '-8.53, -8.53, -8.53, -8.53
+  defaultSteerKd long     -0.003, -0.003, -0.003, -0.003 '-0.03, -0.03, -0.03, -0.03
 
   '                        FL,    FR     BL     BR
   defaultDriveKp long    -16.0, -16.0, -16.0, -16.0
@@ -660,13 +662,13 @@ DAT
   ' motor channels 0-7 on board
   '                     FL    FR    BL    BR
   '                     D  S  D  S  D  S  D  S
-  motoroffsets  long    7, 6, 1, 0, 5, 4, 3, 2
+  motoroffsets  long    3, 2, 1, 0, 4, 5, 6, 7
 
   ' whether each motor is inverted
   ' setup so gear on drive wheel are inside on both left and right
   '                      FL    FR    BL    BR
   '                     D  S  D  S  D  S  D  S
-  invert        word    0, 1, 1, 0, 0, 1, 1, 1
+  invert        word    0, 0, 1, 1, 0, 1, 1, 1
 
   ' drive motor encoders - speed of drive motors, 7 rises of a pin per motor rotation
   '  plus 1:3 (planetary) * 1:2 (bevel) * 12:30 (center) = 1:15 -> 105 ticks per wheel rotation
