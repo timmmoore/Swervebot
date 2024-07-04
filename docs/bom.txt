@@ -1,26 +1,25 @@
-8x	motors			https://www.revrobotics.com/rev-41-1600/
-1x	bearing insert		https://www.revrobotics.com/rev-41-1528-pk20/
-4x	28 tooth gear		https://www.revrobotics.com/5mm-Metal-Hex-Bore-Gears/
+8x	motors			https://www.revrobotics.com/rev-41-1600/						$360
+1x	bearing insert		https://www.revrobotics.com/rev-41-1528-pk20/						$10
+4x	12 tooth gear		https://www.revrobotics.com/5mm-Metal-Hex-Bore-Gears/					$40
+4x	through bore encoder	https://www.revrobotics.com/rev-11-1271/						$192
 
-4x	bevel gear		https://www.gobilda.com/2-1-ratio-bevel-gear-set-8mm-rex-bore-pinion-gear/
-4x	gear			https://www.gobilda.com/2303-series-steel-mod-0-8-pinion-gear-6mm-d-bore-30-tooth/
+4x	bevel gear		https://www.gobilda.com/2-1-ratio-bevel-gear-set-8mm-rex-bore-pinion-gear/		$120
+4x	gear			https://www.gobilda.com/2303-series-steel-mod-0-8-pinion-gear-6mm-d-bore-30-tooth/	$40
 
-16x	bearing	8mm		https://www.amazon.com/gp/product/B082PPLHLQ
-4x	spacers			https://www.amazon.com/gp/product/B09HSS2TJY
-4x	shoulder bolt		https://www.amazon.com/gp/product/B09L51S24P
-4x	bearing 60mm		https://www.amazon.com/gp/product/B082PSBTLP
-	heatset			https://www.amazon.com/dp/B07L96KVP3
+16x	bearing	8mm		https://www.amazon.com/gp/product/B082PPLHLQ						$19
+4x	spacers			https://www.amazon.com/gp/product/B09HSS2TJY						$6.30
+4x	shoulder bolt		https://www.amazon.com/gp/product/B09L51S24P						$14
+4x	bearing 60mm		https://www.amazon.com/gp/product/B082PSBTLP						$29
+	heatset			https://www.amazon.com/dp/B07L96KVP3							$18
 
-4x	position encoder	https://store.ctr-electronics.com/srx-mag-encoder/
-
-1x	battery 3S		https://www.amazon.com/gp/product/B07SYNLFB5
+1x	battery 3S		https://www.amazon.com/gp/product/B07SYNLFB5						$48/2
 1x	5V converter		https://www.amazon.com/gp/product/B08VJ2ZF46
 
 1x	fan			https://www.amazon.com/gp/product/B0792BW2VH
 1x	rc receiver		https://www.amazon.com/gp/product/B074QHJRBC
 1x	switch			https://www.amazon.com/gp/product/B0BFHZ9XYX
 
-2x	motor drivers		https://www.tindie.com/products/cburgess129/quad-motor-servo-shield-for-wireless-dev-board/
+4x	motor drivers		https://www.amazon.com/gp/product/B0C77ZR4Z9						$80
 
 1x	IMU                   	https://www.tindie.com/products/onehorse/usfsmax-module-and-carrier/
 1x	GPS                   	https://www.adafruit.com/product/4415
@@ -31,3 +30,74 @@
 1x	prop2 starter		https://www.parallax.com/product/propeller-2-mini-starter-bundle/
 
 1x	pcbs			pcbs see swervebot/pcb (oshpark.com)
+
+1x 	xrp board		https://www.sparkfun.com/products/22727							$50
+
+
+using pico expansion board
+6 connectors
+	GP0, 1
+	2, 3
+	8, 9
+	16, 17
+	20, 21
+	26, 27
+
+also 4, 5, 6, 7, 10, 11, 12, 13, 14, 15, 18, 19, 22
+
+4x swerve module - 5 pins per module
+	2x pwm out (speed control), gnd
+	1x pwm in (angle sensor), gnd, +3.3V
+	2x quadrature in, gnd, +3.3V
+
+4-6	4pin, quad 0,1
+7-11	6pin, quad 2,3
+12-14	4pin, quad 8,9
+18-20	4pin, quad 16,17	
+
+Use spare 4pin connector for extra gnd/+3.3V, split 4 ways
+
+sensor - 2 pins
+	scl - 26, 27 ICL1, gnd, +3.3V
+
+get swerve bot
+remove electronics except switch and PSU
+Connect +5/gnd to pico via mosfet
+
+add pico expansion board
+make cable bundles - 1 per swerve module
+
+xrp firmware
+change led and button pins
+change i2c pins
+change encoder pins
+add more motors
+change motor pins
+change and add more motor channels
+change motor code to use servo style pwm on 1 pin
+disable rangefinder and linefollower
+modify imu code to use sparkfun Odometry sensor
+
+copy xrp example to use swerve drive train
+
+
+swerve rp2040 qt py
+		I2C in
+
+	out to swerve
+		encoder		3.3, gnd, A, B		4-pin JST-PH to 4pin dupont connector
+		throughbore	5V, gnd, abs		2x5pin to 3pin dupont
+		motor driver	gnd, 12v, 2x pwm	4pin dupont to 3pin dupont
+
+		5V
+		3.3V
+		gnd split 4 ways
+		5 data pins
+
+pico-w main cpu
+	mount 5 qwiic breakout to main board
+		4x motor rp2040, 1x odometry board
+	mount 5v regulator
+		power to pico through diode
+		12V, gnd input connector
+		4x 3pin 12V, 5V, gnd connector, each 5V has diode
