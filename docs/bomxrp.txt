@@ -1,0 +1,139 @@
+8x	motors			https://www.revrobotics.com/rev-41-1600/						$360
+1x	bearing insert		https://www.revrobotics.com/rev-41-1528-pk20/						$10
+4x	12 tooth gear		https://www.revrobotics.com/5mm-Metal-Hex-Bore-Gears/					$20
+4x	through bore encoder	https://www.revrobotics.com/rev-11-1271/						$192
+
+4x	bevel gear		https://www.gobilda.com/2-1-ratio-bevel-gear-set-8mm-rex-bore-pinion-gear/		$120
+4x	gear			https://www.gobilda.com/2303-series-steel-mod-0-8-pinion-gear-8mm-rex-bore-30-tooth/	$40
+
+16x	bearing	8mm		https://www.amazon.com/gp/product/B082PPLHLQ						$19
+4x	spacers			https://www.amazon.com/gp/product/B09HSS2TJY						$6.30
+4x	shoulder bolt		https://www.amazon.com/gp/product/B09L51S24P						$14
+4x	bearing 60mm		https://www.amazon.com/gp/product/B082PSBTLP						$29
+	heatset			https://www.amazon.com/dp/B07L96KVP3							$18
+
+1x	battery 3S		https://www.amazon.com/gp/product/B07SYNLFB5						$48/2
+1x	switch			https://www.amazon.com/dp/B0BFHZ9XYX							$10
+
+4x	motor drivers		https://www.amazon.com/gp/product/B0C77ZR4Z9						$80
+4x	rp2040 qt py		https://www.adafruit.com/product/4900							$40
+4x	swerve wiring		https://www.amazon.com/dp/B08G1D97YY?psc=1&ref=ppx_yo2ov_dt_b_product_details		$7/10
+
+1x	power dc/dc		https://www.amazon.com/dp/B09W8LJPF8?psc=1&ref=ppx_yo2ov_dt_b_product_details		$11/4
+1x	i2c expander		https://www.amazon.com/dp/B0BPN3WCV3?psc=1&ref=ppx_yo2ov_dt_b_product_details		$11
+1x	diodes			https://www.amazon.com/100-Pieces-1N5817-Schottky-Rectifier/dp/B079KDQQPD/		$6/100
+1x	pico pcb		https://thepihut.com/products/pico-proto-pcb						$3
+1x	pico-w			https://thepihut.com/products/raspberry-pi-pico-w					$5
+
+pico
+	pico-w, dc/dc, i2x expander mounted on pico pcb
+
+swerve
+	1 motor driver, rp2040 qt py, swerve wiring on each swerve module
+
+
+using pico expansion board
+6 connectors
+	GP0, 1
+	2, 3
+	8, 9
+	16, 17
+	20, 21
+	26, 27
+
+also 4, 5, 6, 7, 10, 11, 12, 13, 14, 15, 18, 19, 22
+
+4x swerve module - 5 pins per module
+	2x pwm out (speed control), gnd
+	1x pwm in (angle sensor), gnd, +3.3V
+	2x quadrature in, gnd, +3.3V
+
+4-6	4pin, quad 0,1
+7-11	6pin, quad 2,3
+12-14	4pin, quad 8,9
+18-20	4pin, quad 16,17	
+
+Use spare 4pin connector for extra gnd/+3.3V, split 4 ways
+
+sensor - 2 pins
+	scl - 26, 27 ICL1, gnd, +3.3V
+
+get swerve bot
+remove electronics except switch and PSU
+Connect +5/gnd to pico via mosfet
+
+add pico expansion board
+make cable bundles - 1 per swerve module
+
+xrp firmware
+change led and button pins
+change i2c pins
+change encoder pins
+add more motors
+change motor pins
+change and add more motor channels
+change motor code to use servo style pwm on 1 pin
+disable rangefinder and linefollower
+modify imu code to use sparkfun Odometry sensor
+
+copy xrp example to use swerve drive train
+
+
+swerve rp2040 QT PY
+		I2C in
+
+	out to swerve
+		pins 3-6 used to set I2C address - 16, 17, 18, 19 - dupont header
+		use bootsel as input to set 0 angle for abs encoder
+
+		encoder		3.3, gnd, A, B		4-pin JST-PH to 4pin dupont connector
+		through-bore	5V, gnd, abs		2x5pin to 3pin dupont
+							jst-ph 6pin (rev)
+		motor driver	gnd, 12v, 2x pwm	4pin dupont to 3pin dupont
+
+		qwiic, cut +V to main pico		qwiic with 3.3 not connected
+		5V from main pico
+		12V, gnd from main pico to motor driver
+
+		A0, A1 to motor driver
+		A2 to through-bore encoder
+		SDA, SCL, 3.3V to motor encoder
+
+		5V and gnd to expansion board
+		5V to through-bore and main pico
+		gnd to through-bore, motor driver and motor encoder
+
+	qt py carrier
+		qwiic i2c in to qt py
+		power in 12, 5 (14), gnd (13) - 3 pin
+		motor driver 2xgnd, 12, 2x pwm (29,28) - 5pin
+		encoder 3.3, gnd, a, b (24, 25) - 4pin jst-ph
+		throughbore   5V, gnd, pwm (27) - 2x5
+			    3.3V, gnd, pwm (27) - 6pin jst-ph
+		4pin address header - 3,4; 5,6 - dupont header
+
+pico-w main cpu
+	mount 5 qwiic breakout to main board
+		4x motor rp2040, 1x odometry board
+	mount 5v regulator
+		power to pico through diode
+		12V, gnd input connector
+		4x 2pin 12V, gnd
+		4x 1pin 5V, each 5V has diode
+
+
+xrp-wpilib
+
+
+servo
+gnd, 5v, 16
+gnd 5v 17
+
+ultra
+gnd 3.3 20 21
+
+line
+gnd, 3.3, 26 27
+
+extra
+gnd, 3.3, 22, 28
