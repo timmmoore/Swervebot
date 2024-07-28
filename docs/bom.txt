@@ -1,10 +1,10 @@
 8x	motors			https://www.revrobotics.com/rev-41-1600/						$360
 1x	bearing insert		https://www.revrobotics.com/rev-41-1528-pk20/						$10
-4x	12 tooth gear		https://www.revrobotics.com/5mm-Metal-Hex-Bore-Gears/					$40
+4x	12 tooth gear		https://www.revrobotics.com/5mm-Metal-Hex-Bore-Gears/					$20
 4x	through bore encoder	https://www.revrobotics.com/rev-11-1271/						$192
 
 4x	bevel gear		https://www.gobilda.com/2-1-ratio-bevel-gear-set-8mm-rex-bore-pinion-gear/		$120
-4x	gear			https://www.gobilda.com/2303-series-steel-mod-0-8-pinion-gear-6mm-d-bore-30-tooth/	$40
+4x	gear			https://www.gobilda.com/2303-series-steel-mod-0-8-pinion-gear-8mm-rex-bore-30-tooth/	$40
 
 16x	bearing	8mm		https://www.amazon.com/gp/product/B082PPLHLQ						$19
 4x	spacers			https://www.amazon.com/gp/product/B09HSS2TJY						$6.30
@@ -81,18 +81,38 @@ modify imu code to use sparkfun Odometry sensor
 copy xrp example to use swerve drive train
 
 
-swerve rp2040 qt py
+swerve rp2040 QT PY
 		I2C in
 
 	out to swerve
+		pins 3-6 used to set I2C address - 16, 17, 18, 19 - dupont header
+		use bootsel as input to set 0 angle for abs encoder
+
 		encoder		3.3, gnd, A, B		4-pin JST-PH to 4pin dupont connector
-		throughbore	5V, gnd, abs		2x5pin to 3pin dupont
+		through-bore	5V, gnd, abs		2x5pin to 3pin dupont
+							jst-ph 6pin (rev)
 		motor driver	gnd, 12v, 2x pwm	4pin dupont to 3pin dupont
 
-		5V
-		3.3V
-		gnd split 4 ways
-		5 data pins
+		qwiic, cut +V to main pico		qwiic with 3.3 not connected
+		5V from main pico
+		12V, gnd from main pico to motor driver
+
+		A0, A1 to motor driver
+		A2 to through-bore encoder
+		SDA, SCL, 3.3V to motor encoder
+
+		5V and gnd to expansion board
+		5V to through-bore and main pico
+		gnd to through-bore, motor driver and motor encoder
+
+	qt py carrier
+		qwiic i2c in to qt py
+		power in 12, 5 (14), gnd (13) - 3 pin
+		motor driver 2xgnd, 12, 2x pwm (29,28) - 5pin
+		encoder 3.3, gnd, a, b (24, 25) - 4pin jst-ph
+		throughbore   5V, gnd, pwm (27) - 2x5
+			    3.3V, gnd, pwm (27) - 6pin jst-ph
+		4pin address header - 3,4; 5,6 - dupont header
 
 pico-w main cpu
 	mount 5 qwiic breakout to main board
@@ -100,4 +120,22 @@ pico-w main cpu
 	mount 5v regulator
 		power to pico through diode
 		12V, gnd input connector
-		4x 3pin 12V, 5V, gnd connector, each 5V has diode
+		4x 2pin 12V, gnd
+		4x 1pin 5V, each 5V has diode
+
+
+xrp-wpilib
+
+
+servo
+gnd, 5v, 16
+gnd 5v 17
+
+ultra
+gnd 3.3 20 21
+
+line
+gnd, 3.3, 26 27
+
+extra
+gnd, 3.3, 22, 28
