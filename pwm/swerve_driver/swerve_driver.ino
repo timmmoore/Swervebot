@@ -63,6 +63,10 @@ void offsetwrite(uint value)
   }
 }
 
+#define SERVOMIN	 900
+#define SERVOZERO	1500
+#define SERVOMAX	2100
+
 void setup()
 {
   int addr = STARTADDRESS;
@@ -72,10 +76,10 @@ void setup()
   Serial.print(F("CPU Frequency = ")); Serial.print(F_CPU / 1000000); Serial.println(F(" MHz"));
   
   // pwm output, 1 is drive motor, 2 is turn motor
-  Servos[0].attach(PWM_OUTPUT1, 860, 2135);
-  Servos[0].writeMicroseconds(1500);
-  Servos[1].attach(PWM_OUTPUT2, 860, 2135);
-  Servos[1].writeMicroseconds(1500);
+  Servos[0].attach(PWM_OUTPUT1, SERVOMIN, SERVOMAX);
+  Servos[0].writeMicroseconds(SERVOZERO);
+  Servos[1].attach(PWM_OUTPUT2, SERVOMIN, SERVOMAX);
+  Servos[1].writeMicroseconds(SERVOZERO);
 
   // calculate i2c address
   pinMode(ADDR_IN1, INPUT_PULLUP);
@@ -155,19 +159,27 @@ void interruptpwm() {
   }
 }
 
+uint servovalue(uint x1, uint x2)
+{
+  return x2 * 256 + x1;
+}
+
 // function that executes whenever data is received from master
 // this function is registered as an event, see setup()
 void receiveEvent(int howMany)
 {
-  int x;
-  if(howMany-- > 0){
-    x = I2CConnector.read();                        // receive byte as an integer
-    Servos[0].writeMicroseconds(x*5 + 860);         // range is 860-2135, 0 -> 860, 128 -> 1500, 255 -> 2135
+  int x1, x2, x;
+  if(howMany >= 2){
+    x1 = I2CConnector.read();                       // receive byte as an integer
+    x2 = I2CConnector.read();                       // receive byte as an integer
+    howMany -= 2;
+    Servos[0].writeMicroseconds(x=servovalue(x1, x2));// range is 900-2100, 0 -> SERVOMIN, 128 -> SERVOZERO, 255 -> SERVOMAX
     Serial.print("M0:");Serial.println(x);          // print the integer
   }
-  if(howMany-- > 0){
-    x = I2CConnector.read();                        // receive byte as an integer
-    Servos[1].writeMicroseconds(x*5 + 860);         // range is 860-2135, 0 -> 860, 128 -> 1500, 255 -> 2135
+  if(howMany >= 2){
+    x1 = I2CConnector.read();                       // receive byte as an integer
+    x2 = I2CConnector.read();                       // receive byte as an integer
+    Servos[1].writeMicroseconds(x=servovalue(x1, x2));// range is 900-2100, 0 -> SERVOMIN, 128 -> SERVOZERO, 255 -> SERVOMAX
     Serial.print("M1:");Serial.println(x);          // print the integer
   }
 }
